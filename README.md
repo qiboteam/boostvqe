@@ -1,10 +1,13 @@
-# Boosting variational eigenstate preparation algorithms lim-
-ited by training and not device coherence by diagonalization
-double-bracket iteration
+# Boost VQEs with DBI
 
-## basically, do VQE, VQA and DBI together and seach for improvements
+Boosting variational eigenstate preparation algorithms limited by training and not device coherence by diagonalization double-bracket iteration.
 
-### Marek goal: this should be viewed as the faster paced project where we just search for advantages and showcase ideas
+#### basically, do VQE, VQA and DBI together and seach for improvements
+
+#### Marek goal
+
+This should be viewed as the faster paced project where we just search for advantages and showcase ideas.
+
 Here we are preparing the more detailed analysis
 https://github.com/qiboteam/dbi_variational_strategies/
 
