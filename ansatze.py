@@ -1,4 +1,6 @@
+import qibo
 from qibo import gates
+from qibo.backends import construct_backend
 from qibo.models import Circuit
 
 def build_circuit(nqubits, nlayers):
@@ -15,3 +17,21 @@ def build_circuit(nqubits, nlayers):
     circuit.add(gates.M(*range(nqubits)))
 
     return circuit
+
+
+def compute_gradients(parameters, circuit, hamiltonian):
+    """
+    Compute gradients of circuit's parameters to check the problem trainability.
+    The evaluated derivatives are the ones of the expectation of `hamiltonian`
+    over the final state get running `circuit.execute` w.r.t. rotational angles.
+
+    NOTE: set "tensorflow" backend to make this function work.
+    """
+    backend = hamiltonian.backend 
+    parameters = backend.tf.Variable(parameters, dtype=backend.tf.complex128)
+
+    with backend.tf.GradientTape() as tape:
+        circuit.set_parameters(parameters)
+        expectation = hamiltonian.expectation(backend.execute_circuit(circuit).state())
+        
+    return tape.gradient(expectation, parameters)
