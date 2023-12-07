@@ -1,11 +1,8 @@
 import argparse
-
 import numpy as np
-
-import qibo
 from qibo.models.variational import VQE
 from qibo import hamiltonians
-from ansatze import build_circuit, compute_gradients
+from ansatze import build_circuit
 
 parser = argparse.ArgumentParser(description='boostvqe hyper-parameters.')
 parser.add_argument("--nqubits", default=6, type=int)

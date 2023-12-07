@@ -1,4 +1,4 @@
-import qibo
+import tensorflow as tf
 from qibo import gates
 from qibo.backends import construct_backend
 from qibo.models import Circuit
@@ -25,13 +25,13 @@ def compute_gradients(parameters, circuit, hamiltonian):
     The evaluated derivatives are the ones of the expectation of `hamiltonian`
     over the final state get running `circuit.execute` w.r.t. rotational angles.
 
-    NOTE: set "tensorflow" backend to make this function work.
     """
-    backend = hamiltonian.backend 
-    parameters = backend.tf.Variable(parameters, dtype=backend.tf.complex128)
+    tf_backend = construct_backend("tensorflow")
+    parameters = tf.Variable(parameters, dtype=tf.complex128)
 
-    with backend.tf.GradientTape() as tape:
+    with tf.GradientTape() as tape:
         circuit.set_parameters(parameters)
-        expectation = hamiltonian.expectation(backend.execute_circuit(circuit).state())
-        
-    return tape.gradient(expectation, parameters)
+        final_state = tf_backend.execute_circuit(circuit).state()
+        expectation= tf_backend.calculate_expectation_state(tf_backend.cast(hamiltonian.matrix), final_state, normalize=False)
+
+    return hamiltonian.backend.cast(tape.gradient(expectation, parameters))
