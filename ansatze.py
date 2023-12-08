@@ -1,4 +1,3 @@
-import tensorflow as tf
 from qibo import gates
 from qibo.backends import construct_backend
 from qibo.models import Circuit
@@ -27,9 +26,9 @@ def compute_gradients(parameters, circuit, hamiltonian):
 
     """
     tf_backend = construct_backend("tensorflow")
-    parameters = tf.Variable(parameters, dtype=tf.complex128)
+    parameters = tf_backend.tf.Variable(parameters, dtype= tf_backend.tf.complex128)
 
-    with tf.GradientTape() as tape:
+    with tf_backend.tf.GradientTape() as tape:
         circuit.set_parameters(parameters)
         final_state = tf_backend.execute_circuit(circuit).state()
         expectation= tf_backend.calculate_expectation_state(tf_backend.cast(hamiltonian.matrix), final_state, normalize=False)
