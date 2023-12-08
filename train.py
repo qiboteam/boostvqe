@@ -10,23 +10,26 @@ from qibo import hamiltonians
 
 from ansatze import build_circuit
 
-parser = argparse.ArgumentParser(description='boostvqe hyper-parameters.')
+parser = argparse.ArgumentParser(description='VQE training hyper-parameters.')
 parser.add_argument("--nqubits", default=6, type=int)
 parser.add_argument("--nlayers", default=5, type=int)
 parser.add_argument("--optimizer", default="Powell", type=str)
-parser.add_argument("--otput_folder", default=None, type=str)
+parser.add_argument("--output_folder", default=None, type=str)
+parser.add_argument("--backend", default="qibojit", type=str)
+parser.add_argument("--platform", default=None, type=str)
+parser.add_argument("--nthreads", default=1, type=int)
 
 def main(args):
     """VQE training and DBI boosting."""
-    # set backend   
-    qibo.set_backend("qibojit")
-    qibo.set_threads(os.cpu_count())
+    # set backend and number of classical threads
+    qibo.set_backend(backend=args.backend, platform=args.platform)
+    qibo.set_threads(args.nthreads)
 
     # setup the results folder
-    if args.otput_folder is None:
+    if args.output_folder is None:
         path = f"./results/{args.optimizer}_{args.nqubits}q_{args.nlayers}l"
     else:
-        path = args.otput_folder
+        path = args.output_folder
     os.system(f"mkdir {path}")
 
     # build hamiltonian and variational quantum circuit
@@ -55,7 +58,9 @@ def main(args):
         "optimizer": args.optimizer,
         "best_loss": opt_results.fun,
         "success": opt_results.success,
-        "message": opt_results.message
+        "message": opt_results.message,
+        "backend": args.backend,
+        "platform": args.platform
     }
 
     with open(f"{path}/optimization_results.json", "w") as file:
