@@ -14,15 +14,19 @@ parser = argparse.ArgumentParser(description='boostvqe hyper-parameters.')
 parser.add_argument("--nqubits", default=6, type=int)
 parser.add_argument("--nlayers", default=5, type=int)
 parser.add_argument("--optimizer", default="Powell", type=str)
+parser.add_argument("--otput_folder", default=None, type=str)
 
 def main(args):
     """VQE training and DBI boosting."""
-    # set backend
+    # set backend   
     qibo.set_backend("qibojit")
     qibo.set_threads(os.cpu_count())
 
     # setup the results folder
-    path = f"./results/{args.optimizer}_{args.nqubits}q_{args.nlayers}l"
+    if args.otput_folder is None:
+        path = f"./results/{args.optimizer}_{args.nqubits}q_{args.nlayers}l"
+    else:
+        path = args.otput_folder
     os.system(f"mkdir {path}")
 
     # build hamiltonian and variational quantum circuit
@@ -50,7 +54,6 @@ def main(args):
         "nlayers": args.nlayers,
         "optimizer": args.optimizer,
         "best_loss": opt_results.fun,
-        "best_params": opt_results.x.tolist(),
         "success": opt_results.success,
         "message": opt_results.message
     }
