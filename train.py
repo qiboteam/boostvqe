@@ -56,7 +56,7 @@ def main(args):
         "nqubits": args.nqubits,
         "nlayers": args.nlayers,
         "optimizer": args.optimizer,
-        "best_loss": opt_results.fun,
+        "best_loss": float(opt_results.fun),
         "success": opt_results.success,
         "message": opt_results.message,
         "backend": args.backend,
