@@ -1,0 +1,10 @@
+{
+    "nqubits": 3,
+    "nlayers": 5,
+    "optimizer": "BFGS",
+    "best_loss": -2.499999999999799,
+    "success": true,
+    "message": "Optimization terminated successfully.",
+    "backend": "qibojit",
+    "platform": null
+}
