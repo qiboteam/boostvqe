@@ -10,22 +10,12 @@ import matplotlib.pyplot as plt
 import qibo
 from qibo.models.variational import VQE
 from qibo import hamiltonians
-from sympy.ntheory import generate
 
 from ansatze import build_circuit
 
 OPTIMIZATION_FILE = "optimization_results.json"
-PARAMS_FILE = "best_parameters.npy"
+PARAMS_FILE = "parameters_history.npy"
 PLOT_FILE = "energy.png"
-
-parser = argparse.ArgumentParser(description='VQE training hyper-parameters.')
-parser.add_argument("--nqubits", default=6, type=int)
-parser.add_argument("--nlayers", default=5, type=int)
-parser.add_argument("--optimizer", default="Powell", type=str)
-parser.add_argument("--output_folder", default=None, type=Optional[str])
-parser.add_argument("--backend", default="qibojit", type=str)
-parser.add_argument("--platform", default="dummy", type=str)
-parser.add_argument("--nthreads", default=1, type=int)
 
 def loss(params, circuit, hamiltonian):
             circuit.set_parameters(params)
@@ -45,7 +35,7 @@ def create_folder(args):
     return path
 
 def json_dump(path, results, output_dict):
-    np.save(file=f"{path}/{PARAMS_FILE}", arr=results[1])
+    np.save(file=f"{path}/{PARAMS_FILE}", arr=results)
     with open(f"{path}/{OPTIMIZATION_FILE}", "w") as file:
         json.dump(output_dict, file, indent=4)
 
@@ -91,18 +81,20 @@ def main(args):
     print(circ.draw())
     nparams = len(circ.get_parameters())
     # initialize VQE
+    params_history = []
     loss_list = []
     fluctuations = []
     vqe = VQE(circuit=circ, hamiltonian=ham)
-    def update_loss(params, vqe = vqe, loss_list = loss_list, loss_fluctuation = fluctuations):
+    def update_loss(params, vqe = vqe, loss_list = loss_list, loss_fluctuation = fluctuations, params_history = params_history):
         energy, energy_fluctuation = loss(params, vqe.circuit, vqe.hamiltonian)
         loss_list.append(energy)
         loss_fluctuation.append(energy_fluctuation)
+        params_history.append(params)
 
     # fix numpy seed to ensure replicability of the experiment
     np.random.seed(42)
     initial_parameters = np.random.randn(nparams)
-    results = vqe.minimize(initial_parameters, method=args.optimizer, callback= update_loss, )#tol=1e-6)
+    results = vqe.minimize(initial_parameters, method=args.optimizer, callback= update_loss, )
     opt_results = results[2]
 
     # save final results
@@ -119,10 +111,21 @@ def main(args):
         "backend": args.backend,
         "platform": args.platform
     }
-    json_dump(path, results, output_dict)
+    print(params_history)
+    json_dump(path, params_history, output_dict)
 
 
 if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description='VQE training hyper-parameters.')
+    parser.add_argument("--nqubits", default=6, type=int)
+    parser.add_argument("--nlayers", default=5, type=int)
+    parser.add_argument("--optimizer", default="Powell", type=str)
+    parser.add_argument("--output_folder", default=None, type=Optional[str])
+    parser.add_argument("--backend", default="qibojit", type=str)
+    parser.add_argument("--platform", default="dummy", type=str)
+    parser.add_argument("--nthreads", default=1, type=int)
+
     args = parser.parse_args()
     main(args)
     path = generate_path(args)
