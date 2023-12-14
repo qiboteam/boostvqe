@@ -23,10 +23,3 @@ repos:
     rev: v3.15.0
     hooks:
       - id: pyupgrade
-  - repo: https://github.com/hadialqattan/pycln
-    rev: v2.4.0
-    hooks:
-      - id: pycln
-        args:
-          - --config=pyproject.toml
-          - --all
