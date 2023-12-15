@@ -54,9 +54,7 @@ def main(args):
     np.random.seed(SEED)
     initial_parameters = np.random.randn(nparams)
     results = vqe.minimize(
-        initial_parameters,
-        method=args.optimizer,
-        callback=update_loss,
+        initial_parameters, method=args.optimizer, callback=update_loss, tol=1e-5
     )
     opt_results = results[2]
 

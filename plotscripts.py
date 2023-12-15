@@ -27,7 +27,7 @@ def plot_matrix(matrix, title="", save=True, width=0.5):
         im = ax.imshow(np.absolute(matrix.get()), cmap="inferno")
     fig.colorbar(im, ax=ax)
     if save:
-        plt.savefig(f"plots/matrix_{title}.pdf", bbox_inches="tight")
+        plt.savefig(f"matrix_{title}.pdf", bbox_inches="tight")
 
 
 def plot_loss(loss_history, title="", save=True, width=0.5):
@@ -47,4 +47,4 @@ def plot_loss(loss_history, title="", save=True, width=0.5):
     plt.xlabel("Iterations")
     plt.ylabel("Loss")
     if save:
-        plt.savefig(f"plots/loss_{title}.pdf", bbox_inches="tight")
+        plt.savefig(f"loss_{title}.pdf", bbox_inches="tight")
