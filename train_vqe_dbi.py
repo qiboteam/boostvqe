@@ -21,7 +21,6 @@ def main(args):
 
     ham = hamiltonians.XXZ(nqubits=data["nqubits"])  # TODO: move out
     circ = build_circuit(nqubits=data["nqubits"], nlayers=data["nlayers"])
-
     circ_params = np.load(f"{args.folder}/{PARAMS_FILE}")[-1]
     circ.set_parameters(circ_params)
     matrix_circ = np.matrix(circ.unitary())
@@ -35,7 +34,7 @@ def main(args):
 
     # hyperoptimize step
     # TODO: Maybe remove it
-    step = dbi.hyperopt_step(step_min=1e-4, step_max=1, max_evals=100, verbose=True)
+    # step = dbi.hyperopt_step(step_min=1e-4, step_max=1, max_evals=100, verbose=True)
     step = 1e-1
     plot_matrix(dbi.h.matrix, title="Before")
 
