@@ -14,9 +14,13 @@ from utils import OPTIMIZATION_FILE, PARAMS_FILE, json_load
 
 qibo.set_backend("numpy")
 NSTEPS = 1
+STEP = 1e-1
 
 
 def main(args):
+    """
+    Load the VQE training and then apply `NSTEPS` of DBI.
+    """
     data = json_load(f"{args.folder}/{OPTIMIZATION_FILE}")
 
     ham = hamiltonians.XXZ(nqubits=data["nqubits"])  # TODO: move out
@@ -34,9 +38,10 @@ def main(args):
 
     # hyperoptimize step
     # TODO: Maybe remove it
+
     # step = dbi.hyperopt_step(step_min=1e-4, step_max=1, max_evals=100, verbose=True)
-    step = 1e-1
-    plot_matrix(dbi.h.matrix, title="Before")
+    step = STEP
+    plot_matrix(dbi.h.matrix, path=args.folder, title="Before")
 
     hist = []
     # one dbi step
@@ -48,10 +53,10 @@ def main(args):
     ene_fluct_dbi = dbi.energy_fluctuation(zero_state)
     print(ene_fluct_dbi)
     print(dbi.h.expectation(zero_state))
-    plot_loss(loss_history=hist, title="hist")
+    plot_loss(loss_history=hist, path=args.folder, title="hist")
 
     # plot hamiltonian's matrix
-    plot_matrix(dbi.h.matrix, title="After")
+    plot_matrix(dbi.h.matrix, path=args.folder, title="After")
 
 
 if __name__ == "__main__":

@@ -13,10 +13,11 @@ from utils import create_folder, generate_path, json_dump, loss, plot_results
 
 logging.basicConfig(level=logging.INFO)
 SEED = 42
+TOL = 1e-5
 
 
 def main(args):
-    """VQE training and DBI boosting."""
+    """VQE training."""
     # set backend and number of classical threads
     qibo.set_backend(backend=args.backend, platform=args.platform)
     qibo.set_threads(args.nthreads)
@@ -24,13 +25,15 @@ def main(args):
     # setup the results folder
     logging.info("Set VQE")
     path = create_folder(args)
+
     # build hamiltonian and variational quantum circuit
     ham = hamiltonians.XXZ(nqubits=args.nqubits)
     circ = build_circuit(nqubits=args.nqubits, nlayers=args.nlayers)
 
-    # just print the circuit
+    # print the circuit
     logging.info("\n" + circ.draw())
     nparams = len(circ.get_parameters())
+
     # initialize VQE
     params_history = []
     loss_list = []
@@ -44,6 +47,10 @@ def main(args):
         loss_fluctuation=fluctuations,
         params_history=params_history,
     ):
+        """
+        Callback function that updates the energy, the energy fluctuations and
+        the parameters lists.
+        """
         energy, energy_fluctuation = loss(params, vqe.circuit, vqe.hamiltonian)
         loss_list.append(energy)
         loss_fluctuation.append(energy_fluctuation)
@@ -54,7 +61,10 @@ def main(args):
     np.random.seed(SEED)
     initial_parameters = np.random.randn(nparams)
     results = vqe.minimize(
-        initial_parameters, method=args.optimizer, callback=update_loss, tol=1e-5
+        initial_parameters,
+        method=args.optimizer,
+        callback=update_loss,
+        tol=TOL,
     )
     opt_results = results[2]
 

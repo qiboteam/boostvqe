@@ -8,7 +8,7 @@ PURPLE = "#587ADB"
 BLUE = "#4287f5"
 
 
-def plot_matrix(matrix, title="", save=True, width=0.5):
+def plot_matrix(matrix, path, title="", save=True, width=0.5):
     """
     Visualize hamiltonian in a heatmap form.
 
@@ -27,10 +27,10 @@ def plot_matrix(matrix, title="", save=True, width=0.5):
         im = ax.imshow(np.absolute(matrix.get()), cmap="inferno")
     fig.colorbar(im, ax=ax)
     if save:
-        plt.savefig(f"matrix_{title}.pdf", bbox_inches="tight")
+        plt.savefig(f"{path}/matrix_{title}.pdf", bbox_inches="tight")
 
 
-def plot_loss(loss_history, title="", save=True, width=0.5):
+def plot_loss(loss_history, path, title="", save=True, width=0.5):
     """
     Plot loss function history.
 
@@ -47,4 +47,4 @@ def plot_loss(loss_history, title="", save=True, width=0.5):
     plt.xlabel("Iterations")
     plt.ylabel("Loss")
     if save:
-        plt.savefig(f"loss_{title}.pdf", bbox_inches="tight")
+        plt.savefig(f"{path}/loss_{title}.pdf", bbox_inches="tight")
