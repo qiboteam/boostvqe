@@ -13,7 +13,7 @@ from utils import create_folder, generate_path, loss, plot_results, results_dump
 
 logging.basicConfig(level=logging.INFO)
 SEED = 42
-TOL = 1e-5
+TOL = 1e-2
 
 
 def main(args):
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     parser.add_argument("--nqubits", default=6, type=int)
     parser.add_argument("--nlayers", default=5, type=int)
     parser.add_argument("--optimizer", default="Powell", type=str)
-    parser.add_argument("--output_folder", default=None, type=Optional[str])
+    parser.add_argument("--output_folder", default=None, type=str)
     parser.add_argument("--backend", default="qibojit", type=str)
     parser.add_argument("--platform", default="dummy", type=str)
     parser.add_argument("--nthreads", default=1, type=int)

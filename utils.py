@@ -64,7 +64,7 @@ def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
     ax[0].axhline(
         y=data["true_ground_energy"], color="r", linestyle="-", label="True value"
     )
-    if energy is not None:
+    if energy_dbi is not None:
         ax[0].axhline(y=energy_dbi[0], color="orange", linestyle="dashed", label="DBI")
 
     ax[0].set_xlabel("Epochs")
@@ -72,7 +72,7 @@ def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
     ax[0].legend()
     ax[0].grid(True, which="major")
     ax[1].plot(epochs, energy / data["true_ground_energy"])
-    if energy is not None:
+    if energy_dbi is not None:
         ax[1].axhline(
             y=energy_dbi[0] / data["true_ground_energy"],
             linestyle="dashed",
