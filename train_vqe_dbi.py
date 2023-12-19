@@ -1,4 +1,6 @@
 import argparse
+import logging
+from pathlib import Path
 
 import numpy as np
 import qibo
@@ -10,8 +12,9 @@ from qibo.models.dbi.double_bracket import (
 
 from ansatze import build_circuit
 from plotscripts import plot_loss, plot_matrix
-from utils import OPTIMIZATION_FILE, PARAMS_FILE, json_load
+from utils import OPTIMIZATION_FILE, PARAMS_FILE, json_load, plot_results
 
+logging.basicConfig(level=logging.INFO)
 qibo.set_backend("numpy")
 NSTEPS = 1
 STEP = 1e-1
@@ -43,20 +46,22 @@ def main(args):
     step = STEP
     plot_matrix(dbi.h.matrix, path=args.folder, title="Before")
 
-    hist = []
     # one dbi step
+    hist = []
     for i in range(NSTEPS):
         print(f"Step at iteration {i}/{NSTEPS}: {step}")
         dbi(step=step, d=dbi.diagonal_h_matrix)
         hist.append(dbi.off_diagonal_norm)
     zero_state = np.array([1] + [0] * (2 ** data["nqubits"] - 1))
     ene_fluct_dbi = dbi.energy_fluctuation(zero_state)
-    print(ene_fluct_dbi)
-    print(dbi.h.expectation(zero_state))
-    plot_loss(loss_history=hist, path=args.folder, title="hist")
+    energy = dbi.h.expectation(zero_state)
+    logging.info(f"Energy: {energy}")
+    logging.info(f"Energy fluctuation: {ene_fluct_dbi}")
 
     # plot hamiltonian's matrix
     plot_matrix(dbi.h.matrix, path=args.folder, title="After")
+    print("HHHHHH", energy)
+    plot_results(Path(args.folder), energy_dbi=(energy, ene_fluct_dbi))
 
 
 if __name__ == "__main__":

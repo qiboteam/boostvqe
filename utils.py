@@ -1,5 +1,6 @@
 import json
 import pathlib
+from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -42,7 +43,7 @@ def json_load(path):
     return json.load(f)
 
 
-def plot_results(folder):
+def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
     data = json_load(folder / OPTIMIZATION_FILE)
     energy = np.array(data["energy_list"])
     errors = np.array(data["energy_fluctuation"])
@@ -56,14 +57,26 @@ def plot_results(folder):
     ax[0].axhline(
         y=data["true_ground_energy"], color="r", linestyle="-", label="True value"
     )
+    if energy is not None:
+        ax[0].axhline(y=energy_dbi[0], color="orange", linestyle="dashed", label="DBI")
+
     ax[0].set_xlabel("Epochs")
     ax[0].set_ylabel("Energy")
     ax[0].legend()
     ax[0].grid(True, which="major")
     ax[1].plot(epochs, energy / data["true_ground_energy"])
+    if energy is not None:
+        ax[1].axhline(
+            y=energy_dbi[0] / data["true_ground_energy"],
+            linestyle="dashed",
+            color="orange",
+            label="DBI",
+        )
+
     ax[1].set_yscale("log")
     ax[1].axhline(y=1, color="r")
     ax[1].grid(True)
     ax[1].set_xlabel("Epochs")
     ax[1].set_ylabel("Energy ratio with true value")
+
     plt.savefig(folder / PLOT_FILE)
