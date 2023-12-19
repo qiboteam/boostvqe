@@ -9,7 +9,7 @@ from qibo import hamiltonians
 from qibo.models.variational import VQE
 
 from ansatze import build_circuit
-from utils import create_folder, generate_path, json_dump, loss, plot_results
+from utils import create_folder, generate_path, loss, plot_results, results_dump
 
 logging.basicConfig(level=logging.INFO)
 SEED = 42
@@ -24,7 +24,7 @@ def main(args):
 
     # setup the results folder
     logging.info("Set VQE")
-    path = create_folder(args)
+    path = create_folder(args.output_folder)
 
     # build hamiltonian and variational quantum circuit
     ham = hamiltonians.XXZ(nqubits=args.nqubits)
@@ -83,7 +83,7 @@ def main(args):
         "platform": args.platform,
     }
     logging.info("Dump the results")
-    json_dump(path, params_history, output_dict)
+    results_dump(path, params_history, output_dict)
 
 
 if __name__ == "__main__":
@@ -98,5 +98,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     main(args)
-    path = generate_path(args)
+    path = generate_path(args.optimizer, args.nqubits, args.nlayers)
     plot_results(pathlib.Path(path))

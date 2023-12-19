@@ -11,7 +11,7 @@ from qibo.models.dbi.double_bracket import (
 )
 
 from ansatze import build_circuit
-from plotscripts import plot_loss, plot_matrix
+from plotscripts import plot_matrix
 from utils import OPTIMIZATION_FILE, PARAMS_FILE, json_load, plot_results
 
 logging.basicConfig(level=logging.INFO)
@@ -60,7 +60,6 @@ def main(args):
 
     # plot hamiltonian's matrix
     plot_matrix(dbi.h.matrix, path=args.folder, title="After")
-    print("HHHHHH", energy)
     plot_results(Path(args.folder), energy_dbi=(energy, ene_fluct_dbi))
 
 

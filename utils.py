@@ -1,16 +1,23 @@
+import argparse
 import json
 import pathlib
 from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+from qibo.models import Circuit, Hamiltonian
 
 OPTIMIZATION_FILE = "optimization_results.json"
 PARAMS_FILE = "parameters_history.npy"
 PLOT_FILE = "energy.png"
+ROOT_FOLDER = "results"
 
 
-def loss(params, circuit, hamiltonian):
+def loss(params: list, circuit: Circuit, hamiltonian: Hamiltonian):
+    """
+    Given a VQE `circuit` with parameters `params`, this function returns the
+    expectation vaule of the Hamiltonian and its energy fluctuation.
+    """
     circuit.set_parameters(params)
     result = hamiltonian.backend.execute_circuit(circuit)
     final_state = result.state()
@@ -19,31 +26,30 @@ def loss(params, circuit, hamiltonian):
     )
 
 
-def generate_path(args):
-    return f"./results/{args.optimizer}_{args.nqubits}q_{args.nlayers}l"
+def generate_path(optimizer: str, nqubits: int, nlayers: int):
+    """Returns the path that contains the results."""
+    return f"./{ROOT_FOLDER}/{optimizer}_{nqubits}q_{nlayers}l"
 
 
-def create_folder(args):
-    path = args.output_folder
-    if path is None:
-        path = generate_path(args)
+def create_folder(path: str):
     path = pathlib.Path(path)
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
-def json_dump(path, results, output_dict):
+def results_dump(path: str, results: np.array, output_dict: dict):
     np.save(file=f"{path}/{PARAMS_FILE}", arr=results)
     with open(f"{path}/{OPTIMIZATION_FILE}", "w") as file:
         json.dump(output_dict, file, indent=4)
 
 
-def json_load(path):
+def json_load(path: str):
     f = open(path)
     return json.load(f)
 
 
 def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
+    """Plots the energy and the energy fluctuations."""
     data = json_load(folder / OPTIMIZATION_FILE)
     energy = np.array(data["energy_list"])
     errors = np.array(data["energy_fluctuation"])
