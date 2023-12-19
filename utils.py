@@ -5,7 +5,8 @@ from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
-from qibo.models import Circuit, Hamiltonian
+from qibo.hamiltonians import Hamiltonian
+from qibo.models import Circuit
 
 OPTIMIZATION_FILE = "optimization_results.json"
 PARAMS_FILE = "parameters_history.npy"
