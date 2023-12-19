@@ -4,7 +4,7 @@ Boosting variational eigenstate preparation algorithms limited by training and n
 
 To train the VQE run `train_vqe.py` with the suitable parameters.
 
-To run one step of DBI on the trained VQE run `train_vqe_dbi.py`
+To run one step of DBI on the trained VQE run `train_vqe_dbi.py`.
 
 #### basically, do VQE, VQA and DBI together and seach for improvements
 
