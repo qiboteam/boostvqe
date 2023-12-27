@@ -39,10 +39,6 @@ def main(args):
         mode=DoubleBracketGeneratorType.group_commutator,
     )
 
-    # hyperoptimize step
-    # TODO: Maybe remove it
-
-    # step = dbi.hyperopt_step(step_min=1e-4, step_max=1, max_evals=100, verbose=True)
     step = STEP
     plot_matrix(dbi.h.matrix, path=args.folder, title="Before")
 
