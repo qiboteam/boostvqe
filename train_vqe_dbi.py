@@ -18,6 +18,7 @@ logging.basicConfig(level=logging.INFO)
 qibo.set_backend("numpy")
 NSTEPS = 1
 STEP = 1e-1
+DBI_FILE = "dbi_matrix"
 
 
 def main(args):
@@ -53,6 +54,7 @@ def main(args):
     energy = dbi.h.expectation(zero_state)
     logging.info(f"Energy: {energy}")
     logging.info(f"Energy fluctuation: {ene_fluct_dbi}")
+    np.save(file=f"{args.folder}/{DBI_FILE}", arr=dbi.h.matrix)
 
     # plot hamiltonian's matrix
     plot_matrix(dbi.h.matrix, path=args.folder, title="After")
