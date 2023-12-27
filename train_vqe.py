@@ -1,7 +1,6 @@
 import argparse
 import logging
 import pathlib
-from typing import Optional
 
 import numpy as np
 import qibo
@@ -9,7 +8,8 @@ from qibo import hamiltonians
 from qibo.models.variational import VQE
 
 from ansatze import build_circuit
-from utils import create_folder, generate_path, loss, plot_results, results_dump
+from plotscripts import plot_results
+from utils import create_folder, generate_path, loss, results_dump
 
 logging.basicConfig(level=logging.INFO)
 SEED = 42

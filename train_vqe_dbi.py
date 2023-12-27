@@ -11,8 +11,8 @@ from qibo.models.dbi.double_bracket import (
 )
 
 from ansatze import build_circuit
-from plotscripts import plot_matrix
-from utils import OPTIMIZATION_FILE, PARAMS_FILE, json_load, plot_results
+from plotscripts import plot_matrix, plot_results
+from utils import OPTIMIZATION_FILE, PARAMS_FILE, json_load
 
 logging.basicConfig(level=logging.INFO)
 qibo.set_backend("numpy")

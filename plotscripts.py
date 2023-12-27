@@ -48,3 +48,43 @@ def plot_loss(loss_history, path, title="", save=True, width=0.5):
     plt.ylabel("Loss")
     if save:
         plt.savefig(f"{path}/loss_{title}.pdf", bbox_inches="tight")
+
+
+def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
+    """Plots the energy and the energy fluctuations."""
+    data = json_load(folder / OPTIMIZATION_FILE)
+    energy = np.array(data["energy_list"])
+    errors = np.array(data["energy_fluctuation"])
+    epochs = range(len(energy))
+    fig, ax = plt.subplots(2, 1, figsize=(14, 10))
+    fig.suptitle("VQE Training", fontsize=20)
+    ax[0].plot(epochs, energy, color="navy", label="VQE training")
+    ax[0].fill_between(
+        epochs, energy - errors, energy + errors, color="royalblue", alpha=0.5
+    )
+    ax[0].axhline(
+        y=data["true_ground_energy"], color="r", linestyle="-", label="True value"
+    )
+    if energy_dbi is not None:
+        ax[0].axhline(y=energy_dbi[0], color="orange", linestyle="dashed", label="DBI")
+
+    ax[0].set_xlabel("Epochs")
+    ax[0].set_ylabel("Energy")
+    ax[0].legend()
+    ax[0].grid(True, which="major")
+    ax[1].plot(epochs, energy / data["true_ground_energy"])
+    if energy_dbi is not None:
+        ax[1].axhline(
+            y=energy_dbi[0] / data["true_ground_energy"],
+            linestyle="dashed",
+            color="orange",
+            label="DBI",
+        )
+
+    ax[1].set_yscale("log")
+    ax[1].axhline(y=1, color="r")
+    ax[1].grid(True)
+    ax[1].set_xlabel("Epochs")
+    ax[1].set_ylabel("Energy ratio with true value")
+
+    plt.savefig(folder / PLOT_FILE)
