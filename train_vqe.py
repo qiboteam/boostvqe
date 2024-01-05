@@ -55,7 +55,7 @@ def main(args):
     fluctuations = []
     vqe = VQE(circuit=circ, hamiltonian=ham)
 
-    def update_loss(
+    def callbacks(
         params,
         vqe=vqe,
         loss_list=loss_list,
@@ -78,7 +78,7 @@ def main(args):
     results = vqe.minimize(
         initial_parameters,
         method=args.optimizer,
-        callback=update_loss,
+        callback=callbacks,
         tol=TOL,
     )
     opt_results = results[2]
