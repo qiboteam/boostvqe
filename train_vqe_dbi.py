@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import qibo
 from qibo import hamiltonians
+from qibo.backends.numpy import NumpyBackend
 from qibo.models.dbi.double_bracket import (
     DoubleBracketGeneratorType,
     DoubleBracketIteration,
@@ -49,7 +50,7 @@ def main(args):
         print(f"Step at iteration {i}/{NSTEPS}: {step}")
         dbi(step=step, d=dbi.diagonal_h_matrix)
         hist.append(dbi.off_diagonal_norm)
-    zero_state = np.array([1] + [0] * (2 ** data["nqubits"] - 1))
+    zero_state = NumpyBackend().zero_state(data["nqubits"])
     ene_fluct_dbi = dbi.energy_fluctuation(zero_state)
     energy = dbi.h.expectation(zero_state)
     logging.info(f"Energy: {energy}")

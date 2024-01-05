@@ -93,5 +93,4 @@ def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
     ax[1].grid(True)
     ax[1].set_xlabel("Epochs")
     ax[1].set_ylabel("Energy ratio with true value")
-    print("KKKKKKKKKK ", folder, energy)
     plt.savefig(folder / PLOT_FILE)
