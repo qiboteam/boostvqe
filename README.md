@@ -2,6 +2,10 @@
 
 Boosting variational eigenstate preparation algorithms limited by training and not device coherence by diagonalization double-bracket iteration.
 
+To train the VQE run `train_vqe.py` with the suitable parameters.
+
+To run one step of DBI on the trained VQE run `train_vqe_dbi.py`.
+
 #### basically, do VQE, VQA and DBI together and seach for improvements
 
 #### Marek goal

@@ -1,7 +1,6 @@
 import argparse
 import logging
 import pathlib
-from typing import Optional
 
 import numpy as np
 import qibo
@@ -9,12 +8,18 @@ from qibo import hamiltonians
 from qibo.models.variational import VQE
 
 from ansatze import build_circuit
-from utils import create_folder, generate_path, json_dump, plot_results
+from plotscripts import plot_results
+from utils import (
+    FLUCTUATION_FILE,
+    LOSS_FILE,
+    create_folder,
+    generate_path,
+    results_dump,
+)
 
 logging.basicConfig(level=logging.INFO)
 SEED = 42
-FLUCTUATION_FILE = "fluctuations"
-LOSS_FILE = "energies"
+TOL = 1e-2
 
 
 def loss(params, circuit, hamiltonian):
@@ -27,34 +32,40 @@ def loss(params, circuit, hamiltonian):
 
 
 def main(args):
-    """VQE training and DBI boosting."""
+    """VQE training."""
     # set backend and number of classical threads
     qibo.set_backend(backend=args.backend, platform=args.platform)
     qibo.set_threads(args.nthreads)
 
     # setup the results folder
     logging.info("Set VQE")
-    path = create_folder(args)
+    path = create_folder(generate_path(args))
+
     # build hamiltonian and variational quantum circuit
     ham = hamiltonians.XXZ(nqubits=args.nqubits)
     circ = build_circuit(nqubits=args.nqubits, nlayers=args.nlayers)
 
-    # just print the circuit
+    # print the circuit
     logging.info("\n" + circ.draw())
     nparams = len(circ.get_parameters())
+
     # initialize VQE
     params_history = []
     loss_list = []
     fluctuations = []
     vqe = VQE(circuit=circ, hamiltonian=ham)
 
-    def update_loss(
+    def callbacks(
         params,
         vqe=vqe,
         loss_list=loss_list,
         loss_fluctuation=fluctuations,
         params_history=params_history,
     ):
+        """
+        Callback function that updates the energy, the energy fluctuations and
+        the parameters lists.
+        """
         energy, energy_fluctuation = loss(params, vqe.circuit, vqe.hamiltonian)
         loss_list.append(energy)
         loss_fluctuation.append(energy_fluctuation)
@@ -67,7 +78,8 @@ def main(args):
     results = vqe.minimize(
         initial_parameters,
         method=args.optimizer,
-        callback=update_loss,
+        callback=callbacks,
+        tol=TOL,
     )
     opt_results = results[2]
 
@@ -84,10 +96,10 @@ def main(args):
         "platform": args.platform,
     }
     np.save(file=f"{path}/{LOSS_FILE}", arr=loss_list)
-    np.save(file=f"{path}/{FLUCTUATIONS_FILE}", arr=fluctuations)
+    np.save(file=f"{path}/{FLUCTUATION_FILE}", arr=fluctuations)
 
     logging.info("Dump the results")
-    json_dump(path, params_history, output_dict)
+    results_dump(path, params_history, output_dict)
 
 
 if __name__ == "__main__":
@@ -95,7 +107,7 @@ if __name__ == "__main__":
     parser.add_argument("--nqubits", default=6, type=int)
     parser.add_argument("--nlayers", default=5, type=int)
     parser.add_argument("--optimizer", default="Powell", type=str)
-    parser.add_argument("--output_folder", default=None, type=Optional[str])
+    parser.add_argument("--output_folder", default=None, type=str)
     parser.add_argument("--backend", default="qibojit", type=str)
     parser.add_argument("--platform", default="dummy", type=str)
     parser.add_argument("--nthreads", default=1, type=int)
