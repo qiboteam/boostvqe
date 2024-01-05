@@ -58,7 +58,9 @@ def plot_loss(loss_history, path, title="", save=True, width=0.5):
 def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
     """Plots the energy and the energy fluctuations."""
     data = json_load(folder / OPTIMIZATION_FILE)
-    energy = np.array(data["energy_list"])
+    energy = np.load(
+        data["energy_list"]
+    )  # TODO: Update after merging with refactor_train
     errors = np.array(data["energy_fluctuation"])
     epochs = range(len(energy))
     fig, ax = plt.subplots(2, 1, figsize=(14, 10))
