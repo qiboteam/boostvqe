@@ -11,22 +11,8 @@ PLOT_FILE = "energy.png"
 ROOT_FOLDER = "results"
 
 
-def loss(params: list, circuit: Circuit, hamiltonian: Hamiltonian):
-    """
-    Given a VQE `circuit` with parameters `params`, this function returns the
-    expectation vaule of the Hamiltonian and its energy fluctuation.
-    """
-    circuit.set_parameters(params)
-    result = hamiltonian.backend.execute_circuit(circuit)
-    final_state = result.state()
-    return hamiltonian.expectation(final_state), hamiltonian.energy_fluctuation(
-        final_state
-    )
-
-
-def generate_path(optimizer: str, nqubits: int, nlayers: int):
-    """Returns the path that contains the results."""
-    return f"./{ROOT_FOLDER}/{optimizer}_{nqubits}q_{nlayers}l"
+def generate_path(args):
+    return f"./results/{args.optimizer}_{args.nqubits}q_{args.nlayers}l"
 
 
 def create_folder(path: str):
