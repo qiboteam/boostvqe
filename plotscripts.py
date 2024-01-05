@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 
-from utils import OPTIMIZATION_FILE, PLOT_FILE, json_load
+from utils import FLUCTUATION_FILE, LOSS_FILE, OPTIMIZATION_FILE, PLOT_FILE, json_load
 
 RED = "#f54242"
 YELLOW = "#edd51a"
@@ -58,10 +58,10 @@ def plot_loss(loss_history, path, title="", save=True, width=0.5):
 def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
     """Plots the energy and the energy fluctuations."""
     data = json_load(folder / OPTIMIZATION_FILE)
-    energy = np.load(
-        data["energy_list"]
-    )  # TODO: Update after merging with refactor_train
-    errors = np.array(data["energy_fluctuation"])
+    energy_file = FLUCTUATION_FILE + ".npy"
+    fluctuation_file = FLUCTUATION_FILE + ".npy"
+    energy = np.load(folder / energy_file)
+    errors = np.load(folder / fluctuation_file)
     epochs = range(len(energy))
     fig, ax = plt.subplots(2, 1, figsize=(14, 10))
     fig.suptitle("VQE Training", fontsize=20)
@@ -79,7 +79,7 @@ def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
     ax[0].set_ylabel("Energy")
     ax[0].legend()
     ax[0].grid(True, which="major")
-    ax[1].plot(epochs, energy / data["true_ground_energy"])
+    ax[1].plot(epochs, np.abs(energy / data["true_ground_energy"]))
     if energy_dbi is not None:
         ax[1].axhline(
             y=energy_dbi[0] / data["true_ground_energy"],
@@ -93,5 +93,5 @@ def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
     ax[1].grid(True)
     ax[1].set_xlabel("Epochs")
     ax[1].set_ylabel("Energy ratio with true value")
-
+    print("KKKKKKKKKK ", folder, energy)
     plt.savefig(folder / PLOT_FILE)

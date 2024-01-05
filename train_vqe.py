@@ -8,12 +8,18 @@ from qibo import hamiltonians
 from qibo.models.variational import VQE
 
 from ansatze import build_circuit
-from utils import create_folder, generate_path, json_dump, plot_results
+from plotscripts import plot_results
+from utils import (
+    FLUCTUATION_FILE,
+    LOSS_FILE,
+    create_folder,
+    generate_path,
+    results_dump,
+)
 
 logging.basicConfig(level=logging.INFO)
 SEED = 42
-FLUCTUATION_FILE = "fluctuations"
-LOSS_FILE = "energies"
+TOL = 1e-2
 
 
 def loss(params, circuit, hamiltonian):
@@ -33,7 +39,7 @@ def main(args):
 
     # setup the results folder
     logging.info("Set VQE")
-    path = create_folder(args.output_folder)
+    path = create_folder(generate_path(args))
 
     # build hamiltonian and variational quantum circuit
     ham = hamiltonians.XXZ(nqubits=args.nqubits)
@@ -90,7 +96,7 @@ def main(args):
         "platform": args.platform,
     }
     np.save(file=f"{path}/{LOSS_FILE}", arr=loss_list)
-    np.save(file=f"{path}/{FLUCTUATIONS_FILE}", arr=fluctuations)
+    np.save(file=f"{path}/{FLUCTUATION_FILE}", arr=fluctuations)
 
     logging.info("Dump the results")
     results_dump(path, params_history, output_dict)
@@ -108,5 +114,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     main(args)
-    path = generate_path(args.optimizer, args.nqubits, args.nlayers)
+    path = generate_path(args)
     plot_results(pathlib.Path(path))

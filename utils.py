@@ -9,10 +9,12 @@ OPTIMIZATION_FILE = "optimization_results.json"
 PARAMS_FILE = "parameters_history.npy"
 PLOT_FILE = "energy.png"
 ROOT_FOLDER = "results"
+FLUCTUATION_FILE = "fluctuations"
+LOSS_FILE = "energies"
 
 
 def generate_path(args):
-    return f"./results/{args.optimizer}_{args.nqubits}q_{args.nlayers}l"
+    return f"./{args.output_folder}/{args.optimizer}_{args.nqubits}q_{args.nlayers}l"
 
 
 def create_folder(path: str):
