@@ -9,10 +9,21 @@ from qibo import hamiltonians
 from qibo.models.variational import VQE
 
 from ansatze import build_circuit
-from utils import create_folder, generate_path, json_dump, loss, plot_results
+from utils import create_folder, generate_path, json_dump, plot_results
 
 logging.basicConfig(level=logging.INFO)
 SEED = 42
+FLUCTUATION_FILE = "fluctuations"
+LOSS_FILE = "energies"
+
+
+def loss(params, circuit, hamiltonian):
+    circuit.set_parameters(params)
+    result = hamiltonian.backend.execute_circuit(circuit)
+    final_state = result.state()
+    return hamiltonian.expectation(final_state), hamiltonian.energy_fluctuation(
+        final_state
+    )
 
 
 def main(args):
@@ -66,14 +77,15 @@ def main(args):
         "nlayers": args.nlayers,
         "optimizer": args.optimizer,
         "best_loss": float(opt_results.fun),
-        "energy_list": loss_list,
-        "energy_fluctuation": fluctuations,
         "true_ground_energy": min(ham.eigenvalues()),
         "success": opt_results.success,
         "message": opt_results.message,
         "backend": args.backend,
         "platform": args.platform,
     }
+    np.save(file=f"{path}/{LOSS_FILE}", arr=loss_list)
+    np.save(file=f"{path}/{FLUCTUATIONS_FILE}", arr=fluctuations)
+
     logging.info("Dump the results")
     json_dump(path, params_history, output_dict)
 
