@@ -1,9 +1,7 @@
 import json
-import pathlib
+from pathlib import Path
 
 import numpy as np
-from qibo.hamiltonians import Hamiltonian
-from qibo.models import Circuit
 
 OPTIMIZATION_FILE = "optimization_results.json"
 PARAMS_FILE = "parameters_history.npy"
@@ -18,15 +16,19 @@ def generate_path(args):
 
 
 def create_folder(path: str):
-    path = pathlib.Path(path)
+    path = Path(path)
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
 def results_dump(path: str, results: np.array, output_dict: dict):
     np.save(file=f"{path}/{PARAMS_FILE}", arr=results)
-    with open(f"{path}/{OPTIMIZATION_FILE}", "w") as file:
-        json.dump(output_dict, file, indent=4)
+    json_file = Path(f"{path}/{OPTIMIZATION_FILE}")
+    dump_json(json_file, output_dict)
+
+
+def dump_json(path: Path, data):
+    path.write_text(json.dumps(data, indent=4))
 
 
 def json_load(path: str):

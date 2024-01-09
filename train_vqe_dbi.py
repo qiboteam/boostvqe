@@ -1,5 +1,6 @@
 import argparse
 import logging
+import pathlib
 from pathlib import Path
 
 import numpy as np
@@ -13,13 +14,14 @@ from qibo.models.dbi.double_bracket import (
 
 from ansatze import build_circuit
 from plotscripts import plot_matrix, plot_results
-from utils import OPTIMIZATION_FILE, PARAMS_FILE, json_load
+from utils import OPTIMIZATION_FILE, PARAMS_FILE, dump_json, json_load
 
 logging.basicConfig(level=logging.INFO)
 qibo.set_backend("numpy")
 NSTEPS = 1
 STEP = 1e-1
 DBI_FILE = "dbi_matrix"
+DBI_REULTS = "dbi_output.json"
 
 
 def main(args):
@@ -55,7 +57,13 @@ def main(args):
     energy = dbi.h.expectation(zero_state)
     logging.info(f"Energy: {energy}")
     logging.info(f"Energy fluctuation: {ene_fluct_dbi}")
-    np.save(file=f"{args.folder}/{DBI_FILE}", arr=dbi.h.matrix)
+    output_dict = {
+        "energy": energy,
+        "fluctuations": ene_fluct_dbi,
+    }
+    folder = pathlib.Path(args.folder)
+    np.save(file=folder / DBI_FILE, arr=dbi.h.matrix)
+    dump_json(folder / DBI_REULTS, output_dict)
 
     # plot hamiltonian's matrix
     plot_matrix(dbi.h.matrix, path=args.folder, title="After")
