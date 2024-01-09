@@ -58,7 +58,7 @@ def plot_loss(loss_history, path, title="", save=True, width=0.5):
 def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
     """Plots the energy and the energy fluctuations."""
     data = json_load(folder / OPTIMIZATION_FILE)
-    energy_file = FLUCTUATION_FILE + ".npy"
+    energy_file = LOSS_FILE + ".npy"
     fluctuation_file = FLUCTUATION_FILE + ".npy"
     energy = np.load(folder / energy_file)
     errors = np.load(folder / fluctuation_file)

@@ -82,7 +82,6 @@ def main(args):
         tol=TOL,
     )
     opt_results = results[2]
-
     # save final results
     output_dict = {
         "nqubits": args.nqubits,
