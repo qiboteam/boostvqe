@@ -42,8 +42,13 @@ def main(args):
         hamiltonian=qibo.hamiltonians.Hamiltonian(data["nqubits"], matrix=new_ham),
         mode=DoubleBracketGeneratorType.group_commutator,
     )
+    if args.step_opt:
+        step = dbi.hyperopt_step(
+            step_min=1e-4, step_max=1, max_evals=1000.0, verbose=True
+        )
+    else:
+        step = STEP
 
-    step = STEP
     plot_matrix(dbi.h.matrix, path=args.folder, title="Before")
 
     # one dbi step
@@ -52,6 +57,7 @@ def main(args):
         print(f"Step at iteration {i}/{NSTEPS}: {step}")
         dbi(step=step, d=dbi.diagonal_h_matrix)
         hist.append(dbi.off_diagonal_norm)
+
     zero_state = NumpyBackend().zero_state(data["nqubits"])
     ene_fluct_dbi = dbi.energy_fluctuation(zero_state)
     energy = dbi.h.expectation(zero_state)
@@ -75,4 +81,5 @@ if __name__ == "__main__":
         description="VQE with DBI training hyper-parameters."
     )
     parser.add_argument("--folder", type=str)
+    parser.add_argument("--step_opt", default=False, type=bool)
     main(parser.parse_args())
