@@ -1,10 +1,11 @@
+import os.path
 import pathlib
-from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 from utils import (
+    DBI_REULTS,
     FLUCTUATION_FILE,
     FLUCTUATION_FILE2,
     LOSS_FILE,
@@ -63,15 +64,15 @@ def plot_loss(loss_history, path, title="", save=True, width=0.5):
         plt.savefig(f"{path}/loss_{title}.pdf", bbox_inches="tight")
 
 
-def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
+def plot_results(folder: pathlib.Path):
     """Plots the energy and the energy fluctuations."""
     data = json_load(folder / OPTIMIZATION_FILE)
     energy_file = LOSS_FILE + ".npy"
     fluctuation_file = FLUCTUATION_FILE + ".npy"
     energy = np.load(folder / energy_file)
-    print("FFFF", energy)
     errors = np.load(folder / fluctuation_file)
     epochs = range(len(energy))
+
     fig, ax = plt.subplots(2, 1, figsize=(14, 10))
     fig.suptitle("VQE Training", fontsize=20)
     ax[0].plot(epochs, energy, color="navy", label="VQE training")
@@ -81,8 +82,11 @@ def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
     ax[0].axhline(
         y=data["true_ground_energy"], color="r", linestyle="-", label="True value"
     )
-    if energy_dbi is not None:
-        ax[0].axhline(y=energy_dbi[0], color="orange", linestyle="dashed", label="DBI")
+    if os.path.isfile(folder / DBI_REULTS):
+        energy_dbi = json_load(folder / DBI_REULTS)
+        ax[0].axhline(
+            y=energy_dbi["energy"], color="orange", linestyle="dashed", label="DBI"
+        )
         energy_file = LOSS_FILE2 + ".npy"
         fluctuation_file = FLUCTUATION_FILE2 + ".npy"
 
@@ -93,7 +97,6 @@ def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
         ax[0].fill_between(
             epochs2, energy2 - errors2, energy2 + errors2, color="green", alpha=0.5
         )
-        print(energy2)
 
     ax[0].set_xlabel("Epochs")
     ax[0].set_ylabel("Energy")
@@ -102,7 +105,7 @@ def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
     ax[1].plot(epochs, np.abs(energy / data["true_ground_energy"]))
     if energy_dbi is not None:
         ax[1].axhline(
-            y=energy_dbi[0] / data["true_ground_energy"],
+            y=energy_dbi["energy"] / data["true_ground_energy"],
             linestyle="dashed",
             color="orange",
             label="DBI",

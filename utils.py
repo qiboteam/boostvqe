@@ -15,6 +15,8 @@ FLUCTUATION_FILE2 = "fluctuations2"
 LOSS_FILE2 = "energies2"
 SEED = 42
 TOL = 1e-4
+DBI_FILE = "dbi_matrix"
+DBI_REULTS = "dbi_output.json"
 
 
 def generate_path(args):

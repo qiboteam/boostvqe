@@ -13,8 +13,10 @@ from qibo.models.dbi.double_bracket import (
 )
 
 from ansatze import build_circuit
-from plotscripts import plot_matrix, plot_results
+from plotscripts import plot_results
 from utils import (
+    DBI_FILE,
+    DBI_REULTS,
     FLUCTUATION_FILE2,
     LOSS_FILE2,
     OPTIMIZATION_FILE,
@@ -28,8 +30,6 @@ logging.basicConfig(level=logging.INFO)
 qibo.set_backend("numpy")
 NSTEPS = 1
 STEP = 1e-1
-DBI_FILE = "dbi_matrix"
-DBI_REULTS = "dbi_output.json"
 
 
 def main(args):
@@ -56,8 +56,6 @@ def main(args):
         )
     else:
         step = STEP
-
-    plot_matrix(dbi.h.matrix, path=args.folder, title="Before")
 
     # one dbi step
     hist = []
@@ -88,11 +86,6 @@ def main(args):
     np.save(file=folder / DBI_FILE, arr=dbi.h.matrix)
     dump_json(folder / DBI_REULTS, output_dict)
 
-    # plot hamiltonian's matrix
-    # TODO: reomve plot functions in main
-    plot_matrix(dbi.h.matrix, path=args.folder, title="After")
-    plot_results(Path(args.folder), energy_dbi=(energy, ene_fluct_dbi))
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -100,4 +93,6 @@ if __name__ == "__main__":
     )
     parser.add_argument("--folder", type=str)
     parser.add_argument("--step_opt", default=False, type=bool)
-    main(parser.parse_args())
+    args = parser.parse_args()
+    main(args)
+    plot_results(Path(args.folder))
