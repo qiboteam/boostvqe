@@ -4,7 +4,15 @@ from typing import Optional, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 
-from utils import FLUCTUATION_FILE, LOSS_FILE, OPTIMIZATION_FILE, PLOT_FILE, json_load
+from utils import (
+    FLUCTUATION_FILE,
+    FLUCTUATION_FILE2,
+    LOSS_FILE,
+    LOSS_FILE2,
+    OPTIMIZATION_FILE,
+    PLOT_FILE,
+    json_load,
+)
 
 RED = "#f54242"
 YELLOW = "#edd51a"
@@ -61,6 +69,7 @@ def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
     energy_file = LOSS_FILE + ".npy"
     fluctuation_file = FLUCTUATION_FILE + ".npy"
     energy = np.load(folder / energy_file)
+    print("FFFF", energy)
     errors = np.load(folder / fluctuation_file)
     epochs = range(len(energy))
     fig, ax = plt.subplots(2, 1, figsize=(14, 10))
@@ -74,6 +83,17 @@ def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
     )
     if energy_dbi is not None:
         ax[0].axhline(y=energy_dbi[0], color="orange", linestyle="dashed", label="DBI")
+        energy_file = LOSS_FILE2 + ".npy"
+        fluctuation_file = FLUCTUATION_FILE2 + ".npy"
+
+        energy2 = np.load(folder / energy_file)
+        errors2 = np.load(folder / fluctuation_file)
+        epochs2 = range(len(energy) - 1, len(energy) + len(energy2) - 1)
+        ax[0].plot(epochs2, energy2, color="darkgreen", label="VQE training 2")
+        ax[0].fill_between(
+            epochs2, energy2 - errors2, energy2 + errors2, color="green", alpha=0.5
+        )
+        print(energy2)
 
     ax[0].set_xlabel("Epochs")
     ax[0].set_ylabel("Energy")

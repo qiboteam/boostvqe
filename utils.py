@@ -11,8 +11,10 @@ PLOT_FILE = "energy.png"
 ROOT_FOLDER = "results"
 FLUCTUATION_FILE = "fluctuations"
 LOSS_FILE = "energies"
+FLUCTUATION_FILE2 = "fluctuations2"
+LOSS_FILE2 = "energies2"
 SEED = 42
-TOL = 1e-2
+TOL = 1e-4
 
 
 def generate_path(args):
@@ -49,12 +51,12 @@ def loss(params, circuit, hamiltonian):
     )
 
 
-def train_vqe(circ, ham, optimizer):
+def train_vqe(circ, ham, optimizer, initial_parameters):
     params_history = []
     loss_list = []
     fluctuations = []
+    circ.set_parameters(initial_parameters)
     vqe = VQE(circuit=circ, hamiltonian=ham)
-    nparams = len(circ.get_parameters())
 
     def callbacks(
         params,
@@ -72,10 +74,10 @@ def train_vqe(circ, ham, optimizer):
         loss_fluctuation.append(energy_fluctuation)
         params_history.append(params)
 
+    callbacks(initial_parameters)
     # fix numpy seed to ensure replicability of the experiment
     logging.info("Minimize the energy")
-    np.random.seed(SEED)
-    initial_parameters = np.random.randn(nparams)
+
     results = vqe.minimize(
         initial_parameters,
         method=optimizer,

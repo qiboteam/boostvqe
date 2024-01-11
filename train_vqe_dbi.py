@@ -14,7 +14,15 @@ from qibo.models.dbi.double_bracket import (
 
 from ansatze import build_circuit
 from plotscripts import plot_matrix, plot_results
-from utils import OPTIMIZATION_FILE, PARAMS_FILE, dump_json, json_load
+from utils import (
+    FLUCTUATION_FILE2,
+    LOSS_FILE2,
+    OPTIMIZATION_FILE,
+    PARAMS_FILE,
+    dump_json,
+    json_load,
+    train_vqe,
+)
 
 logging.basicConfig(level=logging.INFO)
 qibo.set_backend("numpy")
@@ -64,8 +72,9 @@ def main(args):
     logging.info(f"Energy: {energy}")
     logging.info(f"Energy fluctuation: {ene_fluct_dbi}")
     logging.info("Train VQE")
+    circ.set_parameters([0] * len(circ_params))
     results, params_history, loss_list, fluctuations = train_vqe(
-        circ, dbi.h, data["optimser"]
+        circ, dbi.h, data["optimizer"], [0] * len(circ_params)
     )
     # TODO: dump results and params_history
     output_dict = {
@@ -74,12 +83,13 @@ def main(args):
     }
     # Dump
     folder = pathlib.Path(args.folder)
-    np.save(file=folder / LOSS_FILE, arr=loss_list)
-    np.save(file=folder / FLUCTUATION_FILE, arr=fluctuations)
+    np.save(file=folder / LOSS_FILE2, arr=loss_list)
+    np.save(file=folder / FLUCTUATION_FILE2, arr=fluctuations)
     np.save(file=folder / DBI_FILE, arr=dbi.h.matrix)
     dump_json(folder / DBI_REULTS, output_dict)
 
     # plot hamiltonian's matrix
+    # TODO: reomve plot functions in main
     plot_matrix(dbi.h.matrix, path=args.folder, title="After")
     plot_results(Path(args.folder), energy_dbi=(energy, ene_fluct_dbi))
 

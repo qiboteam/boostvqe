@@ -11,6 +11,7 @@ from plotscripts import plot_results
 from utils import (
     FLUCTUATION_FILE,
     LOSS_FILE,
+    SEED,
     create_folder,
     generate_path,
     results_dump,
@@ -36,9 +37,11 @@ def main(args):
 
     # print the circuit
     logging.info("\n" + circ.draw())
+    np.random.seed(SEED)
+    initial_parameters = np.random.randn(len(circ.get_parameters()))
 
     results, params_history, loss_list, fluctuations = train_vqe(
-        circ, ham, args.optimizer
+        circ, ham, args.optimizer, initial_parameters
     )
     opt_results = results[2]
     # save final results
