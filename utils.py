@@ -53,12 +53,17 @@ def loss(params, circuit, hamiltonian):
     )
 
 
-def train_vqe(circ, ham, optimizer, initial_parameters):
+def train_vqe(circ, ham, optimizer, initial_parameters, tol):
     params_history = []
     loss_list = []
     fluctuations = []
     circ.set_parameters(initial_parameters)
-    vqe = VQE(circuit=circ, hamiltonian=ham)
+    if tol is None:
+        tol = TOL
+    vqe = VQE(
+        circuit=circ,
+        hamiltonian=ham,
+    )
 
     def callbacks(
         params,
@@ -84,6 +89,6 @@ def train_vqe(circ, ham, optimizer, initial_parameters):
         initial_parameters,
         method=optimizer,
         callback=callbacks,
-        tol=TOL,
+        tol=tol,
     )
     return results, params_history, loss_list, fluctuations

@@ -41,7 +41,7 @@ def main(args):
     initial_parameters = np.random.randn(len(circ.get_parameters()))
 
     results, params_history, loss_list, fluctuations = train_vqe(
-        circ, ham, args.optimizer, initial_parameters
+        circ, ham, args.optimizer, initial_parameters, args.tol
     )
     opt_results = results[2]
     # save final results
@@ -55,6 +55,7 @@ def main(args):
         "message": opt_results.message,
         "backend": args.backend,
         "platform": args.platform,
+        "tol": args.tol,
     }
     np.save(file=f"{path}/{LOSS_FILE}", arr=loss_list)
     np.save(file=f"{path}/{FLUCTUATION_FILE}", arr=fluctuations)
@@ -72,7 +73,7 @@ if __name__ == "__main__":
     parser.add_argument("--backend", default="qibojit", type=str)
     parser.add_argument("--platform", default="dummy", type=str)
     parser.add_argument("--nthreads", default=1, type=int)
-
+    parser.add_argument("--tol", default=None, type=float)
     args = parser.parse_args()
     main(args)
     path = generate_path(args)

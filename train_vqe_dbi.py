@@ -72,12 +72,13 @@ def main(args):
     logging.info("Train VQE")
     circ.set_parameters([0] * len(circ_params))
     results, params_history, loss_list, fluctuations = train_vqe(
-        circ, dbi.h, data["optimizer"], [0] * len(circ_params)
+        circ, dbi.h, data["optimizer"], [0] * len(circ_params), tol=args.tol
     )
     # TODO: dump results and params_history
     output_dict = {
         "energy": energy,
         "fluctuations": ene_fluct_dbi,
+        "tol": args.tol,
     }
     # Dump
     folder = pathlib.Path(args.folder)
@@ -93,6 +94,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--folder", type=str)
     parser.add_argument("--step_opt", default=False, type=bool)
+    parser.add_argument("--tol", default=None, type=float)
     args = parser.parse_args()
     main(args)
     plot_results(Path(args.folder))
