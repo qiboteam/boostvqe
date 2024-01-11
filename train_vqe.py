@@ -13,6 +13,7 @@ from utils import (
     LOSS_FILE,
     SEED,
     create_folder,
+    dump_list,
     generate_path,
     results_dump,
     train_vqe,
@@ -29,7 +30,7 @@ def main(args):
 
     # setup the results folder
     logging.info("Set VQE")
-    path = create_folder(generate_path(args))
+    path = pathlib.Path(create_folder(generate_path(args)))
 
     # build hamiltonian and variational quantum circuit
     ham = hamiltonians.XXZ(nqubits=args.nqubits)
@@ -57,8 +58,8 @@ def main(args):
         "platform": args.platform,
         "tol": args.tol,
     }
-    np.save(file=f"{path}/{LOSS_FILE}", arr=loss_list)
-    np.save(file=f"{path}/{FLUCTUATION_FILE}", arr=fluctuations)
+    np.save(path / LOSS_FILE, arr=loss_list)
+    np.save(path / FLUCTUATION_FILE, arr=fluctuations)
 
     logging.info("Dump the results")
     results_dump(path, params_history, output_dict)
