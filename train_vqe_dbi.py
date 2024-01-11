@@ -63,11 +63,19 @@ def main(args):
     energy = dbi.h.expectation(zero_state)
     logging.info(f"Energy: {energy}")
     logging.info(f"Energy fluctuation: {ene_fluct_dbi}")
+    logging.info("Train VQE")
+    results, params_history, loss_list, fluctuations = train_vqe(
+        circ, dbi.h, data["optimser"]
+    )
+    # TODO: dump results and params_history
     output_dict = {
         "energy": energy,
         "fluctuations": ene_fluct_dbi,
     }
+    # Dump
     folder = pathlib.Path(args.folder)
+    np.save(file=folder / LOSS_FILE, arr=loss_list)
+    np.save(file=folder / FLUCTUATION_FILE, arr=fluctuations)
     np.save(file=folder / DBI_FILE, arr=dbi.h.matrix)
     dump_json(folder / DBI_REULTS, output_dict)
 
