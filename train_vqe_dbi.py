@@ -2,6 +2,7 @@ import argparse
 import logging
 import pathlib
 from pathlib import Path
+from functools import partial
 
 import numpy as np
 import qibo
@@ -11,8 +12,9 @@ from qibo.models.dbi.double_bracket import (
     DoubleBracketGeneratorType,
     DoubleBracketIteration,
 )
+from qibo.models.variational import VQE
 
-from ansatze import build_circuit
+from ansatze import build_circuit, callbacks
 from plotscripts import plot_matrix, plot_results
 from utils import OPTIMIZATION_FILE, PARAMS_FILE, HAMILTONIAN_FILE, dump_json, json_load
 
@@ -43,27 +45,59 @@ def main(args):
     matrix_circ = np.matrix(circ.unitary())
     new_ham = matrix_circ.getH() @ ham.matrix @ matrix_circ
 
-    # Initialize DBI
-    dbi = DoubleBracketIteration(
-        hamiltonian=qibo.hamiltonians.Hamiltonian(data["nqubits"], matrix=new_ham),
-        mode=DoubleBracketGeneratorType.group_commutator,
-    )
 
-    if args.step_opt:
-        step = dbi.hyperopt_step(
-            step_min=1e-4, step_max=1, max_evals=1000.0, verbose=True
+    vqe = VQE(circuit=circ, hamiltonian=ham)
+    loss_list, fluctuations, params_history = [], [], []
+    opt_iteration = 0
+
+    callbacks_builder = partial(
+        callbacks, 
+        vqe=vqe, 
+        loss_list=loss_list, 
+        loss_fluctuation=fluctuations, 
+        params_history=params_history,
+        tracker=opt_iteration
         )
-    else:
+
+    # loop over the number of boosts
+    for i in range(args.optimization_steps):
+        # reset iterations counter
+        opt_iteration = 0
+
+        logging.info(f"Applying the DBI boosting N° {i+1} of {args.optimization_steps}")
+        # update hamiltonian
+        matrix_circ = np.matrix(circ.unitary())
+        new_ham = matrix_circ.getH() @ ham.matrix @ matrix_circ
+
+        # Initialize DBI
+        dbi = DoubleBracketIteration(
+            hamiltonian=qibo.hamiltonians.Hamiltonian(data["nqubits"], matrix=new_ham),
+            mode=DoubleBracketGeneratorType.group_commutator,
+        )
+
         step = args.stepsize
+
+        for j in range(args.dbi_steps):
+            if args.step_opt:
+                step = dbi.hyperopt_step(
+                    step_min=1e-4, step_max=1, max_evals=1000, verbose=True
+                )
+                logging.info(f"Applying DBI step {j}/{args.dbi_steps} with step size: {step}")
+            dbi(step=step, d=dbi.diagonal_h_matrix)
+
+        if args.optimization_steps > 1:
+            while (opt_iteration <= args.boost_frequency):
+                    initial_parameters = circ.get_parameters()
+                    results = vqe.minimize(
+                        initial_parameters,
+                        method=args.optimizer,
+                        callback=callbacks_builder,
+                        tol=args.tol,
+                    )
+
 
     plot_matrix(dbi.h.matrix, path=args.folder, title="Before")
 
-    # one dbi step
-    hist = []
-    for i in range(NSTEPS):
-        print(f"Step at iteration {i}/{NSTEPS}: {step}")
-        dbi(step=step, d=dbi.diagonal_h_matrix)
-        hist.append(dbi.off_diagonal_norm)
 
     zero_state = backend.zero_state(data["nqubits"])
     ene_fluct_dbi = dbi.energy_fluctuation(zero_state)
@@ -99,10 +133,16 @@ if __name__ == "__main__":
         help="From which training epoch loading the parameters."
         )
     parser.add_argument(
-        "--boost_steps", 
+         "--optimization_steps",
+         type=int,
+         default=1,
+         help="Number of times the DBI is used in the new optimization routine. If 1, no optimization is run."
+    )
+    parser.add_argument(
+        "--boost_frequency", 
         type=int, 
         default=None, 
-        help="Number of times the DBI procedure is going to be used."
+        help="Number of optimization steps which separate two DBI boosting calls."
         )
     parser.add_argument(
         "--dbi_steps", 
