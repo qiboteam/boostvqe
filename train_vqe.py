@@ -12,6 +12,7 @@ from plotscripts import plot_results
 from utils import (
     FLUCTUATION_FILE,
     LOSS_FILE,
+    HAMILTONIAN_FILE,
     create_folder,
     generate_path,
     results_dump,
@@ -96,6 +97,7 @@ def main(args):
     }
     np.save(file=f"{path}/{LOSS_FILE}", arr=loss_list)
     np.save(file=f"{path}/{FLUCTUATION_FILE}", arr=fluctuations)
+    np.save(file=f"{path}/{HAMILTONIAN_FILE}", arr=ham.matrix)
 
     logging.info("Dump the results")
     results_dump(path, params_history, output_dict)
