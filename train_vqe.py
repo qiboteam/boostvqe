@@ -1,13 +1,14 @@
 import argparse
 import logging
 import pathlib
+from functools import partial
 
 import numpy as np
 import qibo
 from qibo import hamiltonians
 from qibo.models.variational import VQE
 
-from ansatze import build_circuit
+from ansatze import build_circuit, callbacks
 from plotscripts import plot_results
 from utils import (
     FLUCTUATION_FILE,
@@ -21,15 +22,6 @@ from utils import (
 logging.basicConfig(level=logging.INFO)
 SEED = 42
 TOL = 1e-2
-
-
-def loss(params, circuit, hamiltonian):
-    circuit.set_parameters(params)
-    result = hamiltonian.backend.execute_circuit(circuit)
-    final_state = result.state()
-    return hamiltonian.expectation(final_state), hamiltonian.energy_fluctuation(
-        final_state
-    )
 
 
 def main(args):
@@ -56,22 +48,14 @@ def main(args):
     fluctuations = []
     vqe = VQE(circuit=circ, hamiltonian=ham)
 
-    def callbacks(
-        params,
-        vqe=vqe,
-        loss_list=loss_list,
-        loss_fluctuation=fluctuations,
-        params_history=params_history,
-    ):
-        """
-        Callback function that updates the energy, the energy fluctuations and
-        the parameters lists.
-        """
-        energy, energy_fluctuation = loss(params, vqe.circuit, vqe.hamiltonian)
-        loss_list.append(energy)
-        loss_fluctuation.append(energy_fluctuation)
-        params_history.append(params)
-
+    callbacks_builder = partial(
+        callbacks, 
+        vqe=vqe, 
+        loss_list=loss_list, 
+        loss_fluctuation=fluctuations, 
+        params_history=params_history
+        )
+    
     # fix numpy seed to ensure replicability of the experiment
     logging.info("Minimize the energy")
     np.random.seed(SEED)
@@ -79,7 +63,7 @@ def main(args):
     results = vqe.minimize(
         initial_parameters,
         method=args.optimizer,
-        callback=callbacks,
+        callback=callbacks_builder,
         tol=TOL,
     )
     opt_results = results[2]
@@ -94,6 +78,7 @@ def main(args):
         "message": opt_results.message,
         "backend": args.backend,
         "platform": args.platform,
+        "tol": TOL,
     }
     np.save(file=f"{path}/{LOSS_FILE}", arr=loss_list)
     np.save(file=f"{path}/{FLUCTUATION_FILE}", arr=fluctuations)
