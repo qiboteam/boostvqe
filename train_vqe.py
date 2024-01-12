@@ -67,8 +67,8 @@ def main(args):
         the parameters lists.
         """
         energy, energy_fluctuation = loss(params, vqe.circuit, vqe.hamiltonian)
-        loss_list.append(energy)
-        loss_fluctuation.append(energy_fluctuation)
+        loss_list.append(float(energy))
+        loss_fluctuation.append(float(energy_fluctuation))
         params_history.append(params)
 
     # fix numpy seed to ensure replicability of the experiment
@@ -88,7 +88,7 @@ def main(args):
         "nlayers": args.nlayers,
         "optimizer": args.optimizer,
         "best_loss": float(opt_results.fun),
-        "true_ground_energy": min(ham.eigenvalues()),
+        "true_ground_energy": float(min(ham.eigenvalues())),
         "success": opt_results.success,
         "message": opt_results.message,
         "backend": args.backend,
