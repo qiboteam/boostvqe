@@ -9,7 +9,7 @@ PLOT_FILE = "energy.png"
 ROOT_FOLDER = "results"
 FLUCTUATION_FILE = "fluctuations"
 LOSS_FILE = "energies"
-HAMILTONIAN_FILE = "hamiltonian_matrix"
+HAMILTONIAN_FILE = "hamiltonian_matrix.npy"
 
 
 def generate_path(args):
