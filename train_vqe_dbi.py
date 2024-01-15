@@ -56,13 +56,13 @@ def main(args):
             step_min=1e-4, step_max=1, max_evals=1000.0, verbose=True
         )
     else:
-        step = STEP
+        step = args.dbi_stepsize
 
     plot_matrix(dbi.h.matrix, path=args.folder, title="Before")
 
     # one dbi step
     hist = []
-    for i in range(NSTEPS):
+    for _ in range(args.dbi_nsteps):
         dbi(step=step, d=dbi.diagonal_h_matrix)
         hist.append(dbi.off_diagonal_norm)
 
@@ -93,5 +93,6 @@ if __name__ == "__main__":
     parser.add_argument("--backend", default="qibojit", type=str)
     parser.add_argument("--platform", default=None, type=str)
     parser.add_argument("--nthreads", default=1, type=int)
-
+    parser.add_argument("--dbi_nsteps", default=NSTEPS, type=int)
+    parser.add_argument("--dbi_stepsize", default=STEP, type=float)
     main(parser.parse_args())
