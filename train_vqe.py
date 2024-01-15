@@ -5,6 +5,7 @@ import pathlib
 import numpy as np
 import qibo
 from qibo import hamiltonians
+from qibo.backends import GlobalBackend
 from qibo.models.variational import VQE
 
 from ansatze import build_circuit
@@ -34,7 +35,12 @@ def loss(params, circuit, hamiltonian):
 def main(args):
     """VQE training."""
     # set backend and number of classical threads
-    qibo.set_backend(backend=args.backend, platform=args.platform)
+    if args.platform is not None:
+        qibo.set_backend(backend=args.backend, platform=args.platform)
+    else:
+        qibo.set_backend(backend=args.backend)
+        args.platform = GlobalBackend().platform
+
     qibo.set_threads(args.nthreads)
 
     # setup the results folder
@@ -67,8 +73,8 @@ def main(args):
         the parameters lists.
         """
         energy, energy_fluctuation = loss(params, vqe.circuit, vqe.hamiltonian)
-        loss_list.append(energy)
-        loss_fluctuation.append(energy_fluctuation)
+        loss_list.append(float(energy))
+        loss_fluctuation.append(float(energy_fluctuation))
         params_history.append(params)
 
     # fix numpy seed to ensure replicability of the experiment
@@ -88,7 +94,7 @@ def main(args):
         "nlayers": args.nlayers,
         "optimizer": args.optimizer,
         "best_loss": float(opt_results.fun),
-        "true_ground_energy": min(ham.eigenvalues()),
+        "true_ground_energy": float(min(ham.eigenvalues())),
         "success": opt_results.success,
         "message": opt_results.message,
         "backend": args.backend,
@@ -108,7 +114,7 @@ if __name__ == "__main__":
     parser.add_argument("--optimizer", default="Powell", type=str)
     parser.add_argument("--output_folder", default=None, type=str)
     parser.add_argument("--backend", default="qibojit", type=str)
-    parser.add_argument("--platform", default="dummy", type=str)
+    parser.add_argument("--platform", default=None, type=str)
     parser.add_argument("--nthreads", default=1, type=int)
 
     args = parser.parse_args()
