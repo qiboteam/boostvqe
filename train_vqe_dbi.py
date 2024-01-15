@@ -21,7 +21,7 @@ qibo.set_backend("numpy")
 NSTEPS = 1
 STEP = 1e-1
 DBI_FILE = "dbi_matrix"
-DBI_REULTS = "dbi_output.json"
+DBI_RESULTS = "dbi_output.json"
 
 
 def main(args):
