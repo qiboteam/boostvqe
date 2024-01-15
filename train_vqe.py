@@ -7,7 +7,6 @@ import numpy as np
 import qibo
 from qibo import hamiltonians
 from qibo.backends import GlobalBackend
-from qibo.models.variational import VQE
 
 from ansatze import build_circuit, callbacks
 from plotscripts import plot_results
@@ -15,14 +14,14 @@ from utils import (
     FLUCTUATION_FILE,
     HAMILTONIAN_FILE,
     LOSS_FILE,
+    SEED,
     create_folder,
     generate_path,
     results_dump,
+    train_vqe,
 )
 
 logging.basicConfig(level=logging.INFO)
-SEED = 42
-TOL = 1e-2
 
 
 def main(args):
@@ -38,7 +37,7 @@ def main(args):
 
     # setup the results folder
     logging.info("Set VQE")
-    path = create_folder(generate_path(args))
+    path = pathlib.Path(create_folder(generate_path(args)))
 
     # build hamiltonian and variational quantum circuit
     ham = hamiltonians.XXZ(nqubits=args.nqubits)
@@ -46,31 +45,13 @@ def main(args):
 
     # print the circuit
     logging.info("\n" + circ.draw())
-    nparams = len(circ.get_parameters())
-
-    # initialize VQE
-    params_history = []
-    loss_list = []
-    fluctuations = []
-    vqe = VQE(circuit=circ, hamiltonian=ham)
-
-    callbacks_builder = partial(
-        callbacks,
-        vqe=vqe,
-        loss_list=loss_list,
-        loss_fluctuation=fluctuations,
-        params_history=params_history,
-    )
 
     # fix numpy seed to ensure replicability of the experiment
-    logging.info("Minimize the energy")
     np.random.seed(SEED)
-    initial_parameters = np.random.randn(nparams)
-    results = vqe.minimize(
-        initial_parameters,
-        method=args.optimizer,
-        callback=callbacks_builder,
-        tol=TOL,
+    initial_parameters = np.random.randn(len(circ.get_parameters()))
+
+    results, params_history, loss_list, fluctuations = train_vqe(
+        circ, ham, args.optimizer, initial_parameters, args.tol
     )
     opt_results = results[2]
     # save final results
@@ -84,11 +65,11 @@ def main(args):
         "message": opt_results.message,
         "backend": args.backend,
         "platform": args.platform,
-        "tol": TOL,
+        "tol": args.tol,
     }
-    np.save(file=f"{path}/{LOSS_FILE}", arr=loss_list)
-    np.save(file=f"{path}/{FLUCTUATION_FILE}", arr=fluctuations)
-    np.save(file=f"{path}/{HAMILTONIAN_FILE}", arr=ham.matrix)
+    np.save(path / LOSS_FILE, arr=loss_list)
+    np.save(path / FLUCTUATION_FILE, arr=fluctuations)
+    np.save(path / HAMILTONIAN_FILE, arr=ham.matrix)
 
     logging.info("Dump the results")
     results_dump(path, params_history, output_dict)
@@ -103,7 +84,7 @@ if __name__ == "__main__":
     parser.add_argument("--backend", default="qibojit", type=str)
     parser.add_argument("--platform", default=None, type=str)
     parser.add_argument("--nthreads", default=1, type=int)
-
+    parser.add_argument("--tol", default=None, type=float)
     args = parser.parse_args()
     main(args)
     path = generate_path(args)

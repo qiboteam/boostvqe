@@ -7,22 +7,32 @@ from pathlib import Path
 import numpy as np
 import qibo
 from qibo import hamiltonians
-from qibo.backends import GlobalBackend, construct_backend
-from qibo.backends.numpy import NumpyBackend
+from qibo.backends import GlobalBackend
 from qibo.models.dbi.double_bracket import (
     DoubleBracketGeneratorType,
     DoubleBracketIteration,
 )
 from qibo.models.variational import VQE
 
-from ansatze import build_circuit, callbacks
-from plotscripts import plot_matrix, plot_results
-from utils import HAMILTONIAN_FILE, OPTIMIZATION_FILE, PARAMS_FILE, dump_json, json_load
+from ansatze import build_circuit
+from plotscripts import plot_results
+from utils import (
+    DBI_FILE,
+    DBI_RESULTS,
+    FLUCTUATION_FILE2,
+    HAMILTONIAN_FILE,
+    LOSS_FILE2,
+    OPTIMIZATION_FILE,
+    PARAMS_FILE,
+    dump_json,
+    json_load,
+    train_vqe,
+)
 
 logging.basicConfig(level=logging.INFO)
 qibo.set_backend("numpy")
-DBI_FILE = "dbi_matrix"
-DBI_RESULTS = "dbi_output.json"
+NSTEPS = 1
+STEP = 1e-1
 
 
 def main(args):
@@ -39,14 +49,11 @@ def main(args):
     ham_matrix = np.load(f"{args.folder}/{HAMILTONIAN_FILE}")
     circ_params = np.load(f"{args.folder}/{PARAMS_FILE}")[args.starting_from_epoch]
 
-    # construct backend
-    backend = construct_backend(backend=data["backend"], platform=data["platform"])
-
     # loading VQE circuit and hamiltonian
     ham = hamiltonians.Hamiltonian(nqubits=data["nqubits"], matrix=ham_matrix)
     circ = build_circuit(nqubits=data["nqubits"], nlayers=data["nlayers"])
     circ.set_parameters(circ_params)
-    backend = hamiltonian.backend
+    backend = ham.backend
     matrix_circ = np.matrix(backend.to_numpy(circ.unitary()))
     matrix_circ_dagger = backend.cast(matrix_circ.getH())
     matrix_circ = backend.cast(matrix_circ)
@@ -103,24 +110,28 @@ def main(args):
                     tol=args.tol,
                 )
 
-    plot_matrix(dbi.h.matrix, path=args.folder, title="Before")
-
     zero_state = backend.zero_state(data["nqubits"])
     ene_fluct_dbi = dbi.energy_fluctuation(zero_state)
     energy = dbi.h.expectation(zero_state)
     logging.info(f"Energy: {energy}")
     logging.info(f"Energy fluctuation: {ene_fluct_dbi}")
+    logging.info("Train VQE")
+    circ.set_parameters([0] * len(circ_params))
+    results, params_history, loss_list, fluctuations = train_vqe(
+        circ, dbi.h, data["optimizer"], [0] * len(circ_params), tol=args.tol
+    )
+    # TODO: dump results and params_history
     output_dict = {
         "energy": float(energy),
         "fluctuations": float(ene_fluct_dbi),
+        "tol": args.tol,
     }
+    # Dump
     folder = pathlib.Path(args.folder)
+    np.save(file=folder / LOSS_FILE2, arr=loss_list)
+    np.save(file=folder / FLUCTUATION_FILE2, arr=fluctuations)
     np.save(file=folder / DBI_FILE, arr=dbi.h.matrix)
     dump_json(folder / DBI_RESULTS, output_dict)
-
-    # plot hamiltonian's matrix
-    plot_matrix(dbi.h.matrix, path=args.folder, title="After")
-    plot_results(Path(args.folder), energy_dbi=(energy, ene_fluct_dbi))
 
 
 if __name__ == "__main__":
@@ -164,4 +175,6 @@ if __name__ == "__main__":
         default=False,
         help="Set to True to hyperoptimize the DBI step size.",
     )
-    main(parser.parse_args())
+    args = parser.parse_args()
+    main(args)
+    plot_results(Path(args.folder))
