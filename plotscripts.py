@@ -3,6 +3,7 @@ from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+from qibo.backends import GlobalBackend
 
 from utils import FLUCTUATION_FILE, LOSS_FILE, OPTIMIZATION_FILE, PLOT_FILE, json_load
 
@@ -73,7 +74,12 @@ def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
         y=data["true_ground_energy"], color="r", linestyle="-", label="True value"
     )
     if energy_dbi is not None:
-        ax[0].axhline(y=energy_dbi[0], color="orange", linestyle="dashed", label="DBI")
+        ax[0].axhline(
+            y=GlobalBackend().to_numpy(energy_dbi[0]),
+            color="orange",
+            linestyle="dashed",
+            label="DBI",
+        )
 
     ax[0].set_xlabel("Epochs")
     ax[0].set_ylabel("Energy")
@@ -82,7 +88,7 @@ def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
     ax[1].plot(epochs, np.abs(energy / data["true_ground_energy"]))
     if energy_dbi is not None:
         ax[1].axhline(
-            y=energy_dbi[0] / data["true_ground_energy"],
+            y=GlobalBackend().to_numpy(energy_dbi[0] / data["true_ground_energy"]),
             linestyle="dashed",
             color="orange",
             label="DBI",
