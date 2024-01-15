@@ -3,9 +3,10 @@ import pathlib
 
 import matplotlib.pyplot as plt
 import numpy as np
+from qibo.backends import GlobalBackend
 
 from utils import (
-    DBI_REULTS,
+    DBI_RESULTS,
     FLUCTUATION_FILE,
     FLUCTUATION_FILE2,
     LOSS_FILE,
@@ -82,10 +83,19 @@ def plot_results(folder: pathlib.Path):
     ax[0].axhline(
         y=data["true_ground_energy"], color="r", linestyle="-", label="True value"
     )
-    if os.path.isfile(folder / DBI_REULTS):
-        energy_dbi = json_load(folder / DBI_REULTS)
+    ax[0].set_xlabel("Epochs")
+    ax[0].set_ylabel("Energy")
+    ax[0].legend()
+    ax[0].grid(True, which="major")
+    ax[1].plot(epochs, np.abs(energy / data["true_ground_energy"]))
+
+    if os.path.isfile(folder / DBI_RESULTS):
+        energy_dbi = json_load(folder / DBI_RESULTS)
         ax[0].axhline(
-            y=energy_dbi["energy"], color="orange", linestyle="dashed", label="DBI"
+            y=GlobalBackend().to_numpy(energy_dbi["energy"]),
+            color="orange",
+            linestyle="dashed",
+            label="DBI",
         )
         energy_file = LOSS_FILE2 + ".npy"
         fluctuation_file = FLUCTUATION_FILE2 + ".npy"
@@ -98,14 +108,10 @@ def plot_results(folder: pathlib.Path):
             epochs2, energy2 - errors2, energy2 + errors2, color="green", alpha=0.5
         )
 
-    ax[0].set_xlabel("Epochs")
-    ax[0].set_ylabel("Energy")
-    ax[0].legend()
-    ax[0].grid(True, which="major")
-    ax[1].plot(epochs, np.abs(energy / data["true_ground_energy"]))
-    if energy_dbi is not None:
         ax[1].axhline(
-            y=energy_dbi["energy"] / data["true_ground_energy"],
+            y=GlobalBackend().to_numpy(
+                energy_dbi["energy"] / data["true_ground_energy"]
+            ),
             linestyle="dashed",
             color="orange",
             label="DBI",

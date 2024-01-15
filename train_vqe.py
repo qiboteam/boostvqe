@@ -5,6 +5,7 @@ import pathlib
 import numpy as np
 import qibo
 from qibo import hamiltonians
+from qibo.backends import GlobalBackend
 
 from ansatze import build_circuit
 from plotscripts import plot_results
@@ -24,7 +25,12 @@ logging.basicConfig(level=logging.INFO)
 def main(args):
     """VQE training."""
     # set backend and number of classical threads
-    qibo.set_backend(backend=args.backend, platform=args.platform)
+    if args.platform is not None:
+        qibo.set_backend(backend=args.backend, platform=args.platform)
+    else:
+        qibo.set_backend(backend=args.backend)
+        args.platform = GlobalBackend().platform
+
     qibo.set_threads(args.nthreads)
 
     # setup the results folder
@@ -37,6 +43,8 @@ def main(args):
 
     # print the circuit
     logging.info("\n" + circ.draw())
+
+    # fix numpy seed to ensure replicability of the experiment
     np.random.seed(SEED)
     initial_parameters = np.random.randn(len(circ.get_parameters()))
 
@@ -50,7 +58,7 @@ def main(args):
         "nlayers": args.nlayers,
         "optimizer": args.optimizer,
         "best_loss": float(opt_results.fun),
-        "true_ground_energy": min(ham.eigenvalues()),
+        "true_ground_energy": float(min(ham.eigenvalues())),
         "success": opt_results.success,
         "message": opt_results.message,
         "backend": args.backend,
@@ -71,7 +79,7 @@ if __name__ == "__main__":
     parser.add_argument("--optimizer", default="Powell", type=str)
     parser.add_argument("--output_folder", default=None, type=str)
     parser.add_argument("--backend", default="qibojit", type=str)
-    parser.add_argument("--platform", default="dummy", type=str)
+    parser.add_argument("--platform", default=None, type=str)
     parser.add_argument("--nthreads", default=1, type=int)
     parser.add_argument("--tol", default=None, type=float)
     args = parser.parse_args()

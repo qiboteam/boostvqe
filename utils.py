@@ -16,11 +16,15 @@ LOSS_FILE2 = "energies2"
 SEED = 42
 TOL = 1e-4
 DBI_FILE = "dbi_matrix"
-DBI_REULTS = "dbi_output.json"
+DBI_RESULTS = "dbi_output.json"
 
 
 def generate_path(args):
-    return f"./{args.output_folder}/{args.optimizer}_{args.nqubits}q_{args.nlayers}l"
+    if args.output_folder is None:
+        output_folder = "results"
+    else:
+        output_folder = args.output_folder
+    return f"./{output_folder}/{args.optimizer}_{args.nqubits}q_{args.nlayers}l"
 
 
 def create_folder(path: str):
@@ -77,8 +81,8 @@ def train_vqe(circ, ham, optimizer, initial_parameters, tol):
         the parameters lists.
         """
         energy, energy_fluctuation = loss(params, vqe.circuit, vqe.hamiltonian)
-        loss_list.append(energy)
-        loss_fluctuation.append(energy_fluctuation)
+        loss_list.append(float(energy))
+        loss_fluctuation.append(float(energy_fluctuation))
         params_history.append(params)
 
     callbacks(initial_parameters)
