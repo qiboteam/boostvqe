@@ -63,11 +63,10 @@ def main(args):
     # one dbi step
     hist = []
     for i in range(NSTEPS):
-        print(f"Step at iteration {i}/{NSTEPS}: {step}")
         dbi(step=step, d=dbi.diagonal_h_matrix)
         hist.append(dbi.off_diagonal_norm)
 
-    zero_state = NumpyBackend().zero_state(data["nqubits"])
+    zero_state = GlobalBackend().zero_state(data["nqubits"])
     ene_fluct_dbi = dbi.energy_fluctuation(zero_state)
     energy = dbi.h.expectation(zero_state)
     logging.info(f"Energy: {energy}")
