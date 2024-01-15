@@ -1,11 +1,20 @@
+import os.path
 import pathlib
-from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 from qibo.backends import GlobalBackend
 
-from utils import FLUCTUATION_FILE, LOSS_FILE, OPTIMIZATION_FILE, PLOT_FILE, json_load
+from utils import (
+    DBI_RESULTS,
+    FLUCTUATION_FILE,
+    FLUCTUATION_FILE2,
+    LOSS_FILE,
+    LOSS_FILE2,
+    OPTIMIZATION_FILE,
+    PLOT_FILE,
+    json_load,
+)
 
 RED = "#f54242"
 YELLOW = "#edd51a"
@@ -56,7 +65,7 @@ def plot_loss(loss_history, path, title="", save=True, width=0.5):
         plt.savefig(f"{path}/loss_{title}.pdf", bbox_inches="tight")
 
 
-def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
+def plot_results(folder: pathlib.Path):
     """Plots the energy and the energy fluctuations."""
     data = json_load(folder / OPTIMIZATION_FILE)
     energy_file = LOSS_FILE + ".npy"
@@ -64,6 +73,7 @@ def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
     energy = np.load(folder / energy_file)
     errors = np.load(folder / fluctuation_file)
     epochs = range(len(energy))
+
     fig, ax = plt.subplots(2, 1, figsize=(14, 10))
     fig.suptitle("VQE Training", fontsize=20)
     ax[0].plot(epochs, energy, color="navy", label="VQE training")
@@ -73,22 +83,35 @@ def plot_results(folder: pathlib.Path, energy_dbi: Optional[Tuple] = None):
     ax[0].axhline(
         y=data["true_ground_energy"], color="r", linestyle="-", label="True value"
     )
-    if energy_dbi is not None:
-        ax[0].axhline(
-            y=GlobalBackend().to_numpy(energy_dbi[0]),
-            color="orange",
-            linestyle="dashed",
-            label="DBI",
-        )
-
     ax[0].set_xlabel("Epochs")
     ax[0].set_ylabel("Energy")
     ax[0].legend()
     ax[0].grid(True, which="major")
     ax[1].plot(epochs, np.abs(energy / data["true_ground_energy"]))
-    if energy_dbi is not None:
+
+    if os.path.isfile(folder / DBI_RESULTS):
+        energy_dbi = json_load(folder / DBI_RESULTS)
+        ax[0].axhline(
+            y=GlobalBackend().to_numpy(energy_dbi["energy"]),
+            color="orange",
+            linestyle="dashed",
+            label="DBI",
+        )
+        energy_file = LOSS_FILE2 + ".npy"
+        fluctuation_file = FLUCTUATION_FILE2 + ".npy"
+
+        energy2 = np.load(folder / energy_file)
+        errors2 = np.load(folder / fluctuation_file)
+        epochs2 = range(len(energy) - 1, len(energy) + len(energy2) - 1)
+        ax[0].plot(epochs2, energy2, color="darkgreen", label="VQE training 2")
+        ax[0].fill_between(
+            epochs2, energy2 - errors2, energy2 + errors2, color="green", alpha=0.5
+        )
+
         ax[1].axhline(
-            y=GlobalBackend().to_numpy(energy_dbi[0] / data["true_ground_energy"]),
+            y=GlobalBackend().to_numpy(
+                energy_dbi["energy"] / data["true_ground_energy"]
+            ),
             linestyle="dashed",
             color="orange",
             label="DBI",
