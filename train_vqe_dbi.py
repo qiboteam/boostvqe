@@ -41,9 +41,10 @@ def main(args):
     circ = build_circuit(nqubits=data["nqubits"], nlayers=data["nlayers"])
     circ_params = np.load(f"{args.folder}/{PARAMS_FILE}")[-1]
     circ.set_parameters(circ_params)
-    matrix_circ = np.matrix(GlobalBackend().to_numpy(circ.unitary()))
-    matrix_circ_dagger = GlobalBackend().cast(matrix_circ.getH())
-    matrix_circ = GlobalBackend().cast(matrix_circ)
+    backend = hamiltonian.backend
+    matrix_circ = np.matrix(backend.to_numpy(circ.unitary()))
+    matrix_circ_dagger = backend.cast(matrix_circ.getH())
+    matrix_circ = backend.cast(matrix_circ)
     new_ham = matrix_circ_dagger @ ham.matrix @ matrix_circ
 
     # Initialize DBI
