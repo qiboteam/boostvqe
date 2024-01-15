@@ -13,7 +13,6 @@ from utils import (
     LOSS_FILE,
     SEED,
     create_folder,
-    dump_list,
     generate_path,
     results_dump,
     train_vqe,

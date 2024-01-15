@@ -7,7 +7,7 @@ from qibo.models.variational import VQE
 
 OPTIMIZATION_FILE = "optimization_results.json"
 PARAMS_FILE = "parameters_history.npy"
-PLOT_FILE = "energy.png"
+PLOT_FILE = "energy.pdf"
 ROOT_FOLDER = "results"
 FLUCTUATION_FILE = "fluctuations"
 LOSS_FILE = "energies"
