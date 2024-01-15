@@ -6,14 +6,15 @@ from functools import partial
 import numpy as np
 import qibo
 from qibo import hamiltonians
+from qibo.backends import GlobalBackend
 from qibo.models.variational import VQE
 
 from ansatze import build_circuit, callbacks
 from plotscripts import plot_results
 from utils import (
     FLUCTUATION_FILE,
-    LOSS_FILE,
     HAMILTONIAN_FILE,
+    LOSS_FILE,
     create_folder,
     generate_path,
     results_dump,
@@ -27,7 +28,12 @@ TOL = 1e-2
 def main(args):
     """VQE training."""
     # set backend and number of classical threads
-    qibo.set_backend(backend=args.backend, platform=args.platform)
+    if args.platform is not None:
+        qibo.set_backend(backend=args.backend, platform=args.platform)
+    else:
+        qibo.set_backend(backend=args.backend)
+        args.platform = GlobalBackend().platform
+
     qibo.set_threads(args.nthreads)
 
     # setup the results folder
@@ -49,13 +55,13 @@ def main(args):
     vqe = VQE(circuit=circ, hamiltonian=ham)
 
     callbacks_builder = partial(
-        callbacks, 
-        vqe=vqe, 
-        loss_list=loss_list, 
-        loss_fluctuation=fluctuations, 
-        params_history=params_history
-        )
-    
+        callbacks,
+        vqe=vqe,
+        loss_list=loss_list,
+        loss_fluctuation=fluctuations,
+        params_history=params_history,
+    )
+
     # fix numpy seed to ensure replicability of the experiment
     logging.info("Minimize the energy")
     np.random.seed(SEED)
@@ -73,7 +79,7 @@ def main(args):
         "nlayers": args.nlayers,
         "optimizer": args.optimizer,
         "best_loss": float(opt_results.fun),
-        "true_ground_energy": min(ham.eigenvalues()),
+        "true_ground_energy": float(min(ham.eigenvalues())),
         "success": opt_results.success,
         "message": opt_results.message,
         "backend": args.backend,
@@ -95,7 +101,7 @@ if __name__ == "__main__":
     parser.add_argument("--optimizer", default="Powell", type=str)
     parser.add_argument("--output_folder", default=None, type=str)
     parser.add_argument("--backend", default="qibojit", type=str)
-    parser.add_argument("--platform", default="dummy", type=str)
+    parser.add_argument("--platform", default=None, type=str)
     parser.add_argument("--nthreads", default=1, type=int)
 
     args = parser.parse_args()

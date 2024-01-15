@@ -13,7 +13,11 @@ HAMILTONIAN_FILE = "hamiltonian_matrix.npy"
 
 
 def generate_path(args):
-    return f"./{args.output_folder}/{args.optimizer}_{args.nqubits}q_{args.nlayers}l"
+    if args.output_folder is None:
+        output_folder = "results"
+    else:
+        output_folder = args.output_folder
+    return f"./{output_folder}/{args.optimizer}_{args.nqubits}q_{args.nlayers}l"
 
 
 def create_folder(path: str):
