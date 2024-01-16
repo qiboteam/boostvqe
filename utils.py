@@ -19,6 +19,8 @@ TOL = 1e-4
 DBI_FILE = "dbi_matrix"
 DBI_RESULTS = "dbi_output.json"
 
+logging.basicConfig(level=logging.INFO)
+
 
 def generate_path(args):
     if args.output_folder is None:
@@ -58,7 +60,7 @@ def loss(params, circuit, hamiltonian):
     )
 
 
-def train_vqe(circ, ham, optimizer, initial_parameters, tol, tracker):
+def train_vqe(circ, ham, optimizer, initial_parameters, tol, tracker=0, nmessage=None):
     params_history = []
     loss_list = []
     fluctuations = []
@@ -76,7 +78,6 @@ def train_vqe(circ, ham, optimizer, initial_parameters, tol, tracker):
         loss_list=loss_list,
         loss_fluctuation=fluctuations,
         params_history=params_history,
-        tracker=0,
     ):
         """
         Callback function that updates the energy, the energy fluctuations and
@@ -86,7 +87,8 @@ def train_vqe(circ, ham, optimizer, initial_parameters, tol, tracker):
         loss_list.append(float(energy))
         loss_fluctuation.append(float(energy_fluctuation))
         params_history.append(params)
-        tracker += 1
+
+        print("optimizing")
 
     callbacks(initial_parameters)
 

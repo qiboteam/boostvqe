@@ -1,7 +1,6 @@
 import argparse
 import logging
 import pathlib
-from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -24,15 +23,13 @@ from utils import (
     LOSS_FILE2,
     OPTIMIZATION_FILE,
     PARAMS_FILE,
+    TOL,
     dump_json,
     json_load,
     train_vqe,
 )
 
 logging.basicConfig(level=logging.INFO)
-qibo.set_backend("numpy")
-NSTEPS = 1
-STEP = 1e-1
 
 
 def main(args):
@@ -54,23 +51,9 @@ def main(args):
     circ = build_circuit(nqubits=data["nqubits"], nlayers=data["nlayers"])
     circ.set_parameters(circ_params)
     backend = ham.backend
-    matrix_circ = np.matrix(backend.to_numpy(circ.unitary()))
-    matrix_circ_dagger = backend.cast(matrix_circ.getH())
-    matrix_circ = backend.cast(matrix_circ)
-    new_ham = matrix_circ_dagger @ ham.matrix @ matrix_circ
 
     vqe = VQE(circuit=circ, hamiltonian=ham)
     loss_list, fluctuations, params_history = [], [], []
-    opt_iteration = 0
-
-    callbacks_builder = partial(
-        callbacks,
-        vqe=vqe,
-        loss_list=loss_list,
-        loss_fluctuation=fluctuations,
-        params_history=params_history,
-        tracker=opt_iteration,
-    )
 
     # loop over the number of boosts
     for i in range(args.optimization_steps):
@@ -78,9 +61,12 @@ def main(args):
         opt_iteration = 0
 
         logging.info(f"Applying the DBI boosting N° {i+1} of {args.optimization_steps}")
+
         # update hamiltonian
-        matrix_circ = np.matrix(circ.unitary())
-        new_ham = matrix_circ.getH() @ ham.matrix @ matrix_circ
+        matrix_circ = np.matrix(backend.to_numpy(circ.unitary()))
+        matrix_circ_dagger = backend.cast(matrix_circ.getH())
+        matrix_circ = backend.cast(matrix_circ)
+        new_ham = matrix_circ_dagger @ ham.matrix @ matrix_circ
 
         # Initialize DBI
         dbi = DoubleBracketIteration(
@@ -90,15 +76,18 @@ def main(args):
 
         step = args.stepsize
 
+        # apply DBI dbi_steps times
         for j in range(args.dbi_steps):
             if args.step_opt:
                 step = dbi.hyperopt_step(
                     step_min=1e-4, step_max=1, max_evals=1000, verbose=True
                 )
-                logging.info(
-                    f"Applying DBI step {j}/{args.dbi_steps} with step size: {step}"
-                )
+            logging.info(
+                f"Applying DBI step {j}/{args.dbi_steps} with step size: {step}"
+            )
             dbi(step=step, d=dbi.diagonal_h_matrix)
+
+        print(args)
 
         if args.optimization_steps > 1:
             while opt_iteration <= args.boost_frequency:
@@ -107,7 +96,7 @@ def main(args):
                     initial_parameters,
                     method=args.optimizer,
                     callback=callbacks_builder,
-                    tol=args.tol,
+                    tol=TOL,
                 )
 
     zero_state = backend.zero_state(data["nqubits"])
@@ -115,16 +104,12 @@ def main(args):
     energy = dbi.h.expectation(zero_state)
     logging.info(f"Energy: {energy}")
     logging.info(f"Energy fluctuation: {ene_fluct_dbi}")
-    logging.info("Train VQE")
-    circ.set_parameters([0] * len(circ_params))
-    results, params_history, loss_list, fluctuations = train_vqe(
-        circ, dbi.h, data["optimizer"], [0] * len(circ_params), tol=args.tol
-    )
+
     # TODO: dump results and params_history
     output_dict = {
         "energy": float(energy),
         "fluctuations": float(ene_fluct_dbi),
-        "tol": args.tol,
+        "tol": TOL,
     }
     # Dump
     folder = pathlib.Path(args.folder)

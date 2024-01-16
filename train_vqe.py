@@ -8,7 +8,7 @@ import qibo
 from qibo import hamiltonians
 from qibo.backends import GlobalBackend
 
-from ansatze import build_circuit, callbacks
+from ansatze import build_circuit
 from plotscripts import plot_results
 from utils import (
     FLUCTUATION_FILE,
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     parser.add_argument("--backend", default="qibojit", type=str)
     parser.add_argument("--platform", default=None, type=str)
     parser.add_argument("--nthreads", default=1, type=int)
-    parser.add_argument("--tol", default=None, type=float)
+    parser.add_argument("--tol", default=1e-7, type=float)
     args = parser.parse_args()
     main(args)
     path = generate_path(args)
