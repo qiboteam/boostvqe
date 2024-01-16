@@ -1,0 +1,157 @@
+import argparse
+import logging
+import pathlib
+
+import numpy as np
+
+# qibo's
+import qibo
+from qibo import hamiltonians
+from qibo.backends import GlobalBackend
+from qibo.models.dbi.double_bracket import (
+    DoubleBracketGeneratorType,
+    DoubleBracketIteration,
+)
+
+# boostvqe's
+from ansatze import build_circuit
+from plotscripts import plot_loss
+from utils import (
+    FLUCTUATION_FILE,
+    HAMILTONIAN_FILE,
+    LOSS_FILE,
+    SEED,
+    apply_dbi_steps,
+    create_folder,
+    generate_path,
+    results_dump,
+    rotate_h_with_vqe,
+    train_vqe,
+)
+
+logging.basicConfig(level=logging.INFO)
+
+
+def main(args):
+    """VQE training."""
+    # set backend and number of classical threads
+    if args.platform is not None:
+        qibo.set_backend(backend=args.backend, platform=args.platform)
+    else:
+        qibo.set_backend(backend=args.backend)
+        args.platform = GlobalBackend().platform
+
+    qibo.set_threads(args.nthreads)
+
+    # setup the results folder
+    logging.info("Set VQE")
+    path = pathlib.Path(create_folder(generate_path(args)))
+
+    # build hamiltonian and variational quantum circuit
+    ham = hamiltonians.XXZ(nqubits=args.nqubits)
+    target_energy = float(min(ham.eigenvalues()))
+    circ = build_circuit(nqubits=args.nqubits, nlayers=args.nlayers)
+    backend = ham.backend
+
+    # print the circuit
+    logging.info("\n" + circ.draw())
+
+    # fix numpy seed to ensure replicability of the experiment
+    np.random.seed(SEED)
+    initial_parameters = np.random.randn(len(circ.get_parameters()))
+
+    # train vqe
+    results, params_history, loss_list, fluctuations, vqe = train_vqe(
+        circ, ham, args.optimizer, initial_parameters, args.tol
+    )
+
+    # rotate hamiltonian
+    new_hamiltonian = rotate_h_with_vqe(hamiltonian=ham, vqe=vqe)
+
+    # Initialize DBI
+    dbi = DoubleBracketIteration(
+        hamiltonian=qibo.hamiltonians.Hamiltonian(args.nqubits, matrix=new_hamiltonian),
+        mode=DoubleBracketGeneratorType.group_commutator,
+    )
+
+    # apply DBI
+    apply_dbi_steps(dbi=dbi, nsteps=20, optimize_step=args.optimize_dbi_step)
+
+    zero_state = backend.zero_state(args.nqubits)
+    ene_fluct_dbi = dbi.energy_fluctuation(zero_state)
+    energy = dbi.h.expectation(zero_state)
+    logging.info(f"Energy: {energy}")
+    logging.info(f"Energy fluctuation: {ene_fluct_dbi}")
+
+    opt_results = results[2]
+    # save final results
+    output_dict = {
+        "nqubits": args.nqubits,
+        "nlayers": args.nlayers,
+        "optimizer": args.optimizer,
+        "best_loss": float(opt_results.fun),
+        "true_ground_energy": target_energy,
+        "success": opt_results.success,
+        "message": opt_results.message,
+        "backend": args.backend,
+        "platform": args.platform,
+        "tol": args.tol,
+        "energy": float(energy),
+        "fluctuations": float(ene_fluct_dbi),
+    }
+    np.save(path / LOSS_FILE, arr=loss_list)
+    np.save(path / FLUCTUATION_FILE, arr=fluctuations)
+    np.save(path / HAMILTONIAN_FILE, arr=ham.matrix)
+
+    logging.info("Dump the results")
+    plot_loss(
+        loss_history=loss_list,
+        fluct_list=fluctuations,
+        path=path,
+        dbi_jumps=[energy],
+        target_energy=target_energy,
+        title="Energy history",
+    )
+    results_dump(path, params_history, output_dict)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="VQE with DBI training hyper-parameters."
+    )
+    parser.add_argument("--backend", default="qibojit", type=str)
+    parser.add_argument("--platform", default=None, type=str)
+    parser.add_argument("--nthreads", default=1, type=int)
+    parser.add_argument("--optimizer", default="Powell", type=str)
+    parser.add_argument("--tol", default=1e-7, type=float)
+    parser.add_argument("--nqubits", default=6, type=int)
+    parser.add_argument("--nlayers", default=5, type=int)
+    parser.add_argument("--output_folder", default=None, type=str)
+    parser.add_argument(
+        "--optimization_steps",
+        type=int,
+        default=1,
+        help="Number of times the DBI is used in the new optimization routine. If 1, no optimization is run.",
+    )
+    parser.add_argument(
+        "--boost_frequency",
+        type=int,
+        default=None,
+        help="Number of optimization steps which separate two DBI boosting calls.",
+    )
+    parser.add_argument(
+        "--dbi_steps",
+        type=int,
+        default=1,
+        help="Number of DBI iterations every time the DBI is called.",
+    )
+    parser.add_argument("--stepsize", type=float, default=0.01, help="DBI step size.")
+    parser.add_argument(
+        "--optimize_dbi_step",
+        type=bool,
+        default=False,
+        help="Set to True to hyperoptimize the DBI step size.",
+    )
+    args = parser.parse_args()
+    main(args)
+    path = generate_path(args)
