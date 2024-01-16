@@ -45,22 +45,47 @@ def plot_matrix(matrix, path, title="", save=True, width=0.5):
         plt.savefig(f"{path}/matrix_{title}.pdf", bbox_inches="tight")
 
 
-def plot_loss(loss_history, path, title="", save=True, width=0.5):
+def plot_loss(
+    loss_history,
+    fluct_list,
+    path,
+    target_energy,
+    dbi_jumps=None,
+    title="",
+    save=True,
+    width=0.5,
+):
     """
-    Plot loss function history.
-
-    Args:
-        loss_history (list or np.ndarray): loss function history.
-        title (str): figure title.
-        save (bool): if ``True``, the figure is saved as `./plots/matrix_title.pdf`.
-        width (float): ratio of the LaTeX manuscript which will be occupied by
-            the figure. This argument is useful to standardize the image and font sizes.
+    Plot loss with confidence belt.
     """
     plt.figure(figsize=(10 * width, 10 * width * 6 / 8))
     plt.title(title)
-    plt.plot(loss_history, lw=1.5, color=BLUE)
+    fluct_list = np.array(fluct_list)
+    plt.plot(loss_history, color=BLUE, lw=1.5, label="VQE loss history")
+    plt.fill_between(
+        np.arange(len(loss_history)),
+        loss_history - fluct_list,
+        loss_history + fluct_list,
+        color=BLUE,
+        alpha=0.4,
+    )
+    if dbi_jumps is not None:
+        for jump in dbi_jumps:
+            plt.hlines(
+                jump,
+                0,
+                len(loss_history),
+                color="black",
+                ls="--",
+                lw=1,
+                label="After DBI",
+            )
+    plt.hlines(
+        target_energy, 0, len(loss_history), color="red", lw=1, label="Target energy"
+    )
     plt.xlabel("Iterations")
     plt.ylabel("Loss")
+    plt.legend()
     if save:
         plt.savefig(f"{path}/loss_{title}.pdf", bbox_inches="tight")
 
