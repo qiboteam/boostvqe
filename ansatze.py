@@ -48,13 +48,13 @@ def loss(params, circuit, hamiltonian):
         final_state
     )
 
+
 def callbacks(
     params,
     vqe,
     loss_list,
     loss_fluctuation,
     params_history,
-    tracker=0,
 ):
     """
     Callback function that updates the energy, the energy fluctuations and
@@ -64,4 +64,3 @@ def callbacks(
     loss_list.append(energy)
     loss_fluctuation.append(energy_fluctuation)
     params_history.append(params)
-    tracker += 1

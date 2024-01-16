@@ -60,10 +60,9 @@ def loss(params, circuit, hamiltonian):
     )
 
 
-def train_vqe(circ, ham, optimizer, initial_parameters, tol, tracker=0, nmessage=None):
-    params_history = []
-    loss_list = []
-    fluctuations = []
+def train_vqe(circ, ham, optimizer, initial_parameters, tol):
+    """Helper function which trains the VQE according to `circ` and `ham`."""
+    params_history, loss_list, fluctuations = [], [], []
     circ.set_parameters(initial_parameters)
     if tol is None:
         tol = TOL
@@ -88,8 +87,6 @@ def train_vqe(circ, ham, optimizer, initial_parameters, tol, tracker=0, nmessage
         loss_fluctuation.append(float(energy_fluctuation))
         params_history.append(params)
 
-        print("optimizing")
-
     callbacks(initial_parameters)
 
     # fix numpy seed to ensure replicability of the experiment
@@ -101,4 +98,34 @@ def train_vqe(circ, ham, optimizer, initial_parameters, tol, tracker=0, nmessage
         callback=callbacks,
         tol=tol,
     )
-    return results, params_history, loss_list, fluctuations
+    return results, params_history, loss_list, fluctuations, vqe
+
+
+def rotate_h_with_vqe(hamiltonian, vqe):
+    """Rotate `hamiltonian` using the unitary representing the `vqe`."""
+    # inherit backend from hamiltonian and circuit from vqe
+    backend = hamiltonian.backend
+    circuit = vqe.circuit
+    # create circuit matrix and compute the rotation
+    matrix_circ = np.matrix(backend.to_numpy(circuit.unitary()))
+    matrix_circ_dagger = backend.cast(matrix_circ.getH())
+    matrix_circ = backend.cast(matrix_circ)
+    new_hamiltonian = matrix_circ_dagger @ hamiltonian.matrix @ matrix_circ
+    return new_hamiltonian
+
+
+def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
+    """Apply `nsteps` of `dbi` to `hamiltonian`."""
+    step = stepsize
+    logging.info(f"Applying {nsteps} steps of DBI to the given hamiltonian.")
+    for _ in range(nsteps):
+        if optimize_step:
+            # Change logging level to reduce verbosity
+            logging.getLogger().setLevel(logging.WARNING)
+            step = dbi.hyperopt_step(
+                step_min=1e-4, step_max=1, max_evals=300, verbose=True
+            )
+            # Restore the original logging level
+            logging.getLogger().setLevel(logging.INFO)
+        dbi(step=step, d=dbi.diagonal_h_matrix)
+    return dbi.h
