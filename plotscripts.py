@@ -22,6 +22,8 @@ GREEN = "#2db350"
 PURPLE = "#587ADB"
 BLUE = "#4287f5"
 
+LINE_STYLES = ["--", "-", "-.", ":"]
+
 
 def plot_matrix(matrix, path, title="", save=True, width=0.5):
     """
@@ -61,27 +63,33 @@ def plot_loss(
     plt.figure(figsize=(10 * width, 10 * width * 6 / 8))
     plt.title(title)
     fluct_list = np.array(fluct_list)
-    plt.plot(loss_history, color=BLUE, lw=1.5, label="VQE loss history")
+    plt.plot(
+        np.arange(1, len(loss_history) + 1),
+        loss_history,
+        color=BLUE,
+        lw=1.5,
+        label="VQE loss history",
+    )
     plt.fill_between(
-        np.arange(len(loss_history)),
+        np.arange(1, len(loss_history) + 1),
         loss_history - fluct_list,
         loss_history + fluct_list,
         color=BLUE,
         alpha=0.4,
     )
     if dbi_jumps is not None:
-        for jump in dbi_jumps:
+        for j, jump in enumerate(dbi_jumps):
             plt.hlines(
                 jump,
-                0,
+                1,
                 len(loss_history),
                 color="black",
-                ls="--",
+                ls=LINE_STYLES[j],
                 lw=1,
                 label="After DBI",
             )
     plt.hlines(
-        target_energy, 0, len(loss_history), color="red", lw=1, label="Target energy"
+        target_energy, 1, len(loss_history), color="red", lw=1, label="Target energy"
     )
     plt.xlabel("Iterations")
     plt.ylabel("Loss")

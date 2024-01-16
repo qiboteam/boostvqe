@@ -52,6 +52,7 @@ def main(args):
     target_energy = float(min(ham.eigenvalues()))
     circ = build_circuit(nqubits=args.nqubits, nlayers=args.nlayers)
     backend = ham.backend
+    zero_state = backend.zero_state(args.nqubits)
 
     # print the circuit
     logging.info("\n" + circ.draw())
@@ -60,30 +61,68 @@ def main(args):
     np.random.seed(SEED)
     initial_parameters = np.random.randn(len(circ.get_parameters()))
 
-    # train vqe
-    results, params_history, loss_list, fluctuations, vqe = train_vqe(
-        circ, ham, args.optimizer, initial_parameters, args.tol
-    )
+    # vqe lists
+    params_history, loss_history, fluctuations = [], [], []
+    # dbi lists
+    boost_energies, boost_fluctuations_dbi = [], []
 
-    # rotate hamiltonian
-    new_hamiltonian = rotate_h_with_vqe(hamiltonian=ham, vqe=vqe)
+    for b in range(args.nboost):
+        logging.info(f"Running {b+1}/{args.nboost} max optimization rounds.")
+        new_hamiltonian = ham
+        # train vqe
+        (
+            partial_results,
+            partial_params_history,
+            partial_loss_history,
+            partial_fluctuations,
+            vqe,
+        ) = train_vqe(
+            circ,
+            ham,
+            args.optimizer,
+            initial_parameters,
+            args.tol,
+            niterations=args.boost_frequency,
+            nmessage=5,
+        )
 
-    # Initialize DBI
-    dbi = DoubleBracketIteration(
-        hamiltonian=qibo.hamiltonians.Hamiltonian(args.nqubits, matrix=new_hamiltonian),
-        mode=DoubleBracketGeneratorType.group_commutator,
-    )
+        # update initial parameters
+        initial_parameters = partial_results[1]
 
-    # apply DBI
-    apply_dbi_steps(dbi=dbi, nsteps=20, optimize_step=args.optimize_dbi_step)
+        # build new hamiltonian using trained VQE
+        new_hamiltonian_matrix = rotate_h_with_vqe(hamiltonian=new_hamiltonian, vqe=vqe)
+        new_hamiltonian = hamiltonians.Hamiltonian(
+            args.nqubits, matrix=new_hamiltonian_matrix
+        )
 
-    zero_state = backend.zero_state(args.nqubits)
+        # Initialize DBI
+        dbi = DoubleBracketIteration(
+            hamiltonian=new_hamiltonian,
+            mode=DoubleBracketGeneratorType.group_commutator,
+        )
+
+        # apply DBI
+        new_hamiltonian = apply_dbi_steps(
+            dbi=dbi, nsteps=args.dbi_steps, optimize_step=args.optimize_dbi_step
+        )
+
+        # append results to global lists
+        params_history.extend(partial_params_history)
+        loss_history.extend(partial_loss_history)
+        fluctuations.extend(partial_fluctuations)
+
+        # append dbi results
+        boost_fluctuations_dbi.append(dbi.energy_fluctuation(zero_state))
+        boost_energies.append(dbi.h.expectation(zero_state))
+
+    # final values
     ene_fluct_dbi = dbi.energy_fluctuation(zero_state)
     energy = dbi.h.expectation(zero_state)
+
     logging.info(f"Energy: {energy}")
     logging.info(f"Energy fluctuation: {ene_fluct_dbi}")
 
-    opt_results = results[2]
+    opt_results = partial_results[2]
     # save final results
     output_dict = {
         "nqubits": args.nqubits,
@@ -99,16 +138,16 @@ def main(args):
         "energy": float(energy),
         "fluctuations": float(ene_fluct_dbi),
     }
-    np.save(path / LOSS_FILE, arr=loss_list)
+    np.save(path / LOSS_FILE, arr=loss_history)
     np.save(path / FLUCTUATION_FILE, arr=fluctuations)
     np.save(path / HAMILTONIAN_FILE, arr=ham.matrix)
 
     logging.info("Dump the results")
     plot_loss(
-        loss_history=loss_list,
+        loss_history=loss_history,
         fluct_list=fluctuations,
         path=path,
-        dbi_jumps=[energy],
+        dbi_jumps=boost_energies,
         target_energy=target_energy,
         title="Energy history",
     )
@@ -128,7 +167,7 @@ if __name__ == "__main__":
     parser.add_argument("--nlayers", default=5, type=int)
     parser.add_argument("--output_folder", default=None, type=str)
     parser.add_argument(
-        "--optimization_steps",
+        "--nboost",
         type=int,
         default=1,
         help="Number of times the DBI is used in the new optimization routine. If 1, no optimization is run.",

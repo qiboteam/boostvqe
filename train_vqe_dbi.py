@@ -87,8 +87,6 @@ def main(args):
             )
             dbi(step=step, d=dbi.diagonal_h_matrix)
 
-        print(args)
-
         if args.optimization_steps > 1:
             while opt_iteration <= args.boost_frequency:
                 initial_parameters = circ.get_parameters()

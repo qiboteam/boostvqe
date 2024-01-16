@@ -19,6 +19,7 @@ TOL = 1e-4
 DBI_FILE = "dbi_matrix"
 DBI_RESULTS = "dbi_output.json"
 
+
 logging.basicConfig(level=logging.INFO)
 
 
@@ -60,12 +61,18 @@ def loss(params, circuit, hamiltonian):
     )
 
 
-def train_vqe(circ, ham, optimizer, initial_parameters, tol):
+def train_vqe(
+    circ, ham, optimizer, initial_parameters, tol, niterations=None, nmessage=10
+):
     """Helper function which trains the VQE according to `circ` and `ham`."""
     params_history, loss_list, fluctuations = [], [], []
     circ.set_parameters(initial_parameters)
     if tol is None:
         tol = TOL
+
+    if niterations is not None:
+        iteration_count = 0
+
     vqe = VQE(
         circuit=circ,
         hamiltonian=ham,
@@ -82,22 +89,36 @@ def train_vqe(circ, ham, optimizer, initial_parameters, tol):
         Callback function that updates the energy, the energy fluctuations and
         the parameters lists.
         """
+
         energy, energy_fluctuation = loss(params, vqe.circuit, vqe.hamiltonian)
         loss_list.append(float(energy))
         loss_fluctuation.append(float(energy_fluctuation))
         params_history.append(params)
+
+        nonlocal iteration_count
+        iteration_count += 1
+
+        if niterations is not None and iteration_count % nmessage == 0:
+            logging.info(f"Optimization iteration {iteration_count}/{niterations}")
+
+        if iteration_count >= niterations:
+            raise StopIteration("Maximum number of iterations reached.")
 
     callbacks(initial_parameters)
 
     # fix numpy seed to ensure replicability of the experiment
     logging.info("Minimize the energy")
 
-    results = vqe.minimize(
-        initial_parameters,
-        method=optimizer,
-        callback=callbacks,
-        tol=tol,
-    )
+    try:
+        results = vqe.minimize(
+            initial_parameters,
+            method=optimizer,
+            callback=callbacks,
+            tol=tol,
+        )
+    except StopIteration as e:
+        logging.info(str(e))
+
     return results, params_history, loss_list, fluctuations, vqe
 
 
@@ -123,7 +144,7 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
             # Change logging level to reduce verbosity
             logging.getLogger().setLevel(logging.WARNING)
             step = dbi.hyperopt_step(
-                step_min=1e-4, step_max=1, max_evals=300, verbose=True
+                step_min=1e-4, step_max=1, max_evals=50, verbose=True
             )
             # Restore the original logging level
             logging.getLogger().setLevel(logging.INFO)
