@@ -106,6 +106,10 @@ def main(args):
             dbi=dbi, nsteps=args.dbi_steps, optimize_step=args.optimize_dbi_step
         )
 
+        # set new hamiltonian into VQE
+        # TODO: is this correct?
+        vqe.hamiltonian = new_hamiltonian
+
         # append results to global lists
         params_history.extend(partial_params_history)
         loss_history.extend(partial_loss_history)
