@@ -21,6 +21,7 @@ from utils import (
     HAMILTONIAN_FILE,
     LOSS_FILE,
     SEED,
+    TOL,
     apply_dbi_steps,
     create_folder,
     generate_path,
@@ -46,9 +47,8 @@ def main(args):
     # setup the results folder
     logging.info("Set VQE")
     path = pathlib.Path(create_folder(generate_path(args)))
-
     # build hamiltonian and variational quantum circuit
-    ham = hamiltonians.XXZ(nqubits=args.nqubits)
+    ham = getattr(hamiltonians, args.hamiltonian)(nqubits=args.nqubits)
     target_energy = float(min(ham.eigenvalues()))
     circ = build_circuit(nqubits=args.nqubits, nlayers=args.nlayers)
     backend = ham.backend
@@ -128,34 +128,29 @@ def main(args):
 
     opt_results = partial_results[2]
     # save final results
-    output_dict = {
-        "nqubits": args.nqubits,
-        "nlayers": args.nlayers,
-        "optimizer": args.optimizer,
-        "best_loss": float(opt_results.fun),
-        "true_ground_energy": target_energy,
-        "success": opt_results.success,
-        "message": opt_results.message,
-        "backend": args.backend,
-        "platform": args.platform,
-        "tol": args.tol,
-        "energy": float(energy),
-        "fluctuations": float(ene_fluct_dbi),
-    }
+    output_dict = vars(args)
+
+    output_dict.update(
+        {
+            "best_loss": float(opt_results.fun),
+            "true_ground_energy": target_energy,
+            "success": opt_results.success,
+            "message": opt_results.message,
+            "energy": float(energy),
+            "fluctuations": float(ene_fluct_dbi),
+        }
+    )
     np.save(path / LOSS_FILE, arr=loss_history)
     np.save(path / FLUCTUATION_FILE, arr=fluctuations)
     np.save(path / HAMILTONIAN_FILE, arr=ham.matrix)
 
     logging.info("Dump the results")
+    results_dump(path, params_history, output_dict)
     plot_loss(
-        loss_history=loss_history,
-        fluct_list=fluctuations,
         path=path,
-        dbi_jumps=boost_energies,
-        target_energy=target_energy,
+        dbi_jumps=boost_energies,  # FIXME: get rid of this
         title="Energy history",
     )
-    results_dump(path, params_history, output_dict)
 
 
 if __name__ == "__main__":
@@ -166,7 +161,7 @@ if __name__ == "__main__":
     parser.add_argument("--platform", default=None, type=str)
     parser.add_argument("--nthreads", default=1, type=int)
     parser.add_argument("--optimizer", default="Powell", type=str)
-    parser.add_argument("--tol", default=1e-7, type=float)
+    parser.add_argument("--tol", default=TOL, type=float)
     parser.add_argument("--nqubits", default=6, type=int)
     parser.add_argument("--nlayers", default=5, type=int)
     parser.add_argument("--output_folder", default=None, type=str)
@@ -195,6 +190,11 @@ if __name__ == "__main__":
         default=False,
         help="Set to True to hyperoptimize the DBI step size.",
     )
+    parser.add_argument(
+        "--hamiltonian",
+        type=str,
+        default="XXZ",
+        help="Hamiltonian available in qibo.hamiltonians.",
+    )
     args = parser.parse_args()
     main(args)
-    path = generate_path(args)

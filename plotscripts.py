@@ -1,3 +1,4 @@
+import json
 import os.path
 import pathlib
 
@@ -48,10 +49,7 @@ def plot_matrix(matrix, path, title="", save=True, width=0.5):
 
 
 def plot_loss(
-    loss_history,
-    fluct_list,
     path,
-    target_energy,
     dbi_jumps=None,
     title="",
     save=True,
@@ -60,6 +58,11 @@ def plot_loss(
     """
     Plot loss with confidence belt.
     """
+    fluct_list = np.load(path / FLUCTUATION_FILE)
+    loss_history = np.load(path / LOSS_FILE)
+    target_energy = json.loads((path / OPTIMIZATION_FILE).read_text())[
+        "true_ground_energy"
+    ]
     plt.figure(figsize=(10 * width, 10 * width * 6 / 8))
     plt.title(title)
     fluct_list = np.array(fluct_list)

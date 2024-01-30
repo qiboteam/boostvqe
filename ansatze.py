@@ -37,30 +37,3 @@ def compute_gradients(parameters, circuit, hamiltonian):
         )
 
     return hamiltonian.backend.cast(tape.gradient(expectation, parameters))
-
-
-def loss(params, circuit, hamiltonian):
-    """Loss function."""
-    circuit.set_parameters(params)
-    result = hamiltonian.backend.execute_circuit(circuit)
-    final_state = result.state()
-    return hamiltonian.expectation(final_state), hamiltonian.energy_fluctuation(
-        final_state
-    )
-
-
-def callbacks(
-    params,
-    vqe,
-    loss_list,
-    loss_fluctuation,
-    params_history,
-):
-    """
-    Callback function that updates the energy, the energy fluctuations and
-    the parameters lists.
-    """
-    energy, energy_fluctuation = loss(params, vqe.circuit, vqe.hamiltonian)
-    loss_list.append(energy)
-    loss_fluctuation.append(energy_fluctuation)
-    params_history.append(params)
