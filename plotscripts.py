@@ -8,6 +8,7 @@ from qibo.backends import GlobalBackend
 
 from utils import (
     DBI_ENERGIES,
+    DBI_FLUCTUATIONS,
     FLUCTUATION_FILE,
     FLUCTUATION_FILE2,
     LOSS_FILE,
@@ -57,46 +58,73 @@ def plot_loss(
     """
     Plot loss with confidence belt.
     """
-    fluct_list = np.load(path / FLUCTUATION_FILE)
-    loss_history = np.load(path / LOSS_FILE)
-    target_energy = json.loads((path / OPTIMIZATION_FILE).read_text())[
-        "true_ground_energy"
-    ]
+    fluctuations_vqe = dict(np.load(path / f"{FLUCTUATION_FILE + '.npz'}"))
+    loss_vqe = dict(np.load(path / f"{LOSS_FILE + '.npz'}"))
+    # loss_history = np.load(path / LOSS_FILE)
+    config = json.loads((path / OPTIMIZATION_FILE).read_text())
+    target_energy = config["true_ground_energy"]
     dbi_energies = dict(np.load(path / f"{DBI_ENERGIES + '.npz'}"))
+    dbi_fluctuations = dict(np.load(path / f"{DBI_FLUCTUATIONS + '.npz'}"))
     plt.figure(figsize=(10 * width, 10 * width * 6 / 8))
     plt.title(title)
-    fluct_list = np.array(fluct_list)
-    plt.plot(
-        np.arange(1, len(loss_history) + 1),
-        loss_history,
-        color=BLUE,
-        lw=1.5,
-        label="VQE loss history",
-    )
-    plt.fill_between(
-        np.arange(1, len(loss_history) + 1),
-        loss_history - fluct_list,
-        loss_history + fluct_list,
-        color=BLUE,
-        alpha=0.4,
-    )
-    if dbi_energies:
-        for j, jump in dbi_energies.items():
-            plt.hlines(
-                jump,
-                1,
-                len(loss_history),
-                color="black",
-                ls=LINE_STYLES[json.loads(j)],
-                lw=1,
-                label="After DBI",
+
+    for i in range(config["nboost"]):
+        start = (
+            0
+            if str(i - 1) not in loss_vqe
+            else sum(
+                len(loss_vqe[str(j)]) + len(dbi_energies[str(j)])
+                for j in range(config["nboost"])
+                if j < i
             )
-    plt.hlines(
-        target_energy, 1, len(loss_history), color="red", lw=1, label="Target energy"
+            - 2 * i
+        )
+        plt.plot(
+            np.arange(start, len(loss_vqe[str(i)]) + start),
+            loss_vqe[str(i)],
+            color=BLUE,
+            lw=1.5,
+            label="VQE",
+        )
+        plt.plot(
+            np.arange(
+                len(loss_vqe[str(i)]) + start - 1,
+                len(dbi_energies[str(i)]) + len(loss_vqe[str(i)]) + start - 1,
+            ),
+            dbi_energies[str(i)],
+            color=GREEN,
+            lw=1.5,
+            label="DBI",
+        )
+        plt.fill_between(
+            np.arange(start, len(loss_vqe[str(i)]) + start),
+            loss_vqe[str(i)] - fluctuations_vqe[str(i)],
+            loss_vqe[str(i)] + fluctuations_vqe[str(i)],
+            color=BLUE,
+            alpha=0.4,
+        )
+        plt.fill_between(
+            np.arange(
+                len(loss_vqe[str(i)]) + start - 1,
+                len(dbi_energies[str(i)]) + len(loss_vqe[str(i)]) + start - 1,
+            ),
+            dbi_energies[str(i)] - dbi_fluctuations[str(i)],
+            dbi_energies[str(i)] + dbi_fluctuations[str(i)],
+            color=GREEN,
+            alpha=0.4,
+        )
+
+    max_length = (
+        sum(len(l) for l in list(dbi_energies.values()))
+        + sum(len(l) for l in list(loss_vqe.values()))
+        - 2 * config["nboost"]
     )
+    plt.hlines(target_energy, 1, max_length, color="red", lw=1, label="Target energy")
     plt.xlabel("Iterations")
     plt.ylabel("Loss")
-    plt.legend()
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    plt.legend(by_label.values(), by_label.keys())
     if save:
         plt.savefig(f"{path}/loss_{title}.pdf", bbox_inches="tight")
 

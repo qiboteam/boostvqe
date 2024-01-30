@@ -65,7 +65,7 @@ def main(args):
     initial_parameters = np.random.randn(len(circ.get_parameters()))
 
     # vqe lists
-    params_history, loss_history, fluctuations = [], [], []
+    params_history, loss_history, fluctuations = {}, {}, {}
     # dbi lists
     boost_energies, boost_fluctuations_dbi = {}, {}
 
@@ -73,6 +73,7 @@ def main(args):
     for b in range(args.nboost):
         logging.info(f"Running {b+1}/{args.nboost} max optimization rounds.")
         boost_energies[b], boost_fluctuations_dbi[b] = [], []
+        params_history[b], loss_history[b], fluctuations[b] = [], [], []
         # train vqe
         (
             partial_results,
@@ -89,10 +90,10 @@ def main(args):
             niterations=args.boost_frequency,
             nmessage=1,
         )
-
-        # update initial parameters
-        # initial_parameters = partial_results[1]
-        initial_parameters = np.zeros(len(initial_parameters))
+        # append results to global lists
+        params_history[b] = np.array(partial_params_history)
+        loss_history[b] = np.array(partial_loss_history)
+        fluctuations[b] = np.array(partial_fluctuations)
 
         # build new hamiltonian using trained VQE
         new_hamiltonian_matrix = rotate_h_with_vqe(hamiltonian=new_hamiltonian, vqe=vqe)
@@ -107,22 +108,16 @@ def main(args):
         )
 
         # apply DBI
-        new_hamiltonian = apply_dbi_steps(
+        new_hamiltonian, dbi_energies, dbi_fluctuations = apply_dbi_steps(
             dbi=dbi, nsteps=args.dbi_steps, optimize_step=args.optimize_dbi_step
         )
 
-        # set new hamiltonian into VQE
-        # TODO: is this correct?
-        vqe.hamiltonian = new_hamiltonian
-
-        # append results to global lists
-        params_history.extend(partial_params_history)
-        loss_history.extend(partial_loss_history)
-        fluctuations.extend(partial_fluctuations)
-
         # append dbi results
-        boost_fluctuations_dbi[b].append(dbi.energy_fluctuation(zero_state))
-        boost_energies[b].append(dbi.h.expectation(zero_state))
+        boost_fluctuations_dbi[b] = np.array(dbi_fluctuations)
+        boost_energies[b] = np.array(dbi_energies)
+
+        vqe.hamiltonian = new_hamiltonian
+        initial_parameters = np.zeros(len(initial_parameters))
 
     # final values
     ene_fluct_dbi = dbi.energy_fluctuation(zero_state)
@@ -145,8 +140,14 @@ def main(args):
             "fluctuations": float(ene_fluct_dbi),
         }
     )
-    np.save(path / LOSS_FILE, arr=loss_history)
-    np.save(path / FLUCTUATION_FILE, arr=fluctuations)
+    np.savez(
+        path / LOSS_FILE,
+        **{json.dumps(key): np.array(value) for key, value in loss_history.items()},
+    )
+    np.savez(
+        path / FLUCTUATION_FILE,
+        **{json.dumps(key): np.array(value) for key, value in fluctuations.items()},
+    )
     np.save(path / HAMILTONIAN_FILE, arr=ham.matrix)
     np.savez(
         path / DBI_ENERGIES,
