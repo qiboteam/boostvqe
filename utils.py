@@ -67,8 +67,6 @@ def train_vqe(
     """Helper function which trains the VQE according to `circ` and `ham`."""
     params_history, loss_list, fluctuations = [], [], []
     circ.set_parameters(initial_parameters)
-    if tol is None:
-        tol = TOL
 
     if niterations is not None:
         iteration_count = 0
