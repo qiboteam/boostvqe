@@ -1,4 +1,5 @@
 import argparse
+import json
 import logging
 import pathlib
 
@@ -17,6 +18,8 @@ from qibo.models.dbi.double_bracket import (
 from ansatze import build_circuit
 from plotscripts import plot_loss
 from utils import (
+    DBI_ENERGIES,
+    DBI_FLUCTUATIONS,
     FLUCTUATION_FILE,
     HAMILTONIAN_FILE,
     LOSS_FILE,
@@ -64,11 +67,12 @@ def main(args):
     # vqe lists
     params_history, loss_history, fluctuations = [], [], []
     # dbi lists
-    boost_energies, boost_fluctuations_dbi = [], []
+    boost_energies, boost_fluctuations_dbi = {}, {}
 
+    new_hamiltonian = ham
     for b in range(args.nboost):
         logging.info(f"Running {b+1}/{args.nboost} max optimization rounds.")
-        new_hamiltonian = ham
+        boost_energies[b], boost_fluctuations_dbi[b] = [], []
         # train vqe
         (
             partial_results,
@@ -78,16 +82,17 @@ def main(args):
             vqe,
         ) = train_vqe(
             circ,
-            ham,
+            new_hamiltonian,
             args.optimizer,
             initial_parameters,
             args.tol,
             niterations=args.boost_frequency,
-            nmessage=5,
+            nmessage=1,
         )
 
         # update initial parameters
-        initial_parameters = partial_results[1]
+        # initial_parameters = partial_results[1]
+        initial_parameters = np.zeros(len(initial_parameters))
 
         # build new hamiltonian using trained VQE
         new_hamiltonian_matrix = rotate_h_with_vqe(hamiltonian=new_hamiltonian, vqe=vqe)
@@ -98,7 +103,7 @@ def main(args):
         # Initialize DBI
         dbi = DoubleBracketIteration(
             hamiltonian=new_hamiltonian,
-            mode=DoubleBracketGeneratorType.group_commutator,
+            mode=DoubleBracketGeneratorType.single_commutator,
         )
 
         # apply DBI
@@ -116,8 +121,8 @@ def main(args):
         fluctuations.extend(partial_fluctuations)
 
         # append dbi results
-        boost_fluctuations_dbi.append(dbi.energy_fluctuation(zero_state))
-        boost_energies.append(dbi.h.expectation(zero_state))
+        boost_fluctuations_dbi[b].append(dbi.energy_fluctuation(zero_state))
+        boost_energies[b].append(dbi.h.expectation(zero_state))
 
     # final values
     ene_fluct_dbi = dbi.energy_fluctuation(zero_state)
@@ -143,12 +148,21 @@ def main(args):
     np.save(path / LOSS_FILE, arr=loss_history)
     np.save(path / FLUCTUATION_FILE, arr=fluctuations)
     np.save(path / HAMILTONIAN_FILE, arr=ham.matrix)
-
+    np.savez(
+        path / DBI_ENERGIES,
+        **{json.dumps(key): np.array(value) for key, value in boost_energies.items()},
+    )
+    np.savez(
+        path / DBI_FLUCTUATIONS,
+        **{
+            json.dumps(key): np.array(value)
+            for key, value in boost_fluctuations_dbi.items()
+        },
+    )
     logging.info("Dump the results")
     results_dump(path, params_history, output_dict)
     plot_loss(
         path=path,
-        dbi_jumps=boost_energies,  # FIXME: get rid of this
         title="Energy history",
     )
 

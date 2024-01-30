@@ -7,7 +7,7 @@ import numpy as np
 from qibo.backends import GlobalBackend
 
 from utils import (
-    DBI_RESULTS,
+    DBI_ENERGIES,
     FLUCTUATION_FILE,
     FLUCTUATION_FILE2,
     LOSS_FILE,
@@ -50,7 +50,6 @@ def plot_matrix(matrix, path, title="", save=True, width=0.5):
 
 def plot_loss(
     path,
-    dbi_jumps=None,
     title="",
     save=True,
     width=0.5,
@@ -63,6 +62,7 @@ def plot_loss(
     target_energy = json.loads((path / OPTIMIZATION_FILE).read_text())[
         "true_ground_energy"
     ]
+    dbi_energies = dict(np.load(path / f"{DBI_ENERGIES + '.npz'}"))
     plt.figure(figsize=(10 * width, 10 * width * 6 / 8))
     plt.title(title)
     fluct_list = np.array(fluct_list)
@@ -80,14 +80,14 @@ def plot_loss(
         color=BLUE,
         alpha=0.4,
     )
-    if dbi_jumps is not None:
-        for j, jump in enumerate(dbi_jumps):
+    if dbi_energies:
+        for j, jump in dbi_energies.items():
             plt.hlines(
                 jump,
                 1,
                 len(loss_history),
                 color="black",
-                ls=LINE_STYLES[j],
+                ls=LINE_STYLES[json.loads(j)],
                 lw=1,
                 label="After DBI",
             )
@@ -104,8 +104,8 @@ def plot_loss(
 def plot_results(folder: pathlib.Path):
     """Plots the energy and the energy fluctuations."""
     data = json_load(folder / OPTIMIZATION_FILE)
-    energy_file = LOSS_FILE + ".npy"
-    fluctuation_file = FLUCTUATION_FILE + ".npy"
+    # energy_file = LOSS_FILE + ".npy"
+    # fluctuation_file = FLUCTUATION_FILE + ".npy"
     energy = np.load(folder / energy_file)
     errors = np.load(folder / fluctuation_file)
     epochs = range(len(energy))

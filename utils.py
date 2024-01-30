@@ -16,8 +16,8 @@ FLUCTUATION_FILE2 = "fluctuations2"
 LOSS_FILE2 = "energies2"
 SEED = 42
 TOL = 1e-4
-DBI_FILE = "dbi_matrix"
-DBI_RESULTS = "dbi_output.json"
+DBI_ENERGIES = "dbi_energies"
+DBI_FLUCTUATIONS = "dbi_fluctuations"
 
 
 logging.basicConfig(level=logging.INFO)
@@ -39,6 +39,7 @@ def create_folder(path: str):
 
 def results_dump(path: str, results: np.array, output_dict: dict):
     np.save(file=f"{path}/{PARAMS_FILE}", arr=results)
+
     json_file = Path(f"{path}/{OPTIMIZATION_FILE}")
     dump_json(json_file, output_dict)
 
@@ -62,7 +63,7 @@ def loss(params, circuit, hamiltonian):
 
 
 def train_vqe(
-    circ, ham, optimizer, initial_parameters, tol, niterations=None, nmessage=10
+    circ, ham, optimizer, initial_parameters, tol, niterations=None, nmessage=1
 ):
     """Helper function which trains the VQE according to `circ` and `ham`."""
     params_history, loss_list, fluctuations = [], [], []
