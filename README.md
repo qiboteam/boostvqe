@@ -16,8 +16,7 @@ Here we are preparing the more detailed analysis
 https://github.com/qiboteam/dbi_variational_strategies/
 
 Here is the edit link (please be careful sharing, thanks)
-https://www.overleaf.com/8513178499xxbvrgqvgjgj#bd6d60
-
+https://www.overleaf.com/1329774127ntmdnsfbwykd#96b12e
 and here is the read link e.g. for interested students
 https://www.overleaf.com/read/crtmjkgvxqrd#79cd6e
 
