@@ -9,9 +9,9 @@ OPTIMIZATION_FILE = "optimization_results.json"
 PARAMS_FILE = "parameters_history.npy"
 PLOT_FILE = "energy.pdf"
 ROOT_FOLDER = "results"
-FLUCTUATION_FILE = "fluctuations.npy"
-LOSS_FILE = "energies.npy"
-HAMILTONIAN_FILE = "hamiltonian_matrix.npy"
+FLUCTUATION_FILE = "fluctuations"
+LOSS_FILE = "energies"
+HAMILTONIAN_FILE = "hamiltonian_matrix.npz"
 FLUCTUATION_FILE2 = "fluctuations2"
 LOSS_FILE2 = "energies2"
 SEED = 42
@@ -68,11 +68,8 @@ def train_vqe(
     circ, ham, optimizer, initial_parameters, tol, niterations=None, nmessage=1
 ):
     """Helper function which trains the VQE according to `circ` and `ham`."""
-    params_history, loss_list, fluctuations = [], [], []
+    params_history, loss_list, fluctuations, hamiltonian_history = [], [], [], []
     circ.set_parameters(initial_parameters)
-
-    if niterations is not None:
-        iteration_count = 0
 
     vqe = VQE(
         circuit=circ,
@@ -85,6 +82,7 @@ def train_vqe(
         loss_list=loss_list,
         loss_fluctuation=fluctuations,
         params_history=params_history,
+        hamiltonian_history=hamiltonian_history,
     ):
         """
         Callback function that updates the energy, the energy fluctuations and
@@ -95,9 +93,9 @@ def train_vqe(
         loss_list.append(float(energy))
         loss_fluctuation.append(float(energy_fluctuation))
         params_history.append(params)
+        hamiltonian_history.append(rotate_h_with_vqe(vqe.hamiltonian, vqe))
 
-        nonlocal iteration_count
-        iteration_count += 1
+        iteration_count = len(loss_list)
 
         if niterations is not None and iteration_count % nmessage == 0:
             logging.info(f"Optimization iteration {iteration_count}/{niterations}")
@@ -120,7 +118,7 @@ def train_vqe(
     except StopIteration as e:
         logging.info(str(e))
 
-    return results, params_history, loss_list, fluctuations, vqe
+    return results, params_history, loss_list, fluctuations, hamiltonian_history, vqe
 
 
 def rotate_h_with_vqe(hamiltonian, vqe):
@@ -139,7 +137,7 @@ def rotate_h_with_vqe(hamiltonian, vqe):
 def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
     """Apply `nsteps` of `dbi` to `hamiltonian`."""
     step = stepsize
-    energies, fluctuations = [], []
+    energies, fluctuations, hamiltonians = [], [], []
     logging.info(f"Applying {nsteps} steps of DBI to the given hamiltonian.")
     for _ in range(nsteps):
         if optimize_step:
@@ -155,4 +153,5 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
         fluctuations.append(
             dbi.energy_fluctuation(dbi.h.backend.zero_state(dbi.h.nqubits))
         )
-    return dbi.h, energies, fluctuations
+        hamiltonians.append(dbi.h.matrix)
+    return hamiltonians, energies, fluctuations

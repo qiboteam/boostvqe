@@ -68,8 +68,11 @@ def main(args):
     params_history, loss_history, fluctuations = {}, {}, {}
     # dbi lists
     boost_energies, boost_fluctuations_dbi = {}, {}
-
+    # hamiltonian history
+    hamiltonians_history = []
+    hamiltonians_history.append(ham.matrix)
     new_hamiltonian = ham
+    args.nboost += 1
     for b in range(args.nboost):
         logging.info(f"Running {b+1}/{args.nboost} max optimization rounds.")
         boost_energies[b], boost_fluctuations_dbi[b] = [], []
@@ -80,6 +83,7 @@ def main(args):
             partial_params_history,
             partial_loss_history,
             partial_fluctuations,
+            partial_hamiltonian_history,
             vqe,
         ) = train_vqe(
             circ,
@@ -90,42 +94,43 @@ def main(args):
             niterations=args.boost_frequency,
             nmessage=1,
         )
+        print(hamiltonians_history)
         # append results to global lists
         params_history[b] = np.array(partial_params_history)
         loss_history[b] = np.array(partial_loss_history)
         fluctuations[b] = np.array(partial_fluctuations)
-
+        hamiltonians_history.extend(partial_hamiltonian_history)
         # build new hamiltonian using trained VQE
-        new_hamiltonian_matrix = rotate_h_with_vqe(hamiltonian=new_hamiltonian, vqe=vqe)
-        new_hamiltonian = hamiltonians.Hamiltonian(
-            args.nqubits, matrix=new_hamiltonian_matrix
-        )
+        if b != args.nboost - 1:
+            new_hamiltonian_matrix = rotate_h_with_vqe(
+                hamiltonian=new_hamiltonian, vqe=vqe
+            )
+            new_hamiltonian = hamiltonians.Hamiltonian(
+                args.nqubits, matrix=new_hamiltonian_matrix
+            )
 
-        # Initialize DBI
-        dbi = DoubleBracketIteration(
-            hamiltonian=new_hamiltonian,
-            mode=DoubleBracketGeneratorType.single_commutator,
-        )
+            # Initialize DBI
+            dbi = DoubleBracketIteration(
+                hamiltonian=new_hamiltonian,
+                mode=DoubleBracketGeneratorType.single_commutator,
+            )
 
-        # apply DBI
-        new_hamiltonian, dbi_energies, dbi_fluctuations = apply_dbi_steps(
-            dbi=dbi, nsteps=args.dbi_steps, optimize_step=args.optimize_dbi_step
-        )
+            energy_h0 = float(dbi.h.expectation(zero_state))
+            fluctuations_h0 = float(dbi.h.energy_fluctuation(zero_state))
 
-        # append dbi results
-        boost_fluctuations_dbi[b] = np.array(dbi_fluctuations)
-        boost_energies[b] = np.array(dbi_energies)
-
-        vqe.hamiltonian = new_hamiltonian
-        initial_parameters = np.zeros(len(initial_parameters))
-
-    # final values
-    ene_fluct_dbi = dbi.energy_fluctuation(zero_state)
-    energy = dbi.h.expectation(zero_state)
-
-    logging.info(f"Energy: {energy}")
-    logging.info(f"Energy fluctuation: {ene_fluct_dbi}")
-
+            # apply DBI
+            dbi_hamiltonians, dbi_energies, dbi_fluctuations = apply_dbi_steps(
+                dbi=dbi, nsteps=args.dbi_steps, optimize_step=args.optimize_dbi_step
+            )
+            hamiltonians_history.extend(dbi_hamiltonians)
+            # append dbi results
+            dbi_fluctuations.insert(0, fluctuations_h0)
+            dbi_energies.insert(0, energy_h0)
+            boost_fluctuations_dbi[b] = np.array(dbi_fluctuations)
+            boost_energies[b] = np.array(dbi_energies)
+            vqe.hamiltonian = dbi_hamiltonians[-1]
+            initial_parameters = np.zeros(len(initial_parameters))
+    # print(hamiltonians_history)
     opt_results = partial_results[2]
     # save final results
     output_dict = vars(args)
@@ -136,8 +141,8 @@ def main(args):
             "true_ground_energy": target_energy,
             "success": opt_results.success,
             "message": opt_results.message,
-            "energy": float(energy),
-            "fluctuations": float(ene_fluct_dbi),
+            "energy": float(vqe.hamiltonian.expectation(zero_state)),
+            "fluctuations": float(vqe.hamiltonian.energy_fluctuation(zero_state)),
         }
     )
     np.savez(
@@ -148,7 +153,7 @@ def main(args):
         path / FLUCTUATION_FILE,
         **{json.dumps(key): np.array(value) for key, value in fluctuations.items()},
     )
-    np.save(path / HAMILTONIAN_FILE, arr=ham.matrix)
+    np.savez(path / HAMILTONIAN_FILE, *hamiltonians_history)
     np.savez(
         path / DBI_ENERGIES,
         **{json.dumps(key): np.array(value) for key, value in boost_energies.items()},
@@ -178,7 +183,7 @@ if __name__ == "__main__":
     parser.add_argument("--optimizer", default="Powell", type=str)
     parser.add_argument("--tol", default=TOL, type=float)
     parser.add_argument("--nqubits", default=6, type=int)
-    parser.add_argument("--nlayers", default=5, type=int)
+    parser.add_argument("--nlayers", default=1, type=int)
     parser.add_argument("--output_folder", default=None, type=str)
     parser.add_argument(
         "--nboost",
@@ -189,7 +194,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--boost_frequency",
         type=int,
-        default=None,
+        default=10,
         help="Number of optimization steps which separate two DBI boosting calls.",
     )
     parser.add_argument(
