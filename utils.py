@@ -11,15 +11,20 @@ PLOT_FILE = "energy.pdf"
 ROOT_FOLDER = "results"
 FLUCTUATION_FILE = "fluctuations"
 LOSS_FILE = "energies"
+HAMILTONIAN_FILE = "hamiltonian_matrix.npz"
 FLUCTUATION_FILE2 = "fluctuations2"
 LOSS_FILE2 = "energies2"
 SEED = 42
-TOL = 1e-4
-DBI_FILE = "dbi_matrix"
-DBI_RESULTS = "dbi_output.json"
+TOL = 1e-10
+DBI_ENERGIES = "dbi_energies"
+DBI_FLUCTUATIONS = "dbi_fluctuations"
 
 
-def generate_path(args):
+logging.basicConfig(level=logging.INFO)
+
+
+def generate_path(args) -> str:
+    """Generate path according to job parameters"""
     if args.output_folder is None:
         output_folder = "results"
     else:
@@ -27,13 +32,15 @@ def generate_path(args):
     return f"./{output_folder}/{args.optimizer}_{args.nqubits}q_{args.nlayers}l"
 
 
-def create_folder(path: str):
+def create_folder(path: str) -> Path:
+    """Create folder and returns path"""
     path = Path(path)
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
 def results_dump(path: str, results: np.array, output_dict: dict):
+    """Duno"""
     np.save(file=f"{path}/{PARAMS_FILE}", arr=results)
     json_file = Path(f"{path}/{OPTIMIZATION_FILE}")
     dump_json(json_file, output_dict)
@@ -57,13 +64,13 @@ def loss(params, circuit, hamiltonian):
     )
 
 
-def train_vqe(circ, ham, optimizer, initial_parameters, tol):
-    params_history = []
-    loss_list = []
-    fluctuations = []
+def train_vqe(
+    circ, ham, optimizer, initial_parameters, tol, niterations=None, nmessage=1
+):
+    """Helper function which trains the VQE according to `circ` and `ham`."""
+    params_history, loss_list, fluctuations, hamiltonian_history = [], [], [], []
     circ.set_parameters(initial_parameters)
-    if tol is None:
-        tol = TOL
+
     vqe = VQE(
         circuit=circ,
         hamiltonian=ham,
@@ -75,24 +82,76 @@ def train_vqe(circ, ham, optimizer, initial_parameters, tol):
         loss_list=loss_list,
         loss_fluctuation=fluctuations,
         params_history=params_history,
+        hamiltonian_history=hamiltonian_history,
     ):
         """
         Callback function that updates the energy, the energy fluctuations and
         the parameters lists.
         """
+
         energy, energy_fluctuation = loss(params, vqe.circuit, vqe.hamiltonian)
         loss_list.append(float(energy))
         loss_fluctuation.append(float(energy_fluctuation))
         params_history.append(params)
+        hamiltonian_history.append(rotate_h_with_vqe(vqe.hamiltonian, vqe))
+
+        iteration_count = len(loss_list)
+
+        if niterations is not None and iteration_count % nmessage == 0:
+            logging.info(f"Optimization iteration {iteration_count}/{niterations}")
+
+        if iteration_count >= niterations:
+            raise StopIteration("Maximum number of iterations reached.")
 
     callbacks(initial_parameters)
+
     # fix numpy seed to ensure replicability of the experiment
     logging.info("Minimize the energy")
 
-    results = vqe.minimize(
-        initial_parameters,
-        method=optimizer,
-        callback=callbacks,
-        tol=tol,
-    )
-    return results, params_history, loss_list, fluctuations
+    try:
+        results = vqe.minimize(
+            initial_parameters,
+            method=optimizer,
+            callback=callbacks,
+            tol=tol,
+        )
+    except StopIteration as e:
+        logging.info(str(e))
+
+    return results, params_history, loss_list, fluctuations, hamiltonian_history, vqe
+
+
+def rotate_h_with_vqe(hamiltonian, vqe):
+    """Rotate `hamiltonian` using the unitary representing the `vqe`."""
+    # inherit backend from hamiltonian and circuit from vqe
+    backend = hamiltonian.backend
+    circuit = vqe.circuit
+    # create circuit matrix and compute the rotation
+    matrix_circ = np.matrix(backend.to_numpy(circuit.unitary()))
+    matrix_circ_dagger = backend.cast(matrix_circ.getH())
+    matrix_circ = backend.cast(matrix_circ)
+    new_hamiltonian = matrix_circ_dagger @ hamiltonian.matrix @ matrix_circ
+    return new_hamiltonian
+
+
+def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
+    """Apply `nsteps` of `dbi` to `hamiltonian`."""
+    step = stepsize
+    energies, fluctuations, hamiltonians = [], [], []
+    logging.info(f"Applying {nsteps} steps of DBI to the given hamiltonian.")
+    for _ in range(nsteps):
+        if optimize_step:
+            # Change logging level to reduce verbosity
+            logging.getLogger().setLevel(logging.WARNING)
+            step = dbi.hyperopt_step(
+                step_min=1e-4, step_max=1, max_evals=50, verbose=True
+            )
+            # Restore the original logging level
+            logging.getLogger().setLevel(logging.INFO)
+        dbi(step=step, d=dbi.diagonal_h_matrix)
+        energies.append(dbi.h.expectation(dbi.h.backend.zero_state(dbi.h.nqubits)))
+        fluctuations.append(
+            dbi.energy_fluctuation(dbi.h.backend.zero_state(dbi.h.nqubits))
+        )
+        hamiltonians.append(dbi.h.matrix)
+    return hamiltonians, energies, fluctuations
