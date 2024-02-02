@@ -5,12 +5,15 @@ from pathlib import Path
 import numpy as np
 from qibo.models.variational import VQE
 
+from ansatze import compute_gradients
+
 OPTIMIZATION_FILE = "optimization_results.json"
 PARAMS_FILE = "parameters_history.npy"
 PLOT_FILE = "energy.pdf"
 ROOT_FOLDER = "results"
 FLUCTUATION_FILE = "fluctuations"
 LOSS_FILE = "energies"
+GRADS_FILE = "gradients"
 HAMILTONIAN_FILE = "hamiltonian_matrix.npz"
 FLUCTUATION_FILE2 = "fluctuations2"
 LOSS_FILE2 = "energies2"
@@ -68,7 +71,13 @@ def train_vqe(
     circ, ham, optimizer, initial_parameters, tol, niterations=None, nmessage=1
 ):
     """Helper function which trains the VQE according to `circ` and `ham`."""
-    params_history, loss_list, fluctuations, hamiltonian_history = [], [], [], []
+    params_history, loss_list, fluctuations, hamiltonian_history, grads_history = (
+        [],
+        [],
+        [],
+        [],
+        [],
+    )
     circ.set_parameters(initial_parameters)
 
     vqe = VQE(
@@ -83,6 +92,7 @@ def train_vqe(
         loss_fluctuation=fluctuations,
         params_history=params_history,
         hamiltonian_history=hamiltonian_history,
+        grads_history=grads_history,
     ):
         """
         Callback function that updates the energy, the energy fluctuations and
@@ -94,6 +104,9 @@ def train_vqe(
         loss_fluctuation.append(float(energy_fluctuation))
         params_history.append(params)
         hamiltonian_history.append(rotate_h_with_vqe(vqe.hamiltonian, vqe))
+        grads_history.append(
+            compute_gradients(parameters=params, circuit=circ, hamiltonian=ham)
+        )
 
         iteration_count = len(loss_list)
 
@@ -118,7 +131,15 @@ def train_vqe(
     except StopIteration as e:
         logging.info(str(e))
 
-    return results, params_history, loss_list, fluctuations, hamiltonian_history, vqe
+    return (
+        results,
+        params_history,
+        loss_list,
+        grads_history,
+        fluctuations,
+        hamiltonian_history,
+        vqe,
+    )
 
 
 def rotate_h_with_vqe(hamiltonian, vqe):
