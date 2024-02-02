@@ -11,6 +11,7 @@ from utils import (
     DBI_FLUCTUATIONS,
     FLUCTUATION_FILE,
     FLUCTUATION_FILE2,
+    GRADS_FILE,
     LOSS_FILE,
     LOSS_FILE2,
     OPTIMIZATION_FILE,
@@ -128,3 +129,43 @@ def plot_loss(
     plt.legend(by_label.values(), by_label.keys())
     if save:
         plt.savefig(f"{path}/loss_{title}.pdf", bbox_inches="tight")
+
+
+def plot_gradients(
+    path,
+    title="",
+    save=True,
+    width=0.5,
+):
+    grads = dict(np.load(path / f"{GRADS_FILE + '.npz'}"))
+    config = json.loads((path / OPTIMIZATION_FILE).read_text())
+
+    ave_grads = []
+
+    for epoch in grads:
+        for grads_list in grads[epoch]:
+            ave_grads.append(np.mean(np.abs(grads_list)))
+
+    plt.figure(figsize=(10 * width, 10 * width * 6 / 8))
+    plt.title(title)
+    plt.plot(
+        np.arange(1, len(ave_grads) + 1, 1),
+        ave_grads,
+        color=BLUE,
+        lw=1.5,
+        label=r"$\langle |\partial_{\theta_i}\text{L}| \rangle_i$",
+    )
+    for b in range(config["nboost"] - 1):
+        plt.vlines(
+            (b + 1) * config["boost_frequency"],
+            0,
+            np.max(ave_grads),
+            color="black",
+            lw=1,
+        )
+    plt.yscale("log")
+    plt.xlabel("Iterations")
+    plt.ylabel("Gradients magnitude")
+    plt.legend()
+    if save:
+        plt.savefig(f"{path}/grads_{title}.pdf", bbox_inches="tight")
