@@ -53,7 +53,7 @@ options:
 <img src="example.png" style="solid #000; max-width:600px; max-height:1000px;">
 
 
-#### basically, do VQE, VQA and DBI together and seach for improvements
+#### basically, do VQE, VQA and DBI together and search for improvements
 
 #### Marek goal
 
