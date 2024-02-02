@@ -137,6 +137,11 @@ def plot_gradients(
     save=True,
     width=0.5,
 ):
+    """
+    Plot gradients magnitude during the training.
+    Each value is the average over the parameters of the absolute value of the
+    derivative of the loss function with respect to the parameter.
+    """
     grads = dict(np.load(path / f"{GRADS_FILE + '.npz'}"))
     config = json.loads((path / OPTIMIZATION_FILE).read_text())
 
