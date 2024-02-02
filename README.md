@@ -52,6 +52,7 @@ options:
 
 <img src="example.png" style="solid #000; max-width:600px; max-height:1000px;">
 
+Example with 1 layer and 6 qubits.
 
 #### basically, do VQE, VQA and DBI together and search for improvements
 
