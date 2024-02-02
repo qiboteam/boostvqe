@@ -177,14 +177,31 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="VQE with DBI training hyper-parameters."
     )
-    parser.add_argument("--backend", default="qibojit", type=str)
-    parser.add_argument("--platform", default=None, type=str)
-    parser.add_argument("--nthreads", default=1, type=int)
-    parser.add_argument("--optimizer", default="Powell", type=str)
-    parser.add_argument("--tol", default=TOL, type=float)
-    parser.add_argument("--nqubits", default=6, type=int)
-    parser.add_argument("--nlayers", default=1, type=int)
-    parser.add_argument("--output_folder", default=None, type=str)
+    parser.add_argument("--backend", default="qibojit", type=str, help="Qibo backend")
+    parser.add_argument(
+        "--platform", default=None, type=str, help="Qibo platform (used to run on GPU)"
+    )
+    parser.add_argument(
+        "--nthreads", default=1, type=int, help="Number of threads used by the script."
+    )
+    parser.add_argument(
+        "--optimizer", default="Powell", type=str, help="Optimizer used by VQE"
+    )
+    parser.add_argument(
+        "--tol", default=TOL, type=float, help="Absolute precision to stop VQE training"
+    )
+    parser.add_argument(
+        "--nqubits", default=6, type=int, help="Number of qubits for Hamiltonian / VQE"
+    )
+    parser.add_argument(
+        "--nlayers", default=1, type=int, help="Number of layers for VQE"
+    )
+    parser.add_argument(
+        "--output_folder",
+        default=None,
+        type=str,
+        help="Folder where data will be stored",
+    )
     parser.add_argument(
         "--nboost",
         type=int,
