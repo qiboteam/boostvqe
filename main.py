@@ -16,11 +16,12 @@ from qibo.models.dbi.double_bracket import (
 
 # boostvqe's
 from ansatze import build_circuit
-from plotscripts import plot_loss
+from plotscripts import plot_gradients, plot_loss
 from utils import (
     DBI_ENERGIES,
     DBI_FLUCTUATIONS,
     FLUCTUATION_FILE,
+    GRADS_FILE,
     HAMILTONIAN_FILE,
     LOSS_FILE,
     SEED,
@@ -65,7 +66,7 @@ def main(args):
     initial_parameters = np.random.randn(len(circ.get_parameters()))
 
     # vqe lists
-    params_history, loss_history, fluctuations = {}, {}, {}
+    params_history, loss_history, grads_history, fluctuations = {}, {}, {}, {}
     # dbi lists
     boost_energies, boost_fluctuations_dbi = {}, {}
     # hamiltonian history
@@ -82,6 +83,7 @@ def main(args):
             partial_results,
             partial_params_history,
             partial_loss_history,
+            partial_grads_history,
             partial_fluctuations,
             partial_hamiltonian_history,
             vqe,
@@ -94,10 +96,10 @@ def main(args):
             niterations=args.boost_frequency,
             nmessage=1,
         )
-        print(hamiltonians_history)
         # append results to global lists
         params_history[b] = np.array(partial_params_history)
         loss_history[b] = np.array(partial_loss_history)
+        grads_history[b] = np.array(partial_grads_history)
         fluctuations[b] = np.array(partial_fluctuations)
         hamiltonians_history.extend(partial_hamiltonian_history)
         # build new hamiltonian using trained VQE
@@ -150,6 +152,10 @@ def main(args):
         **{json.dumps(key): np.array(value) for key, value in loss_history.items()},
     )
     np.savez(
+        path / GRADS_FILE,
+        **{json.dumps(key): np.array(value) for key, value in grads_history.items()},
+    )
+    np.savez(
         path / FLUCTUATION_FILE,
         **{json.dumps(key): np.array(value) for key, value in fluctuations.items()},
     )
@@ -171,6 +177,7 @@ def main(args):
         path=path,
         title="Energy history",
     )
+    plot_gradients(path=path, title="Grads history")
 
 
 if __name__ == "__main__":

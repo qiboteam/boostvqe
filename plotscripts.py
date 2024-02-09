@@ -1,16 +1,14 @@
 import json
-import os.path
-import pathlib
 
 import matplotlib.pyplot as plt
 import numpy as np
-from qibo.backends import GlobalBackend
 
 from utils import (
     DBI_ENERGIES,
     DBI_FLUCTUATIONS,
     FLUCTUATION_FILE,
     FLUCTUATION_FILE2,
+    GRADS_FILE,
     LOSS_FILE,
     LOSS_FILE2,
     OPTIMIZATION_FILE,
@@ -92,7 +90,7 @@ def plot_loss(
                 len(dbi_energies[str(i)]) + len(loss_vqe[str(i)]) + start - 1,
             ),
             dbi_energies[str(i)],
-            color=GREEN,
+            color=RED,
             lw=1.5,
             label="DBI",
         )
@@ -110,7 +108,7 @@ def plot_loss(
             ),
             dbi_energies[str(i)] - dbi_fluctuations[str(i)],
             dbi_energies[str(i)] + dbi_fluctuations[str(i)],
-            color=GREEN,
+            color=RED,
             alpha=0.4,
         )
 
@@ -120,7 +118,15 @@ def plot_loss(
         - 2 * config["nboost"]
         + 1
     )
-    plt.hlines(target_energy, 1, max_length, color="red", lw=1, label="Target energy")
+    plt.hlines(
+        target_energy,
+        1,
+        max_length,
+        color="black",
+        lw=1,
+        label="Target energy",
+        ls="--",
+    )
     plt.xlabel("Iterations")
     plt.ylabel("Loss")
     handles, labels = plt.gca().get_legend_handles_labels()
@@ -128,3 +134,59 @@ def plot_loss(
     plt.legend(by_label.values(), by_label.keys())
     if save:
         plt.savefig(f"{path}/loss_{title}.pdf", bbox_inches="tight")
+
+
+def plot_gradients(
+    path,
+    title="",
+    save=True,
+    width=0.5,
+):
+    """
+    Plot gradients magnitude during the training.
+    Each value is the average over the parameters of the absolute value of the
+    derivative of the loss function with respect to the parameter.
+    """
+    grads = dict(np.load(path / f"{GRADS_FILE + '.npz'}"))
+    config = json.loads((path / OPTIMIZATION_FILE).read_text())
+
+    ave_grads = []
+
+    for epoch in grads:
+        for grads_list in grads[epoch]:
+            ave_grads.append(np.mean(np.abs(grads_list)))
+
+    plt.figure(figsize=(10 * width, 10 * width * 6 / 8))
+    plt.title(title)
+    plt.plot(
+        np.arange(1, len(ave_grads) + 1, 1),
+        ave_grads,
+        color=BLUE,
+        lw=1.5,
+        label=r"$\langle |\partial_{\theta_i}\text{L}| \rangle_i$",
+    )
+    for b in range(config["nboost"] - 1):
+        boost_x = config["boost_frequency"] * (b + 1)
+        if b == 0:
+            plt.plot(
+                (boost_x, boost_x + 1),
+                (ave_grads[boost_x - 1], ave_grads[boost_x]),
+                color=RED,
+                lw=1.5,
+                alpha=1,
+                label="Step after DBI",
+            )
+        else:
+            plt.plot(
+                (boost_x, boost_x + 1),
+                (ave_grads[boost_x - 1], ave_grads[boost_x]),
+                color=RED,
+                lw=1.6,
+                alpha=1,
+            )
+    plt.yscale("log")
+    plt.xlabel("Iterations")
+    plt.ylabel("Gradients magnitude")
+    plt.legend()
+    if save:
+        plt.savefig(f"{path}/grads_{title}.pdf", bbox_inches="tight")
