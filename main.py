@@ -96,7 +96,6 @@ def main(args):
             niterations=args.boost_frequency,
             nmessage=1,
         )
-        print(hamiltonians_history)
         # append results to global lists
         params_history[b] = np.array(partial_params_history)
         loss_history[b] = np.array(partial_loss_history)

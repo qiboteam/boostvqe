@@ -62,6 +62,7 @@ def loss(params, circuit, hamiltonian):
     circuit.set_parameters(params)
     result = hamiltonian.backend.execute_circuit(circuit)
     final_state = result.state()
+
     return hamiltonian.expectation(final_state), hamiltonian.energy_fluctuation(
         final_state
     )
