@@ -17,11 +17,8 @@ python main.py --help
 ```
 
 ```sh
-usage: main.py [-h] [--backend BACKEND] [--platform PLATFORM] [--nthreads NTHREADS] [--optimizer OPTIMIZER]
-               [--tol TOL] [--nqubits NQUBITS] [--nlayers NLAYERS] [--output_folder OUTPUT_FOLDER]
-               [--nboost NBOOST] [--boost_frequency BOOST_FREQUENCY] [--dbi_steps DBI_STEPS]
-               [--stepsize STEPSIZE] [--optimize_dbi_step OPTIMIZE_DBI_STEP] [--store_h STORE_H]
-               [--hamiltonian HAMILTONIAN]
+usage: main.py [-h] [--backend BACKEND] [--platform PLATFORM] [--nthreads NTHREADS] [--optimizer OPTIMIZER] [--tol TOL] [--nqubits NQUBITS] [--nlayers NLAYERS] [--output_folder OUTPUT_FOLDER] [--nboost NBOOST]
+               [--boost_frequency BOOST_FREQUENCY] [--dbi_steps DBI_STEPS] [--stepsize STEPSIZE] [--optimize_dbi_step OPTIMIZE_DBI_STEP] [--store_h STORE_H] [--hamiltonian HAMILTONIAN] [--seed SEED]
 
 VQE with DBI training hyper-parameters.
 
@@ -37,8 +34,7 @@ options:
   --nlayers NLAYERS     Number of layers for VQE
   --output_folder OUTPUT_FOLDER
                         Folder where data will be stored
-  --nboost NBOOST       Number of times the DBI is used in the new optimization routine. If 1, no optimization
-                        is run.
+  --nboost NBOOST       Number of times the DBI is used in the new optimization routine. If 1, no optimization is run.
   --boost_frequency BOOST_FREQUENCY
                         Number of optimization steps which separate two DBI boosting calls.
   --dbi_steps DBI_STEPS
@@ -49,7 +45,7 @@ options:
   --store_h STORE_H     If true H is stored for each iteration
   --hamiltonian HAMILTONIAN
                         Hamiltonian available in qibo.hamiltonians.
-
+  --seed SEED           Random seed
 ```
 
 <img src="example.png" style="solid #000; max-width:600px; max-height:1000px;">

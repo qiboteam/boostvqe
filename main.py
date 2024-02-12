@@ -146,7 +146,7 @@ def main(args):
     opt_results = partial_results[2]
     # save final results
     output_dict = vars(args)
-
+    print(output_dict)
     output_dict.update(
         {
             "best_loss": float(opt_results.fun),
@@ -265,6 +265,12 @@ if __name__ == "__main__":
         type=str,
         default="XXZ",
         help="Hamiltonian available in qibo.hamiltonians.",
+    )
+    parser.add_argument(
+        "--seed",
+        type=str,
+        default=SEED,
+        help="Random seed",
     )
     args = parser.parse_args()
     main(args)
