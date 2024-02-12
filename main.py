@@ -18,8 +18,10 @@ from qibo.models.dbi.double_bracket import (
 from ansatze import build_circuit
 from plotscripts import plot_loss
 from utils import (
+    DBI_D_MATRIX,
     DBI_ENERGIES,
     DBI_FLUCTUATIONS,
+    DBI_STEPS,
     FLUCTUATION_FILE,
     HAMILTONIAN_FILE,
     LOSS_FILE,
@@ -67,7 +69,7 @@ def main(args):
     # vqe lists
     params_history, loss_history, fluctuations = {}, {}, {}
     # dbi lists
-    boost_energies, boost_fluctuations_dbi = {}, {}
+    boost_energies, boost_fluctuations_dbi, boost_steps, boost_d_matrix = {}, {}, {}, {}
     # hamiltonian history
     hamiltonians_history = []
     hamiltonians_history.append(ham.matrix)
@@ -94,7 +96,6 @@ def main(args):
             niterations=args.boost_frequency,
             nmessage=1,
         )
-        print(hamiltonians_history)
         # append results to global lists
         params_history[b] = np.array(partial_params_history)
         loss_history[b] = np.array(partial_loss_history)
@@ -119,7 +120,13 @@ def main(args):
             fluctuations_h0 = float(dbi.h.energy_fluctuation(zero_state))
 
             # apply DBI
-            dbi_hamiltonians, dbi_energies, dbi_fluctuations = apply_dbi_steps(
+            (
+                dbi_hamiltonians,
+                dbi_energies,
+                dbi_fluctuations,
+                dbi_steps,
+                dbi_d_matrix,
+            ) = apply_dbi_steps(
                 dbi=dbi, nsteps=args.dbi_steps, optimize_step=args.optimize_dbi_step
             )
             hamiltonians_history.extend(dbi_hamiltonians)
@@ -128,6 +135,8 @@ def main(args):
             dbi_energies.insert(0, energy_h0)
             boost_fluctuations_dbi[b] = np.array(dbi_fluctuations)
             boost_energies[b] = np.array(dbi_energies)
+            boost_steps[b] = np.array(dbi_steps)
+            boost_d_matrix[b] = np.array(dbi_d_matrix)
             vqe.hamiltonian = dbi_hamiltonians[-1]
             initial_parameters = np.zeros(len(initial_parameters))
     # print(hamiltonians_history)
@@ -153,10 +162,19 @@ def main(args):
         path / FLUCTUATION_FILE,
         **{json.dumps(key): np.array(value) for key, value in fluctuations.items()},
     )
-    np.savez(path / HAMILTONIAN_FILE, *hamiltonians_history)
+    if args.store_h:
+        np.savez(path / HAMILTONIAN_FILE, *hamiltonians_history)
     np.savez(
         path / DBI_ENERGIES,
         **{json.dumps(key): np.array(value) for key, value in boost_energies.items()},
+    )
+    np.savez(
+        path / DBI_D_MATRIX,
+        **{json.dumps(key): np.array(value) for key, value in boost_d_matrix.items()},
+    )
+    np.savez(
+        path / DBI_STEPS,
+        **{json.dumps(key): np.array(value) for key, value in boost_steps.items()},
     )
     np.savez(
         path / DBI_FLUCTUATIONS,
@@ -165,6 +183,7 @@ def main(args):
             for key, value in boost_fluctuations_dbi.items()
         },
     )
+
     logging.info("Dump the results")
     results_dump(path, params_history, output_dict)
     plot_loss(
@@ -226,6 +245,12 @@ if __name__ == "__main__":
         type=bool,
         default=False,
         help="Set to True to hyperoptimize the DBI step size.",
+    )
+    parser.add_argument(
+        "--store_h",
+        type=bool,
+        default=False,
+        help="If true H is stored for each iteration",
     )
     parser.add_argument(
         "--hamiltonian",

@@ -10,12 +10,8 @@ from utils import (
     DBI_ENERGIES,
     DBI_FLUCTUATIONS,
     FLUCTUATION_FILE,
-    FLUCTUATION_FILE2,
     LOSS_FILE,
-    LOSS_FILE2,
     OPTIMIZATION_FILE,
-    PLOT_FILE,
-    json_load,
 )
 
 RED = "#f54242"
