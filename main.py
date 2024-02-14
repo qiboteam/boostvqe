@@ -64,7 +64,7 @@ def main(args):
     logging.info("\n" + circ.draw())
 
     # fix numpy seed to ensure replicability of the experiment
-    np.random.seed(SEED)
+    np.random.seed(args.seed)
     initial_parameters = np.random.randn(len(circ.get_parameters()))
 
     # vqe lists
