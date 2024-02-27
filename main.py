@@ -15,9 +15,9 @@ from qibo.models.dbi.double_bracket import (
 )
 
 # boostvqe's
-from ansatze import build_circuit
-from plotscripts import plot_gradients, plot_loss
-from utils import (
+from boostvqe.ansatze import build_circuit
+from boostvqe.plotscripts import plot_gradients, plot_loss
+from boostvqe.utils import (
     DBI_ENERGIES,
     DBI_FLUCTUATIONS,
     FLUCTUATION_FILE,
