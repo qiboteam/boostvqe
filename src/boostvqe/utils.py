@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 from qibo.models.variational import VQE
 
-from ansatze import compute_gradients
+from boostvqe.ansatze import compute_gradients
 
 OPTIMIZATION_FILE = "optimization_results.json"
 PARAMS_FILE = "parameters_history.npy"
