@@ -146,8 +146,6 @@ def plot_gradients(
     grads = dict(np.load(path / f"{GRADS_FILE + '.npz'}"))
     config = json.loads((path / OPTIMIZATION_FILE).read_text())
     ave_grads = []
-    print(len(grads["0"]))
-    # print([i for i in ])
     for epoch in grads:
         for grads_list in grads[epoch]:
             ave_grads.append(np.mean(np.abs(grads_list)))

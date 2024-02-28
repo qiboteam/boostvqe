@@ -142,11 +142,9 @@ def main(args):
             boost_d_matrix[b] = np.array(dbi_d_matrix)
             vqe.hamiltonian = dbi_hamiltonians[-1]
             initial_parameters = np.zeros(len(initial_parameters))
-    # print(hamiltonians_history)
     opt_results = partial_results[2]
     # save final results
     output_dict = vars(args)
-    print(output_dict)
     output_dict.update(
         {
             "best_loss": float(opt_results.fun),
