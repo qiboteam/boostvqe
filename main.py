@@ -63,7 +63,7 @@ def main(args):
 
     # fix numpy seed to ensure replicability of the experiment
     np.random.seed(SEED)
-    initial_parameters = np.random.randn(len(circ.get_parameters()))
+    initial_parameters = np.random.uniform(-np.pi, np.pi, len(circ.get_parameters()))
 
     # vqe lists
     params_history, loss_history, grads_history, fluctuations = {}, {}, {}, {}
