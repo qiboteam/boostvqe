@@ -7,16 +7,16 @@ import numpy as np
 
 # qibo's
 import qibo
+
+# boostvqe's
+from ansatze import build_circuit
+from plotscripts import plot_gradients, plot_loss
 from qibo import hamiltonians
 from qibo.backends import GlobalBackend
 from qibo.models.dbi.double_bracket import (
     DoubleBracketGeneratorType,
     DoubleBracketIteration,
 )
-
-# boostvqe's
-from ansatze import build_circuit
-from plotscripts import plot_gradients, plot_loss
 from utils import (
     DBI_D_MATRIX,
     DBI_ENERGIES,
@@ -64,8 +64,8 @@ def main(args):
     # logging.info("\n" + circ.draw())
 
     # fix numpy seed to ensure replicability of the experiment
-    np.random.seed(int(args.seed))
-    initial_parameters = np.random.randn(len(circ.get_parameters()))
+    np.random.seed(SEED)
+    initial_parameters = np.random.uniform(-np.pi, np.pi, len(circ.get_parameters()))
 
     # vqe lists
     params_history, loss_history, grads_history, fluctuations = {}, {}, {}, {}

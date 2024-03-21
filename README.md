@@ -2,13 +2,28 @@
 
 Boosting variational eigenstate preparation algorithms limited by training and not device coherence by diagonalization double-bracket iteration.
 
+## Setup
+
+Given you have `poetry` installed
+
+```sh
+poetry install && poetry shell
+```
+
+will install `boostvqe 0.0.1` and activate a dedicated working shell.
+
+## Code structure
+
 The code is organized as follows:
 
 * `main.py`: performs boosted VQE training
+* `run.sh`: bash script example using `main.py`
+
+The source code is located in `./src/boostvqe/.` and its composed of:
+
 * `ansatze.py`: contains circuit used by VQE
 * `utils.py`: contains utils function used by `main.py`
 * `plotscripts.py`: plotting functions.
-* `run.sh`: bash script example using `main.py`
 
 ## How to run the code
 

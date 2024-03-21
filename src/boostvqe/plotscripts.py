@@ -3,7 +3,7 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 
-from utils import (
+from boostvqe.utils import (
     DBI_ENERGIES,
     DBI_FLUCTUATIONS,
     FLUCTUATION_FILE,
