@@ -61,7 +61,7 @@ def main(args):
     zero_state = backend.zero_state(args.nqubits)
 
     # print the circuit
-    logging.info("\n" + circ.draw())
+    # logging.info("\n" + circ.draw())
 
     # fix numpy seed to ensure replicability of the experiment
     np.random.seed(int(args.seed))
