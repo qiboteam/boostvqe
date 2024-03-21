@@ -7,17 +7,17 @@ import numpy as np
 
 # qibo's
 import qibo
-
-# boostvqe's
-from ansatze import build_circuit
-from plotscripts import plot_gradients, plot_loss
 from qibo import hamiltonians
 from qibo.backends import GlobalBackend
 from qibo.models.dbi.double_bracket import (
     DoubleBracketGeneratorType,
     DoubleBracketIteration,
 )
-from utils import (
+
+# boostvqe's
+from boostvqe.ansatze import build_circuit
+from boostvqe.plotscripts import plot_gradients, plot_loss
+from boostvqe.utils import (
     DBI_D_MATRIX,
     DBI_ENERGIES,
     DBI_FLUCTUATIONS,
