@@ -32,10 +32,8 @@ python main.py --help
 ```
 
 ```sh
-usage: main.py [-h] [--backend BACKEND] [--platform PLATFORM] [--nthreads NTHREADS] [--optimizer OPTIMIZER] [--tol TOL]
-               [--nqubits NQUBITS] [--nlayers NLAYERS] [--output_folder OUTPUT_FOLDER] [--nboost NBOOST]
-               [--boost_frequency BOOST_FREQUENCY] [--dbi_steps DBI_STEPS] [--stepsize STEPSIZE]
-               [--optimize_dbi_step OPTIMIZE_DBI_STEP] [--hamiltonian HAMILTONIAN]
+usage: main.py [-h] [--backend BACKEND] [--platform PLATFORM] [--nthreads NTHREADS] [--optimizer OPTIMIZER] [--tol TOL] [--nqubits NQUBITS] [--nlayers NLAYERS] [--output_folder OUTPUT_FOLDER] [--nboost NBOOST]
+               [--boost_frequency BOOST_FREQUENCY] [--dbi_steps DBI_STEPS] [--stepsize STEPSIZE] [--optimize_dbi_step OPTIMIZE_DBI_STEP] [--store_h STORE_H] [--hamiltonian HAMILTONIAN] [--seed SEED]
 
 VQE with DBI training hyper-parameters.
 
@@ -59,10 +57,10 @@ options:
   --stepsize STEPSIZE   DBI step size.
   --optimize_dbi_step OPTIMIZE_DBI_STEP
                         Set to True to hyperoptimize the DBI step size.
+  --store_h STORE_H     If true H is stored for each iteration
   --hamiltonian HAMILTONIAN
                         Hamiltonian available in qibo.hamiltonians.
-(test_env) andreapasquale@TII-APASQUALE01:~/boostvqe(readme)$
-
+  --seed SEED           Random seed
 ```
 
 <img src="example.png" style="solid #000; max-width:600px; max-height:1000px;">

@@ -15,12 +15,12 @@ FLUCTUATION_FILE = "fluctuations"
 LOSS_FILE = "energies"
 GRADS_FILE = "gradients"
 HAMILTONIAN_FILE = "hamiltonian_matrix.npz"
-FLUCTUATION_FILE2 = "fluctuations2"
-LOSS_FILE2 = "energies2"
 SEED = 42
 TOL = 1e-10
 DBI_ENERGIES = "dbi_energies"
 DBI_FLUCTUATIONS = "dbi_fluctuations"
+DBI_STEPS = "dbi_steps"
+DBI_D_MATRIX = "dbi_d_matrices"
 
 
 logging.basicConfig(level=logging.INFO)
@@ -32,7 +32,7 @@ def generate_path(args) -> str:
         output_folder = "results"
     else:
         output_folder = args.output_folder
-    return f"./{output_folder}/{args.optimizer}_{args.nqubits}q_{args.nlayers}l"
+    return f"./{output_folder}/{args.optimizer}_{args.nqubits}q_{args.nlayers}l_{args.seed}"
 
 
 def create_folder(path: str) -> Path:
@@ -159,7 +159,7 @@ def rotate_h_with_vqe(hamiltonian, vqe):
 def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
     """Apply `nsteps` of `dbi` to `hamiltonian`."""
     step = stepsize
-    energies, fluctuations, hamiltonians = [], [], []
+    energies, fluctuations, hamiltonians, steps, d_matrix = [], [], [], [], []
     logging.info(f"Applying {nsteps} steps of DBI to the given hamiltonian.")
     for _ in range(nsteps):
         if optimize_step:
@@ -171,9 +171,11 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
             # Restore the original logging level
             logging.getLogger().setLevel(logging.INFO)
         dbi(step=step, d=dbi.diagonal_h_matrix)
+        steps.append(step)
+        d_matrix.append(np.diag(dbi.diagonal_h_matrix))
         energies.append(dbi.h.expectation(dbi.h.backend.zero_state(dbi.h.nqubits)))
         fluctuations.append(
             dbi.energy_fluctuation(dbi.h.backend.zero_state(dbi.h.nqubits))
         )
         hamiltonians.append(dbi.h.matrix)
-    return hamiltonians, energies, fluctuations
+    return hamiltonians, energies, fluctuations, steps, d_matrix

@@ -7,13 +7,9 @@ from boostvqe.utils import (
     DBI_ENERGIES,
     DBI_FLUCTUATIONS,
     FLUCTUATION_FILE,
-    FLUCTUATION_FILE2,
     GRADS_FILE,
     LOSS_FILE,
-    LOSS_FILE2,
     OPTIMIZATION_FILE,
-    PLOT_FILE,
-    json_load,
 )
 
 RED = "#f54242"
@@ -149,9 +145,7 @@ def plot_gradients(
     """
     grads = dict(np.load(path / f"{GRADS_FILE + '.npz'}"))
     config = json.loads((path / OPTIMIZATION_FILE).read_text())
-
     ave_grads = []
-
     for epoch in grads:
         for grads_list in grads[epoch]:
             ave_grads.append(np.mean(np.abs(grads_list)))
@@ -166,7 +160,7 @@ def plot_gradients(
         label=r"$\langle |\partial_{\theta_i}\text{L}| \rangle_i$",
     )
     for b in range(config["nboost"] - 1):
-        boost_x = config["boost_frequency"] * (b + 1)
+        boost_x = len(grads[str(b)]) * (b + 1)
         if b == 0:
             plt.plot(
                 (boost_x, boost_x + 1),
