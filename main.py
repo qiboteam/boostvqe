@@ -7,7 +7,7 @@ import numpy as np
 
 # qibo's
 import qibo
-from qibo import hamiltonians
+from qibo import gates, hamiltonians
 from qibo.backends import GlobalBackend
 from qibo.models.dbi.double_bracket import (
     DoubleBracketGeneratorType,
@@ -91,7 +91,7 @@ def main(args):
             vqe,
         ) = train_vqe(
             circ,
-            new_hamiltonian,
+            ham,
             args.optimizer,
             initial_parameters,
             args.tol,
@@ -129,9 +129,18 @@ def main(args):
                 dbi_fluctuations,
                 dbi_steps,
                 dbi_d_matrix,
+                dbi_operators,
             ) = apply_dbi_steps(
                 dbi=dbi, nsteps=args.dbi_steps, optimize_step=args.optimize_dbi_step
             )
+            # Update the circuit appending the DBI generator
+            # and the old circuit with non trainable circuit
+            old_circ_matrix = circ.unitary()
+            # Remove measurement gates
+            circ.queue.pop()
+            for gate in reversed([old_circ_matrix] + dbi_operators):
+                circ.add(gates.Unitary(gate, *range(circ.nqubits), trainable=False))
+            circ.add(gates.M(*range(circ.nqubits)))
             hamiltonians_history.extend(dbi_hamiltonians)
             # append dbi results
             dbi_fluctuations.insert(0, fluctuations_h0)

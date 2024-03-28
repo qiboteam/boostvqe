@@ -161,6 +161,7 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
     step = stepsize
     energies, fluctuations, hamiltonians, steps, d_matrix = [], [], [], [], []
     logging.info(f"Applying {nsteps} steps of DBI to the given hamiltonian.")
+    operators = []
     for _ in range(nsteps):
         if optimize_step:
             # Change logging level to reduce verbosity
@@ -170,6 +171,7 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
             )
             # Restore the original logging level
             logging.getLogger().setLevel(logging.INFO)
+        operators.append(dbi.eval_operator(step=step, d=dbi.diagonal_h_matrix))
         dbi(step=step, d=dbi.diagonal_h_matrix)
         steps.append(step)
         d_matrix.append(np.diag(dbi.diagonal_h_matrix))
@@ -178,4 +180,4 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
             dbi.energy_fluctuation(dbi.h.backend.zero_state(dbi.h.nqubits))
         )
         hamiltonians.append(dbi.h.matrix)
-    return hamiltonians, energies, fluctuations, steps, d_matrix
+    return hamiltonians, energies, fluctuations, steps, d_matrix, operators
