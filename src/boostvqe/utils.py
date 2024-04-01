@@ -58,18 +58,25 @@ def json_load(path: str):
     return json.load(f)
 
 
-def loss(params, circuit, hamiltonian):
-    circuit.set_parameters(params)
-    result = hamiltonian.backend.execute_circuit(circuit)
-    final_state = result.state()
+# def loss(params, circuit, hamiltonian):
+#     circuit.set_parameters(params)
+#     result = hamiltonian.backend.execute_circuit(circuit)
+#     final_state = result.state()
 
-    return hamiltonian.expectation(final_state), hamiltonian.energy_fluctuation(
-        final_state
-    )
+#     return hamiltonian.expectation(final_state), hamiltonian.energy_fluctuation(
+#         final_state
+#     )
 
 
 def train_vqe(
-    circ, ham, optimizer, initial_parameters, tol, niterations=None, nmessage=1
+    circ,
+    ham,
+    optimizer,
+    initial_parameters,
+    tol,
+    niterations=None,
+    nmessage=1,
+    loss=None,
 ):
     """Helper function which trains the VQE according to `circ` and `ham`."""
     params_history, loss_list, fluctuations, hamiltonian_history, grads_history = (
@@ -86,6 +93,7 @@ def train_vqe(
         hamiltonian=ham,
     )
 
+    # import pdb;pdb.set_trace()
     def callbacks(
         params,
         vqe=vqe,
@@ -99,14 +107,17 @@ def train_vqe(
         Callback function that updates the energy, the energy fluctuations and
         the parameters lists.
         """
-
-        energy, energy_fluctuation = loss(params, vqe.circuit, vqe.hamiltonian)
+        # TODO: Restore energy fluctuations
+        energy = loss(params, vqe.circuit, vqe.hamiltonian)
         loss_list.append(float(energy))
-        loss_fluctuation.append(float(energy_fluctuation))
+        loss_fluctuation.append(0)
+        # FIXME: loss_fluctuation.append(float(energy_fluctuation))
         params_history.append(params)
         hamiltonian_history.append(rotate_h_with_vqe(vqe.hamiltonian, vqe))
         grads_history.append(
-            compute_gradients(parameters=params, circuit=circ, hamiltonian=ham)
+            compute_gradients(
+                parameters=params, circuit=circ.copy(deep=True), hamiltonian=ham
+            )
         )
 
         iteration_count = len(loss_list)
@@ -121,14 +132,16 @@ def train_vqe(
 
     # fix numpy seed to ensure replicability of the experiment
     logging.info("Minimize the energy")
-
+    print("JJJJJJJ", optimizer)
     try:
         results = vqe.minimize(
             initial_parameters,
             method=optimizer,
             callback=callbacks,
             tol=tol,
+            _loss=loss,
         )
+
     except StopIteration as e:
         logging.info(str(e))
 
@@ -177,7 +190,7 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
         d_matrix.append(np.diag(dbi.diagonal_h_matrix))
         energies.append(dbi.h.expectation(dbi.h.backend.zero_state(dbi.h.nqubits)))
         fluctuations.append(
-            dbi.energy_fluctuation(dbi.h.backend.zero_state(dbi.h.nqubits))
+            0  # FIXME: dbi.energy_fluctuation(dbi.h.backend.zero_state(dbi.h.nqubits))
         )
         hamiltonians.append(dbi.h.matrix)
     return hamiltonians, energies, fluctuations, steps, d_matrix, operators

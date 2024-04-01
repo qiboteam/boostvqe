@@ -90,6 +90,8 @@ def plot_loss(
             lw=1.5,
             label="DBI",
         )
+        print(loss_vqe, fluctuations_vqe)
+        # import pdb; pdb.set_trace()
         plt.fill_between(
             np.arange(start, len(loss_vqe[str(i)]) + start),
             loss_vqe[str(i)] - fluctuations_vqe[str(i)],
@@ -157,7 +159,8 @@ def plot_gradients(
         ave_grads,
         color=BLUE,
         lw=1.5,
-        label=r"$\langle |\partial_{\theta_i}\text{L}| \rangle_i$",
+        # label=r"$\langle |\partial_{\theta_i}\text{L}| \rangle_i$",
+        label="CIAO",
     )
     for b in range(config["nboost"] - 1):
         boost_x = len(grads[str(b)]) * (b + 1)
@@ -183,4 +186,5 @@ def plot_gradients(
     plt.ylabel("Gradients magnitude")
     plt.legend()
     if save:
+        print(title, path)
         plt.savefig(f"{path}/grads_{title}.pdf", bbox_inches="tight")

@@ -1,33 +1,33 @@
+from copy import deepcopy
+
 import numpy as np
-from qibo import gates
+from qibo import gates, hamiltonians
+from qibo.models.dbi.double_bracket import deepcopy
 from qibo.symbols import Z
 
 
-def train_vqe(
+def loss_shots(
+    params,
     circ,
+    ham,
     delta,
-    mode,
-    optimizer,
-    initial_parameters,
-    tol,
-    niterations,
     nshots,
-    nmessage=1,
 ):
     """Train the VQE with the shots, this function is specific to the XXZ Hamiltonian"""
-
-    hamiltonian = sum(Z(i) * Z(i + 1) for i in range(3))
-    hamiltonian += Z(0) * Z(3)
-    hamiltonian = hamiltonians.SymbolicHamiltonian(hamiltonian)
+    circ.set_parameters(params)
     coefficients = [1, 1, delta]
-
-    for epoch in range(niterations):
-        mgates = ["X", "Y", "Z"]
-        expectation_value = 0
-        for i, mgate in enumerate(mgates):
-            circ.queue.pop()
-            circ.add(gates.M(*range(circ.nqubits), basis=getattr(gates, mgate)))
-            result = circuit(nshots=nshots)
-            expectation_value += coefficients[i] * hamiltonian.expectation_from_samples(
-                result.frequencies()
-            )
+    mgates = ["X", "Y", "Z"]
+    expectation_value = 0
+    for i, mgate in enumerate(mgates):
+        circ1 = circ.copy(deep=True)
+        if mgate != "Z":  # FIXME: Bug in Qibo
+            circ1.queue.pop()
+            circ1.add(gates.M(*range(circ1.nqubits), basis=getattr(gates, mgate)))
+        print(circ1.draw())
+        print(circ1.unitary().shape)
+        result = circ1(nshots=nshots)
+        expectation_value += coefficients[i] * ham.expectation_from_samples(
+            result.frequencies()
+        )
+        print(expectation_value)
+    return expectation_value
