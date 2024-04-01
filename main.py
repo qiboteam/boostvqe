@@ -59,7 +59,6 @@ def main(args):
     logging.info("Set VQE")
     path = pathlib.Path(create_folder(generate_path(args)))
     # build hamiltonian and variational quantum circuit
-    print(args.shot_train)
     if args.shot_train:
         loss = lambda params, circ, _ham: loss_shots(
             params, circ, _ham, delta=DEFAULT_DELTA, nshots=args.nshots
@@ -87,7 +86,6 @@ def main(args):
     new_hamiltonian = ham
     args.nboost += 1
     for b in range(args.nboost):
-        print("LLLLLLL", loss)
         logging.info(f"Running {b+1}/{args.nboost} max optimization rounds.")
         boost_energies[b], boost_fluctuations_dbi[b] = [], []
         params_history[b], loss_history[b], fluctuations[b] = [], [], []
@@ -125,7 +123,6 @@ def main(args):
             new_hamiltonian = hamiltonians.Hamiltonian(
                 args.nqubits, matrix=new_hamiltonian_matrix
             )
-            # print(new_hamiltonian_matrix)
             # Initialize DBI
             dbi = DoubleBracketIteration(
                 hamiltonian=new_hamiltonian,
@@ -150,14 +147,10 @@ def main(args):
             # and the old circuit with non trainable circuit
             old_circ_matrix = circ.unitary()
             # Remove measurement gates
-            print(circ.draw())
-            print(len(circ.get_parameters()))
             circ.queue.pop()
             for gate in reversed([old_circ_matrix] + dbi_operators):
                 circ.add(gates.Unitary(gate, *range(circ.nqubits), trainable=False))
             circ.add(gates.M(*range(circ.nqubits)))
-            print(circ.draw())
-            print(len(circ.get_parameters()))
             hamiltonians_history.extend(dbi_hamiltonians)
             # append dbi results
             dbi_fluctuations.insert(0, fluctuations_h0)
@@ -166,11 +159,9 @@ def main(args):
             boost_energies[b] = np.array(dbi_energies)
             boost_steps[b] = np.array(dbi_steps)
             boost_d_matrix[b] = np.array(dbi_d_matrix)
-            # vqe.hamiltonian = dbi_hamiltonians[-1]
-            print(dbi_hamiltonians[-1])
             initial_parameters = np.zeros(len(initial_parameters))
             circ.set_parameters(initial_parameters)
-            print(circ.unitary() == dbi_operators[0] @ old_circ_matrix)
+
     opt_results = partial_results[2]
     # save final results
     output_dict = vars(args)

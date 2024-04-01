@@ -116,8 +116,6 @@ def train_vqe(
         Callback function that updates the energy, the energy fluctuations and
         the parameters lists.
         """
-        # TODO: Restore energy fluctuations
-        print(loss)
         if loss is None:
             loss = var_loss
         energy = loss(params, vqe.circuit, vqe.hamiltonian)

@@ -11,7 +11,7 @@ NITER = 20
 def loss_shots(
     params,
     circ,
-    ham,
+    _ham,  # We need it to uniform all the loss functions
     delta,
     nshots,
 ):
@@ -31,11 +31,8 @@ def loss_shots(
         if mgate != "Z":  # FIXME: Bug in Qibo
             circ1.queue.pop()
             circ1.add(gates.M(*range(circ1.nqubits), basis=getattr(gates, mgate)))
-        print(circ1.draw())
-        print(circ1.unitary().shape)
         result = circ1(nshots=nshots)
         expectation_value += coefficients[i] * hamiltonian.expectation_from_samples(
             result.frequencies()
         )
-        print(expectation_value)
     return expectation_value

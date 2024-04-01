@@ -159,8 +159,7 @@ def plot_gradients(
         ave_grads,
         color=BLUE,
         lw=1.5,
-        # label=r"$\langle |\partial_{\theta_i}\text{L}| \rangle_i$",
-        label="CIAO",
+        label=r"$\langle |\partial_{\theta_i}\text{L}| \rangle_i$",
     )
     for b in range(config["nboost"] - 1):
         boost_x = len(grads[str(b)]) * (b + 1)
