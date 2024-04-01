@@ -203,7 +203,7 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
         d_matrix.append(np.diag(dbi.diagonal_h_matrix))
         energies.append(dbi.h.expectation(dbi.h.backend.zero_state(dbi.h.nqubits)))
         fluctuations.append(
-            0  # FIXME: dbi.energy_fluctuation(dbi.h.backend.zero_state(dbi.h.nqubits))
+            dbi.energy_fluctuation(dbi.h.backend.zero_state(dbi.h.nqubits))
         )
         hamiltonians.append(dbi.h.matrix)
     return hamiltonians, energies, fluctuations, steps, d_matrix, operators
