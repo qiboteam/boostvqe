@@ -6,7 +6,6 @@ import numpy as np
 from qibo.models.variational import VQE
 
 from boostvqe.ansatze import compute_gradients
-from boostvqe.shotnoise import loss_shots
 
 OPTIMIZATION_FILE = "optimization_results.json"
 PARAMS_FILE = "parameters_history.npy"

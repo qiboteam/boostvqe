@@ -1,8 +1,4 @@
-from copy import deepcopy
-
-import numpy as np
 from qibo import gates, hamiltonians
-from qibo.models.dbi.double_bracket import deepcopy
 from qibo.symbols import Z
 
 NITER = 20
