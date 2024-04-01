@@ -6,6 +6,7 @@ import numpy as np
 from qibo.models.variational import VQE
 
 from boostvqe.ansatze import compute_gradients
+from boostvqe.shotnoise import loss_shots
 
 OPTIMIZATION_FILE = "optimization_results.json"
 PARAMS_FILE = "parameters_history.npy"
@@ -58,14 +59,21 @@ def json_load(path: str):
     return json.load(f)
 
 
-# def loss(params, circuit, hamiltonian):
-#     circuit.set_parameters(params)
-#     result = hamiltonian.backend.execute_circuit(circuit)
-#     final_state = result.state()
+def callback_energy_fluctuations(params, circuit, hamiltonian):
+    circ = circuit.copy(deep=True)
+    circ.set_parameters(params)
+    result = hamiltonian.backend.execute_circuit(circ)
+    final_state = result.state()
 
-#     return hamiltonian.expectation(final_state), hamiltonian.energy_fluctuation(
-#         final_state
-#     )
+    return hamiltonian.energy_fluctuation(final_state)
+
+
+def var_loss(params, circuit, hamiltonian):
+    circ = circuit.copy(deep=True)
+    circ.set_parameters(params)
+    result = hamiltonian.backend.execute_circuit(circ)
+    final_state = result.state()
+    return hamiltonian.expectation(final_state)
 
 
 def train_vqe(
@@ -74,9 +82,9 @@ def train_vqe(
     optimizer,
     initial_parameters,
     tol,
+    loss,
     niterations=None,
     nmessage=1,
-    loss=None,
 ):
     """Helper function which trains the VQE according to `circ` and `ham`."""
     params_history, loss_list, fluctuations, hamiltonian_history, grads_history = (
@@ -102,18 +110,23 @@ def train_vqe(
         params_history=params_history,
         hamiltonian_history=hamiltonian_history,
         grads_history=grads_history,
+        loss=loss,
     ):
         """
         Callback function that updates the energy, the energy fluctuations and
         the parameters lists.
         """
         # TODO: Restore energy fluctuations
+        print(loss)
+        if loss is None:
+            loss = var_loss
         energy = loss(params, vqe.circuit, vqe.hamiltonian)
         loss_list.append(float(energy))
-        loss_fluctuation.append(0)
-        # FIXME: loss_fluctuation.append(float(energy_fluctuation))
+        loss_fluctuation.append(
+            callback_energy_fluctuations(params, vqe.circuit, vqe.hamiltonian)
+        )
         params_history.append(params)
-        hamiltonian_history.append(rotate_h_with_vqe(vqe.hamiltonian, vqe))
+        hamiltonian_history.append(0)
         grads_history.append(
             compute_gradients(
                 parameters=params, circuit=circ.copy(deep=True), hamiltonian=ham
@@ -129,10 +142,10 @@ def train_vqe(
             raise StopIteration("Maximum number of iterations reached.")
 
     callbacks(initial_parameters)
-
-    # fix numpy seed to ensure replicability of the experiment
+    if loss is None:
+        loss = var_loss
+        # fix numpy seed to ensure replicability of the experiment
     logging.info("Minimize the energy")
-    print("JJJJJJJ", optimizer)
     try:
         results = vqe.minimize(
             initial_parameters,

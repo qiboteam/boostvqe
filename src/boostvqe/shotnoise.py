@@ -5,6 +5,8 @@ from qibo import gates, hamiltonians
 from qibo.models.dbi.double_bracket import deepcopy
 from qibo.symbols import Z
 
+NITER = 20
+
 
 def loss_shots(
     params,
@@ -14,6 +16,12 @@ def loss_shots(
     nshots,
 ):
     """Train the VQE with the shots, this function is specific to the XXZ Hamiltonian"""
+
+    # Diagonal Hamiltonian to evaluate the expactation value
+    # WARNING: This is not the Hamiltonian that we want to minimize
+    hamiltonian = sum(Z(i) * Z(i + 1) for i in range(circ.nqubits - 1))
+    hamiltonian += Z(0) * Z(circ.nqubits - 1)
+    hamiltonian = hamiltonians.SymbolicHamiltonian(hamiltonian)
     circ.set_parameters(params)
     coefficients = [1, 1, delta]
     mgates = ["X", "Y", "Z"]
@@ -26,7 +34,7 @@ def loss_shots(
         print(circ1.draw())
         print(circ1.unitary().shape)
         result = circ1(nshots=nshots)
-        expectation_value += coefficients[i] * ham.expectation_from_samples(
+        expectation_value += coefficients[i] * hamiltonian.expectation_from_samples(
             result.frequencies()
         )
         print(expectation_value)
