@@ -39,7 +39,7 @@ from boostvqe.utils import (
 )
 
 DEFAULT_DELTA = 0.5
-"""Default `delta` value of XXZ"""
+"""Default `delta` value of XXZ Hamiltonian"""
 
 logging.basicConfig(level=logging.INFO)
 
@@ -126,7 +126,7 @@ def main(args):
             # Initialize DBI
             dbi = DoubleBracketIteration(
                 hamiltonian=new_hamiltonian,
-                mode=DoubleBracketGeneratorType.group_commutator,  # FIXME: Fix with single_commutator
+                mode=DoubleBracketGeneratorType.single_commutator,
             )
 
             energy_h0 = float(dbi.h.expectation(zero_state))
@@ -274,9 +274,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--store_h",
-        type=bool,
-        default=False,
-        help="If true H is stored for each iteration",
+        action=argparse.BooleanOptionalAction,
+        help="H is stored for each iteration",
     )
     parser.add_argument(
         "--hamiltonian",
