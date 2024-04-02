@@ -100,7 +100,6 @@ def train_vqe(
         hamiltonian=ham,
     )
 
-    # import pdb;pdb.set_trace()
     def callbacks(
         params,
         vqe=vqe,
@@ -115,8 +114,6 @@ def train_vqe(
         Callback function that updates the energy, the energy fluctuations and
         the parameters lists.
         """
-        if loss is None:
-            loss = var_loss
         energy = loss(params, vqe.circuit, vqe.hamiltonian)
         loss_list.append(float(energy))
         loss_fluctuation.append(
@@ -139,9 +136,6 @@ def train_vqe(
             raise StopIteration("Maximum number of iterations reached.")
 
     callbacks(initial_parameters)
-    if loss is None:
-        loss = var_loss
-        # fix numpy seed to ensure replicability of the experiment
     logging.info("Minimize the energy")
     try:
         results = vqe.minimize(

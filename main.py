@@ -13,7 +13,6 @@ from qibo.models.dbi.double_bracket import (
     DoubleBracketGeneratorType,
     DoubleBracketIteration,
 )
-from qibo.symbols import Z
 
 # boostvqe's
 from boostvqe.ansatze import build_circuit
@@ -36,6 +35,7 @@ from boostvqe.utils import (
     results_dump,
     rotate_h_with_vqe,
     train_vqe,
+    var_loss,
 )
 
 DEFAULT_DELTA = 0.5
@@ -65,7 +65,7 @@ def main(args):
         )
 
     else:
-        loss = None
+        loss = var_loss
     ham = getattr(hamiltonians, args.hamiltonian)(nqubits=args.nqubits)
     target_energy = float(min(ham.eigenvalues()))
     circ = build_circuit(nqubits=args.nqubits, nlayers=args.nlayers)
@@ -115,7 +115,6 @@ def main(args):
         fluctuations[b] = np.array(partial_fluctuations)
         hamiltonians_history.extend(partial_hamiltonian_history)
         # build new hamiltonian using trained VQE
-        # import pdb; pdb.set_trace()
         if b != args.nboost - 1:
             new_hamiltonian_matrix = rotate_h_with_vqe(
                 hamiltonian=new_hamiltonian, vqe=vqe
