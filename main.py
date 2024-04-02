@@ -144,11 +144,18 @@ def main(args):
             )
             # Update the circuit appending the DBI generator
             # and the old circuit with non trainable circuit
+            dbi_operators_dagger = [
+                ham.backend.cast(np.matrix(ham.backend.to_numpy(operator)).getH())
+                for operator in dbi_operators
+            ]
+
             old_circ_matrix = circ.unitary()
             # Remove measurement gates
             circ.queue.pop()
             # Add the DBI operators and the unitary circuit matrix to the circuit
-            for gate in reversed([old_circ_matrix] + dbi_operators):
+            # We are using the dagger operators because in Qibo the DBI step
+            # is implemented as V*H*V_dagger
+            for gate in reversed([old_circ_matrix] + dbi_operators_dagger):
                 circ.add(gates.Unitary(gate, *range(circ.nqubits), trainable=False))
             circ.add(gates.M(*range(circ.nqubits)))
             hamiltonians_history.extend(dbi_hamiltonians)

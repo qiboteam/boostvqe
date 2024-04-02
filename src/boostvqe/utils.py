@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 from qibo.models.variational import VQE
+from qibolab.sweeper import operator
 
 from boostvqe.ansatze import compute_gradients
 
@@ -193,8 +194,7 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
             )
             # Restore the original logging level
             logging.getLogger().setLevel(logging.INFO)
-        operators.append(dbi.eval_operator(step=step, d=dbi.diagonal_h_matrix))
-        dbi(step=step, d=dbi.diagonal_h_matrix)
+        operators.append(dbi(step=step, d=dbi.diagonal_h_matrix))
         steps.append(step)
         d_matrix.append(np.diag(dbi.diagonal_h_matrix))
         energies.append(dbi.h.expectation(dbi.h.backend.zero_state(dbi.h.nqubits)))

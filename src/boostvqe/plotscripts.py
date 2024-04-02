@@ -54,7 +54,6 @@ def plot_loss(
     """
     fluctuations_vqe = dict(np.load(path / f"{FLUCTUATION_FILE + '.npz'}"))
     loss_vqe = dict(np.load(path / f"{LOSS_FILE + '.npz'}"))
-    # loss_history = np.load(path / LOSS_FILE)
     config = json.loads((path / OPTIMIZATION_FILE).read_text())
     target_energy = config["true_ground_energy"]
     dbi_energies = dict(np.load(path / f"{DBI_ENERGIES + '.npz'}"))
@@ -90,8 +89,6 @@ def plot_loss(
             lw=1.5,
             label="DBI",
         )
-        print(loss_vqe, fluctuations_vqe)
-        # import pdb; pdb.set_trace()
         plt.fill_between(
             np.arange(start, len(loss_vqe[str(i)]) + start),
             loss_vqe[str(i)] - fluctuations_vqe[str(i)],
@@ -185,5 +182,4 @@ def plot_gradients(
     plt.ylabel("Gradients magnitude")
     plt.legend()
     if save:
-        print(title, path)
         plt.savefig(f"{path}/grads_{title}.pdf", bbox_inches="tight")
