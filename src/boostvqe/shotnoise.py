@@ -14,7 +14,6 @@ def loss_shots(
     """Train the VQE with the shots, this function is specific to the XXZ Hamiltonian"""
 
     # Diagonal Hamiltonian to evaluate the expactation value
-    # WARNING: This is not the Hamiltonian that we want to minimize
     hamiltonian = sum(Z(i) * Z(i + 1) for i in range(circ.nqubits - 1))
     hamiltonian += Z(0) * Z(circ.nqubits - 1)
     hamiltonian = hamiltonians.SymbolicHamiltonian(hamiltonian)
@@ -24,7 +23,7 @@ def loss_shots(
     expectation_value = 0
     for i, mgate in enumerate(mgates):
         circ1 = circ.copy(deep=True)
-        if mgate != "Z":  # FIXME: Bug in Qibo
+        if mgate != "Z":
             circ1.queue.pop()
             circ1.add(gates.M(*range(circ1.nqubits), basis=getattr(gates, mgate)))
         result = circ1(nshots=nshots)

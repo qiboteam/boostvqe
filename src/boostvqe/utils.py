@@ -59,6 +59,7 @@ def json_load(path: str):
 
 
 def callback_energy_fluctuations(params, circuit, hamiltonian):
+    """Evaluate the energy fluctuations"""
     circ = circuit.copy(deep=True)
     circ.set_parameters(params)
     result = hamiltonian.backend.execute_circuit(circ)
@@ -68,6 +69,10 @@ def callback_energy_fluctuations(params, circuit, hamiltonian):
 
 
 def var_loss(params, circuit, hamiltonian):
+    """
+    Evaluate the hamiltonian expectation values of the
+    circuit final state.
+    """
     circ = circuit.copy(deep=True)
     circ.set_parameters(params)
     result = hamiltonian.backend.execute_circuit(circ)

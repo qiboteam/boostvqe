@@ -63,9 +63,9 @@ def main(args):
         loss = lambda params, circ, _ham: loss_shots(
             params, circ, _ham, delta=DEFAULT_DELTA, nshots=args.nshots
         )
-
     else:
         loss = var_loss
+
     ham = getattr(hamiltonians, args.hamiltonian)(nqubits=args.nqubits)
     target_energy = float(min(ham.eigenvalues()))
     circ = build_circuit(nqubits=args.nqubits, nlayers=args.nlayers)
@@ -100,7 +100,7 @@ def main(args):
             vqe,
         ) = train_vqe(
             circ,
-            ham,
+            ham,  # Fixed hamiltonian
             args.optimizer,
             initial_parameters,
             args.tol,
@@ -147,6 +147,7 @@ def main(args):
             old_circ_matrix = circ.unitary()
             # Remove measurement gates
             circ.queue.pop()
+            # Add the DBI operators and the unitary circuit matrix to the circuit
             for gate in reversed([old_circ_matrix] + dbi_operators):
                 circ.add(gates.Unitary(gate, *range(circ.nqubits), trainable=False))
             circ.add(gates.M(*range(circ.nqubits)))
