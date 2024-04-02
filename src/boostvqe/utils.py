@@ -149,7 +149,7 @@ def train_vqe(
             method=optimizer,
             callback=callbacks,
             tol=tol,
-            _loss=loss,
+            loss_func=loss,
         )
 
     except StopIteration as e:
