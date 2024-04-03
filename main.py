@@ -151,13 +151,11 @@ def main(args):
 
             old_circ_matrix = circ.unitary()
             # Remove measurement gates
-            circ.queue.pop()
             # Add the DBI operators and the unitary circuit matrix to the circuit
             # We are using the dagger operators because in Qibo the DBI step
             # is implemented as V*H*V_dagger
             for gate in reversed([old_circ_matrix] + dbi_operators_dagger):
                 circ.add(gates.Unitary(gate, *range(circ.nqubits), trainable=False))
-            circ.add(gates.M(*range(circ.nqubits)))
             hamiltonians_history.extend(dbi_hamiltonians)
             # append dbi results
             dbi_fluctuations.insert(0, fluctuations_h0)

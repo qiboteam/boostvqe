@@ -24,8 +24,9 @@ def loss_shots(
     for i, mgate in enumerate(mgates):
         circ1 = circ.copy(deep=True)
         if mgate != "Z":
-            circ1.queue.pop()
             circ1.add(gates.M(*range(circ1.nqubits), basis=getattr(gates, mgate)))
+        else:
+            circ1.add(gates.M(*range(circ1.nqubits)))
         result = circ1(nshots=nshots)
         expectation_value += coefficients[i] * hamiltonian.expectation_from_samples(
             result.frequencies()
