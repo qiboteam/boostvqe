@@ -69,7 +69,7 @@ def callback_energy_fluctuations(params, circuit, hamiltonian):
     return hamiltonian.energy_fluctuation(final_state)
 
 
-def var_loss(params, circuit, hamiltonian):
+def vqe_loss(params, circuit, hamiltonian):
     """
     Evaluate the hamiltonian expectation values of the
     circuit final state.

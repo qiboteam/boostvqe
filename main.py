@@ -35,7 +35,7 @@ from boostvqe.utils import (
     results_dump,
     rotate_h_with_vqe,
     train_vqe,
-    var_loss,
+    vqe_loss,
 )
 
 DEFAULT_DELTA = 0.5
@@ -64,7 +64,7 @@ def main(args):
             params, circ, _ham, delta=DEFAULT_DELTA, nshots=args.nshots
         )
     else:
-        loss = var_loss
+        loss = vqe_loss
 
     ham = getattr(hamiltonians, args.hamiltonian)(nqubits=args.nqubits)
     target_energy = float(min(ham.eigenvalues()))
