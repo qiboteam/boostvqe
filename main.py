@@ -97,7 +97,6 @@ def main(args):
             partial_loss_history,
             partial_grads_history,
             partial_fluctuations,
-            partial_hamiltonian_history,
             vqe,
         ) = train_vqe(
             circ,
@@ -114,13 +113,13 @@ def main(args):
         loss_history[b] = np.array(partial_loss_history)
         grads_history[b] = np.array(partial_grads_history)
         fluctuations[b] = np.array(partial_fluctuations)
-        hamiltonians_history.extend(partial_hamiltonian_history)
         # build new hamiltonian using trained VQE
         if b != args.nboost - 1:
             new_hamiltonian_matrix = rotate_h_with_vqe(hamiltonian=ham, vqe=vqe)
             new_hamiltonian = hamiltonians.Hamiltonian(
                 args.nqubits, matrix=new_hamiltonian_matrix
             )
+            hamiltonians_history.extend(new_hamiltonian_matrix)
             # Initialize DBI
             dbi = DoubleBracketIteration(
                 hamiltonian=new_hamiltonian,

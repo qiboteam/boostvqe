@@ -112,7 +112,6 @@ def train_vqe(
         loss_list=loss_list,
         loss_fluctuation=fluctuations,
         params_history=params_history,
-        hamiltonian_history=hamiltonian_history,
         grads_history=grads_history,
         loss=loss,
     ):
@@ -126,7 +125,6 @@ def train_vqe(
             callback_energy_fluctuations(params, vqe.circuit, vqe.hamiltonian)
         )
         params_history.append(params)
-        hamiltonian_history.append(0)
         grads_history.append(
             compute_gradients(
                 parameters=params, circuit=circ.copy(deep=True), hamiltonian=ham
@@ -161,7 +159,6 @@ def train_vqe(
         loss_list,
         grads_history,
         fluctuations,
-        hamiltonian_history,
         vqe,
     )
 
