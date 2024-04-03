@@ -68,7 +68,8 @@ def main(args):
 
     ham = getattr(hamiltonians, args.hamiltonian)(nqubits=args.nqubits)
     target_energy = float(min(ham.eigenvalues()))
-    circ = build_circuit(nqubits=args.nqubits, nlayers=args.nlayers)
+    circ0 = build_circuit(nqubits=args.nqubits, nlayers=args.nlayers)
+    circ = circ0.copy(deep=True)
     backend = ham.backend
     zero_state = backend.zero_state(args.nqubits)
 
@@ -116,9 +117,7 @@ def main(args):
         hamiltonians_history.extend(partial_hamiltonian_history)
         # build new hamiltonian using trained VQE
         if b != args.nboost - 1:
-            new_hamiltonian_matrix = rotate_h_with_vqe(
-                hamiltonian=new_hamiltonian, vqe=vqe
-            )
+            new_hamiltonian_matrix = rotate_h_with_vqe(hamiltonian=ham, vqe=vqe)
             new_hamiltonian = hamiltonians.Hamiltonian(
                 args.nqubits, matrix=new_hamiltonian_matrix
             )
@@ -154,8 +153,10 @@ def main(args):
             # Add the DBI operators and the unitary circuit matrix to the circuit
             # We are using the dagger operators because in Qibo the DBI step
             # is implemented as V*H*V_dagger
+            circ = circ0.copy(deep=True)
             for gate in reversed([old_circ_matrix] + dbi_operators_dagger):
                 circ.add(gates.Unitary(gate, *range(circ.nqubits), trainable=False))
+            print(circ.draw())
             hamiltonians_history.extend(dbi_hamiltonians)
             # append dbi results
             dbi_fluctuations.insert(0, fluctuations_h0)
