@@ -44,7 +44,7 @@ def create_folder(path: str) -> Path:
 
 
 def results_dump(path: str, results: np.array, output_dict: dict):
-    """Duno"""
+    """Dump"""
     np.save(file=f"{path}/{PARAMS_FILE}", arr=results)
     json_file = Path(f"{path}/{OPTIMIZATION_FILE}")
     dump_json(json_file, output_dict)
