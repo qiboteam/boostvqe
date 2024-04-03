@@ -156,7 +156,6 @@ def main(args):
             circ = circ0.copy(deep=True)
             for gate in reversed([old_circ_matrix] + dbi_operators_dagger):
                 circ.add(gates.Unitary(gate, *range(circ.nqubits), trainable=False))
-            print(circ.draw())
             hamiltonians_history.extend(dbi_hamiltonians)
             # append dbi results
             dbi_fluctuations.insert(0, fluctuations_h0)
