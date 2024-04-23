@@ -126,8 +126,9 @@ def main(args):
                 mode=DoubleBracketGeneratorType.single_commutator,
             )
 
-            energy_h0 = float(dbi.h.expectation(zero_state))
-            fluctuations_h0 = float(dbi.h.energy_fluctuation(zero_state))
+            zero_state_t = np.transpose([zero_state])
+            energy_h0 = float(dbi.h.expectation(np.array(zero_state_t)))
+            fluctuations_h0 = float(dbi.h.energy_fluctuation(zero_state_t))
 
             # apply DBI
             (
