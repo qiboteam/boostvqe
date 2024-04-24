@@ -174,7 +174,7 @@ def main(args):
         {
             "best_loss": float(opt_results.fun),
             "true_ground_energy": target_energy,
-            "success": opt_results.success,
+            "success": bool(opt_results.success),
             "message": opt_results.message,
             "energy": float(vqe.hamiltonian.expectation(zero_state)),
             "fluctuations": float(vqe.hamiltonian.energy_fluctuation(zero_state)),
