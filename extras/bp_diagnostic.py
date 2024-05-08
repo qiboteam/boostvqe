@@ -1,33 +1,39 @@
-import matplotlib.pyplot as plt
+import logging
+import os
+
 import numpy as np
 import qibo
-import tqdm
 from qibo import hamiltonians
 
 from boostvqe.ansatze import build_circuit, compute_gradients
 
 qibo.set_backend("numpy")
+logging.basicConfig(level=logging.INFO)
 
-NL = 60
-NQ = 5
+NL = 10
+NQ = 4
 J = 2
 
 qubits = np.arange(2, NQ, 1)
-layers = np.arange(2, NL, 5)
+layers = np.arange(2, NL, 2)
 
 NRUNS = 50
+
+if not os.path.exists("./gradients"):
+    # Create the directory since it does not exist
+    os.makedirs("./gradients")
 
 grads_vars = np.zeros((len(layers), len(qubits)))
 
 for i, l in enumerate(layers):
     for j, q in enumerate(qubits):
         # initialize model and hamiltonian
-        print(f"Running with {q} qubits and {l} layers")
+        logging.info(f"Running with {q} qubits and {l} layers")
         c = build_circuit(int(q), int(l))
         h = hamiltonians.TFIM(nqubits=int(q), h=q)
 
         gradients = []
-        for n in tqdm.tqdm(range(NRUNS)):
+        for n in range(NRUNS):
             p = np.random.uniform(-np.pi, np.pi, len(c.get_parameters()))
             gradients.append(
                 np.real(compute_gradients(parameters=p, circuit=c, hamiltonian=h))
