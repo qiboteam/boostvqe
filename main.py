@@ -7,7 +7,7 @@ import numpy as np
 
 # qibo's
 import qibo
-from qibo import hamiltonians
+from qibo import gates, hamiltonians
 from qibo.backends import GlobalBackend
 from qibo.models.dbi.double_bracket import (
     DoubleBracketGeneratorType,
@@ -17,6 +17,7 @@ from qibo.models.dbi.double_bracket import (
 # boostvqe's
 from boostvqe.ansatze import build_circuit
 from boostvqe.plotscripts import plot_gradients, plot_loss
+from boostvqe.shotnoise import loss_shots
 from boostvqe.utils import (
     DBI_D_MATRIX,
     DBI_ENERGIES,
@@ -34,7 +35,11 @@ from boostvqe.utils import (
     results_dump,
     rotate_h_with_vqe,
     train_vqe,
+    vqe_loss,
 )
+
+DEFAULT_DELTA = 0.5
+"""Default `delta` value of XXZ Hamiltonian"""
 
 logging.basicConfig(level=logging.INFO)
 
@@ -54,14 +59,19 @@ def main(args):
     logging.info("Set VQE")
     path = pathlib.Path(create_folder(generate_path(args)))
     # build hamiltonian and variational quantum circuit
+    if args.shot_train:
+        loss = lambda params, circ, _ham: loss_shots(
+            params, circ, _ham, delta=DEFAULT_DELTA, nshots=args.nshots
+        )
+    else:
+        loss = vqe_loss
+
     ham = getattr(hamiltonians, args.hamiltonian)(nqubits=args.nqubits)
     target_energy = float(min(ham.eigenvalues()))
-    circ = build_circuit(nqubits=args.nqubits, nlayers=args.nlayers)
+    circ0 = build_circuit(nqubits=args.nqubits, nlayers=args.nlayers)
+    circ = circ0.copy(deep=True)
     backend = ham.backend
     zero_state = backend.zero_state(args.nqubits)
-
-    # print the circuit
-    # logging.info("\n" + circ.draw())
 
     # fix numpy seed to ensure replicability of the experiment
     np.random.seed(SEED)
@@ -87,40 +97,38 @@ def main(args):
             partial_loss_history,
             partial_grads_history,
             partial_fluctuations,
-            partial_hamiltonian_history,
             vqe,
         ) = train_vqe(
             circ,
-            new_hamiltonian,
+            ham,  # Fixed hamiltonian
             args.optimizer,
             initial_parameters,
             args.tol,
             niterations=args.boost_frequency,
             nmessage=1,
+            loss=loss,
         )
         # append results to global lists
         params_history[b] = np.array(partial_params_history)
         loss_history[b] = np.array(partial_loss_history)
         grads_history[b] = np.array(partial_grads_history)
         fluctuations[b] = np.array(partial_fluctuations)
-        hamiltonians_history.extend(partial_hamiltonian_history)
         # build new hamiltonian using trained VQE
         if b != args.nboost - 1:
-            new_hamiltonian_matrix = rotate_h_with_vqe(
-                hamiltonian=new_hamiltonian, vqe=vqe
-            )
+            new_hamiltonian_matrix = rotate_h_with_vqe(hamiltonian=ham, vqe=vqe)
             new_hamiltonian = hamiltonians.Hamiltonian(
                 args.nqubits, matrix=new_hamiltonian_matrix
             )
-
+            hamiltonians_history.extend(new_hamiltonian_matrix)
             # Initialize DBI
             dbi = DoubleBracketIteration(
                 hamiltonian=new_hamiltonian,
                 mode=DoubleBracketGeneratorType.single_commutator,
             )
 
-            energy_h0 = float(dbi.h.expectation(zero_state))
-            fluctuations_h0 = float(dbi.h.energy_fluctuation(zero_state))
+            zero_state_t = np.transpose([zero_state])
+            energy_h0 = float(dbi.h.expectation(np.array(zero_state_t)))
+            fluctuations_h0 = float(dbi.h.energy_fluctuation(zero_state_t))
 
             # apply DBI
             (
@@ -129,9 +137,25 @@ def main(args):
                 dbi_fluctuations,
                 dbi_steps,
                 dbi_d_matrix,
+                dbi_operators,
             ) = apply_dbi_steps(
                 dbi=dbi, nsteps=args.dbi_steps, optimize_step=args.optimize_dbi_step
             )
+            # Update the circuit appending the DBI generator
+            # and the old circuit with non trainable circuit
+            dbi_operators = [
+                ham.backend.cast(np.matrix(ham.backend.to_numpy(operator)))
+                for operator in dbi_operators
+            ]
+
+            old_circ_matrix = circ.unitary()
+            # Remove measurement gates
+            # Add the DBI operators and the unitary circuit matrix to the circuit
+            # We are using the dagger operators because in Qibo the DBI step
+            # is implemented as V*H*V_dagger
+            circ = circ0.copy(deep=True)
+            for gate in reversed([old_circ_matrix] + dbi_operators):
+                circ.add(gates.Unitary(gate, *range(circ.nqubits), trainable=False))
             hamiltonians_history.extend(dbi_hamiltonians)
             # append dbi results
             dbi_fluctuations.insert(0, fluctuations_h0)
@@ -140,8 +164,9 @@ def main(args):
             boost_energies[b] = np.array(dbi_energies)
             boost_steps[b] = np.array(dbi_steps)
             boost_d_matrix[b] = np.array(dbi_d_matrix)
-            vqe.hamiltonian = dbi_hamiltonians[-1]
             initial_parameters = np.zeros(len(initial_parameters))
+            circ.set_parameters(initial_parameters)
+
     opt_results = partial_results[2]
     # save final results
     output_dict = vars(args)
@@ -149,7 +174,7 @@ def main(args):
         {
             "best_loss": float(opt_results.fun),
             "true_ground_energy": target_energy,
-            "success": opt_results.success,
+            "success": bool(opt_results.success),
             "message": opt_results.message,
             "energy": float(vqe.hamiltonian.expectation(zero_state)),
             "fluctuations": float(vqe.hamiltonian.energy_fluctuation(zero_state)),
@@ -254,9 +279,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--store_h",
-        type=bool,
-        default=False,
-        help="If true H is stored for each iteration",
+        action=argparse.BooleanOptionalAction,
+        help="H is stored for each iteration",
     )
     parser.add_argument(
         "--hamiltonian",
@@ -269,6 +293,17 @@ if __name__ == "__main__":
         type=str,
         default=SEED,
         help="Random seed",
+    )
+    parser.add_argument(
+        "--shot_train",
+        action=argparse.BooleanOptionalAction,
+        help="If True the Hamiltonian expactation value is evaluate with the shots, otherwise with the state vector",
+    )
+    parser.add_argument(
+        "--nshots",
+        type=int,
+        default=10000,
+        help="number of shots",
     )
     args = parser.parse_args()
     main(args)

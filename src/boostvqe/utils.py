@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 from qibo.models.variational import VQE
+from qibolab.sweeper import operator
 
 from boostvqe.ansatze import compute_gradients
 
@@ -43,7 +44,7 @@ def create_folder(path: str) -> Path:
 
 
 def results_dump(path: str, results: np.array, output_dict: dict):
-    """Duno"""
+    """Dump"""
     np.save(file=f"{path}/{PARAMS_FILE}", arr=results)
     json_file = Path(f"{path}/{OPTIMIZATION_FILE}")
     dump_json(json_file, output_dict)
@@ -58,18 +59,37 @@ def json_load(path: str):
     return json.load(f)
 
 
-def loss(params, circuit, hamiltonian):
-    circuit.set_parameters(params)
-    result = hamiltonian.backend.execute_circuit(circuit)
+def callback_energy_fluctuations(params, circuit, hamiltonian):
+    """Evaluate the energy fluctuations"""
+    circ = circuit.copy(deep=True)
+    circ.set_parameters(params)
+    result = hamiltonian.backend.execute_circuit(circ)
     final_state = result.state()
 
-    return hamiltonian.expectation(final_state), hamiltonian.energy_fluctuation(
-        final_state
-    )
+    return hamiltonian.energy_fluctuation(final_state)
+
+
+def vqe_loss(params, circuit, hamiltonian):
+    """
+    Evaluate the hamiltonian expectation values of the
+    circuit final state.
+    """
+    circ = circuit.copy(deep=True)
+    circ.set_parameters(params)
+    result = hamiltonian.backend.execute_circuit(circ)
+    final_state = result.state()
+    return hamiltonian.expectation(final_state)
 
 
 def train_vqe(
-    circ, ham, optimizer, initial_parameters, tol, niterations=None, nmessage=1
+    circ,
+    ham,
+    optimizer,
+    initial_parameters,
+    tol,
+    loss,
+    niterations=None,
+    nmessage=1,
 ):
     """Helper function which trains the VQE according to `circ` and `ham`."""
     params_history, loss_list, fluctuations, hamiltonian_history, grads_history = (
@@ -92,21 +112,23 @@ def train_vqe(
         loss_list=loss_list,
         loss_fluctuation=fluctuations,
         params_history=params_history,
-        hamiltonian_history=hamiltonian_history,
         grads_history=grads_history,
+        loss=loss,
     ):
         """
         Callback function that updates the energy, the energy fluctuations and
         the parameters lists.
         """
-
-        energy, energy_fluctuation = loss(params, vqe.circuit, vqe.hamiltonian)
+        energy = loss(params, vqe.circuit, vqe.hamiltonian)
         loss_list.append(float(energy))
-        loss_fluctuation.append(float(energy_fluctuation))
+        loss_fluctuation.append(
+            callback_energy_fluctuations(params, vqe.circuit, vqe.hamiltonian)
+        )
         params_history.append(params)
-        hamiltonian_history.append(rotate_h_with_vqe(vqe.hamiltonian, vqe))
         grads_history.append(
-            compute_gradients(parameters=params, circuit=circ, hamiltonian=ham)
+            compute_gradients(
+                parameters=params, circuit=circ.copy(deep=True), hamiltonian=ham
+            )
         )
 
         iteration_count = len(loss_list)
@@ -118,17 +140,16 @@ def train_vqe(
             raise StopIteration("Maximum number of iterations reached.")
 
     callbacks(initial_parameters)
-
-    # fix numpy seed to ensure replicability of the experiment
     logging.info("Minimize the energy")
-
     try:
         results = vqe.minimize(
             initial_parameters,
             method=optimizer,
             callback=callbacks,
             tol=tol,
+            loss_func=loss,
         )
+
     except StopIteration as e:
         logging.info(str(e))
 
@@ -138,7 +159,6 @@ def train_vqe(
         loss_list,
         grads_history,
         fluctuations,
-        hamiltonian_history,
         vqe,
     )
 
@@ -161,6 +181,7 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
     step = stepsize
     energies, fluctuations, hamiltonians, steps, d_matrix = [], [], [], [], []
     logging.info(f"Applying {nsteps} steps of DBI to the given hamiltonian.")
+    operators = []
     for _ in range(nsteps):
         if optimize_step:
             # Change logging level to reduce verbosity
@@ -170,12 +191,12 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
             )
             # Restore the original logging level
             logging.getLogger().setLevel(logging.INFO)
-        dbi(step=step, d=dbi.diagonal_h_matrix)
+        operators.append(dbi(step=step, d=dbi.diagonal_h_matrix))
         steps.append(step)
         d_matrix.append(np.diag(dbi.diagonal_h_matrix))
-        energies.append(dbi.h.expectation(dbi.h.backend.zero_state(dbi.h.nqubits)))
-        fluctuations.append(
-            dbi.energy_fluctuation(dbi.h.backend.zero_state(dbi.h.nqubits))
-        )
+        zero_state = np.transpose([dbi.h.backend.zero_state(dbi.h.nqubits)])
+
+        energies.append(dbi.h.expectation(zero_state))
+        fluctuations.append(dbi.energy_fluctuation(zero_state))
         hamiltonians.append(dbi.h.matrix)
-    return hamiltonians, energies, fluctuations, steps, d_matrix
+    return hamiltonians, energies, fluctuations, steps, d_matrix, operators

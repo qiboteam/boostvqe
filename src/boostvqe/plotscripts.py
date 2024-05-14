@@ -54,7 +54,6 @@ def plot_loss(
     """
     fluctuations_vqe = dict(np.load(path / f"{FLUCTUATION_FILE + '.npz'}"))
     loss_vqe = dict(np.load(path / f"{LOSS_FILE + '.npz'}"))
-    # loss_history = np.load(path / LOSS_FILE)
     config = json.loads((path / OPTIMIZATION_FILE).read_text())
     target_energy = config["true_ground_energy"]
     dbi_energies = dict(np.load(path / f"{DBI_ENERGIES + '.npz'}"))
@@ -146,38 +145,42 @@ def plot_gradients(
     grads = dict(np.load(path / f"{GRADS_FILE + '.npz'}"))
     config = json.loads((path / OPTIMIZATION_FILE).read_text())
     ave_grads = []
+    dbi_steps = config["dbi_steps"]
+    iterations = []
     for epoch in grads:
+        len_iterations = len(iterations)
+        iterations.extend(
+            [
+                i + int(epoch) * (dbi_steps - 1) + len_iterations
+                for i in range(len(grads[epoch]))
+            ]
+        )
         for grads_list in grads[epoch]:
             ave_grads.append(np.mean(np.abs(grads_list)))
-
     plt.figure(figsize=(10 * width, 10 * width * 6 / 8))
     plt.title(title)
     plt.plot(
-        np.arange(1, len(ave_grads) + 1, 1),
+        iterations,
         ave_grads,
         color=BLUE,
         lw=1.5,
         label=r"$\langle |\partial_{\theta_i}\text{L}| \rangle_i$",
     )
+
+    boost_x = 0
     for b in range(config["nboost"] - 1):
-        boost_x = len(grads[str(b)]) * (b + 1)
+        boost_x += len(grads[str(b)])
+        label = None
         if b == 0:
-            plt.plot(
-                (boost_x, boost_x + 1),
-                (ave_grads[boost_x - 1], ave_grads[boost_x]),
-                color=RED,
-                lw=1.5,
-                alpha=1,
-                label="Step after DBI",
-            )
-        else:
-            plt.plot(
-                (boost_x, boost_x + 1),
-                (ave_grads[boost_x - 1], ave_grads[boost_x]),
-                color=RED,
-                lw=1.6,
-                alpha=1,
-            )
+            label = "Step after DBI"
+        plt.plot(
+            (boost_x + b * (dbi_steps - 1) - 1, boost_x + (b + 1) * (dbi_steps - 1)),
+            (ave_grads[boost_x - 1], ave_grads[boost_x]),
+            color=RED,
+            lw=1.6,
+            alpha=1,
+            label=label,
+        )
     plt.yscale("log")
     plt.xlabel("Iterations")
     plt.ylabel("Gradients magnitude")
