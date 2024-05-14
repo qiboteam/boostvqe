@@ -4,7 +4,6 @@ from pathlib import Path
 
 import numpy as np
 from qibo.models.variational import VQE
-from qibolab.sweeper import operator
 
 from boostvqe.ansatze import compute_gradients
 
