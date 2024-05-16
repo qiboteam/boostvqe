@@ -1,3 +1,6 @@
 #!/bin/bash
+#SBATCH --job-name=bvqe5q20l
+#SBATCH --output=boostvqe5_20l_Powell.out
 
-python main.py --nqubits 11 --nlayers 1 --optimizer Powell --output_folder results --backend numpy  --boost_frequency 10 --nboost 2 --dbi_steps 2
+
+python main.py --nqubits 5 --seed 4242 --nlayers 4 --optimizer Powell --output_folder proper_simulation --backend numpy  --boost_frequency 100
