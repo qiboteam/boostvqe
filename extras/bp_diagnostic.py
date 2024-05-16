@@ -7,15 +7,15 @@ from qibo import hamiltonians
 
 from boostvqe.ansatze import build_circuit, compute_gradients
 
-qibo.set_backend("numpy")
+qibo.set_backend(backend="qibojit", platform="cupy")
 logging.basicConfig(level=logging.INFO)
 
-NL = 10
-NQ = 4
+NL = 100
+NQ = 21
 J = 2
 
-qubits = np.arange(2, NQ, 1)
-layers = np.arange(2, NL, 2)
+qubits = np.arange(2, NQ, 2)
+layers = np.arange(2, NL, 5)
 
 NRUNS = 50
 
