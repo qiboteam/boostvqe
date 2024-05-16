@@ -28,7 +28,7 @@ def compute_gradients(parameters, circuit, hamiltonian):
 
     """
     tf_backend = construct_backend("tensorflow")
-    parameters = tf_backend.tf.Variable(parameters, dtype=tf_backend.tf.complex128)
+    parameters = tf_backend.tf.Variable(parameters, dtype=tf_backend.tf.float64)
 
     with tf_backend.tf.GradientTape() as tape:
         circuit.set_parameters(parameters)

@@ -58,13 +58,6 @@ def main(args):
     # setup the results folder
     logging.info("Set VQE")
     path = pathlib.Path(create_folder(generate_path(args)))
-    # build hamiltonian and variational quantum circuit
-    if args.shot_train:
-        loss = lambda params, circ, _ham: loss_shots(
-            params, circ, _ham, delta=DEFAULT_DELTA, nshots=args.nshots
-        )
-    else:
-        loss = vqe_loss
 
     ham = getattr(hamiltonians, args.hamiltonian)(nqubits=args.nqubits)
     target_energy = float(min(ham.eigenvalues()))
@@ -73,8 +66,16 @@ def main(args):
     backend = ham.backend
     zero_state = backend.zero_state(args.nqubits)
 
+    # build hamiltonian and variational quantum circuit
+    if args.shot_train:
+        loss = lambda params, circ, _ham: loss_shots(
+            params, circ, _ham, delta=DEFAULT_DELTA, nshots=args.nshots
+        )
+    else:
+        loss = vqe_loss
+
     # fix numpy seed to ensure replicability of the experiment
-    np.random.seed(SEED)
+    np.random.seed(int(args.seed))
     initial_parameters = np.random.uniform(-np.pi, np.pi, len(circ.get_parameters()))
 
     # vqe lists
