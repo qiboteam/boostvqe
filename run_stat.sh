@@ -1,21 +1,34 @@
 #!/bin/bash
-#SBATCH --job-name=nruns.log
-#SBATCH --output=boostvqe5_20l_Powell.out
+#SBATCH --job-name=boostvqe_exact
+#SBATCH --output=boostvqe_exact.log
 
 OPTIMIZER="Powell"
-TOL=0.0001
-NSHOTS=10000
+TOL=0.00001
+# NSHOTS=5000
 BOOST_FREQUENCY=100
-DBI_STEPS=1
+DBI_STEPS=2
 
 
-for NQUBITS in 4 5; do
-    for NLAYERS in 1 2; do
-        for i in $(seq 1 25 101); do
+# for NQUBITS in $(seq 6 1 11); do
+#     for NLAYERS in $(seq 1 1 10); do
+#         for i in $(seq 1 5 101); do
+#             SEED=$i
+#             python main.py --nqubits $NQUBITS --nlayers $NLAYERS --optimizer $OPTIMIZER \
+#                            --output_folder results/shots_run1 --backend numpy --tol $TOL \
+#                            --dbi_step $DBI_STEPS --shot_train --nshots $NSHOTS --seed $SEED \
+#                            --boost_frequency $BOOST_FREQUENCY
+#         done
+#     done
+# done
+
+
+for NQUBITS in $(seq 6 1 11); do
+    for NLAYERS in $(seq 1 1 10); do
+        for i in $(seq 1 5 101); do
             SEED=$i
             python main.py --nqubits $NQUBITS --nlayers $NLAYERS --optimizer $OPTIMIZER \
-                           --output_folder results/shots --backend numpy --tol $TOL \
-                           --dbi_step $DBI_STEPS --shot_train --nshots $NSHOTS --seed $SEED \
+                           --output_folder results/exact_run1 --backend numpy --tol $TOL \
+                           --dbi_step $DBI_STEPS --seed $SEED \
                            --boost_frequency $BOOST_FREQUENCY
         done
     done
