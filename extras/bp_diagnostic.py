@@ -7,11 +7,11 @@ from qibo import hamiltonians
 
 from boostvqe.ansatze import build_circuit, compute_gradients
 
-qibo.set_backend(backend="qibojit", platform="cupy")
+qibo.set_backend("numpy")
 logging.basicConfig(level=logging.INFO)
 
 NL = 100
-NQ = 21
+NQ = 17
 J = 2
 
 qubits = np.arange(2, NQ, 2)
@@ -25,12 +25,12 @@ if not os.path.exists("./gradients"):
 
 grads_vars = np.zeros((len(layers), len(qubits)))
 
-for i, l in enumerate(layers):
-    for j, q in enumerate(qubits):
+for j, q in enumerate(qubits):
+    for i, l in enumerate(layers):
         # initialize model and hamiltonian
         logging.info(f"Running with {q} qubits and {l} layers")
         c = build_circuit(int(q), int(l))
-        h = hamiltonians.TFIM(nqubits=int(q), h=q)
+        h = hamiltonians.XXZ(nqubits=int(q), delta=0.5)
 
         gradients = []
         for n in range(NRUNS):
@@ -40,6 +40,3 @@ for i, l in enumerate(layers):
             )
 
         np.save(file=f"gradients/grads_l{l}_q{q}", arr=gradients)
-        grads_vars[i][j] = np.var(gradients, axis=0)[J]
-
-np.save(file="gradients_vars", arr=grads_vars)
