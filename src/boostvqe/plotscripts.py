@@ -1,3 +1,4 @@
+import os
 import json
 
 import matplotlib.pyplot as plt
@@ -187,3 +188,31 @@ def plot_gradients(
     plt.legend()
     if save:
         plt.savefig(f"{path}/grads_{title}.pdf", bbox_inches="tight")
+
+
+def plot_nruns_result(
+    path,
+    training_specs,
+    title="",
+    save=True,
+    width=0.5,
+):
+    
+    losses = []
+
+    for f in os.listdir(path):
+        if training_specs in f:
+            losses.append(np.load(path + "/" + f))
+    
+    losses = np.array(losses)
+    means = np.mean(losses, axis=0)
+    stds = np.std(losses, axis=0)
+
+    plt.figure(figsize=(10 * width, 10 * width * 6 / 8))
+    plt.plot(means, color=BLUE)
+    plt.fill_between(means - stds, means + stds, alpha=0.3, color=BLUE)
+    plt.title(title)
+    plt.xlabel("Iteration")
+    plt.ylabel(r"$\langle L \rangle$")
+    if save:
+        plt.savefig("runs.png")
