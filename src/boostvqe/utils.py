@@ -89,9 +89,10 @@ def train_vqe(
     loss,
     niterations=None,
     nmessage=1,
+    accuracy=None,
 ):
     """Helper function which trains the VQE according to `circ` and `ham`."""
-    params_history, loss_list, fluctuations, hamiltonian_history, grads_history = (
+    params_history, loss_list, fluctuations, results_history, grads_history = (
         [],
         [],
         [],
@@ -104,6 +105,8 @@ def train_vqe(
         circuit=circ,
         hamiltonian=ham,
     )
+
+    target_energy = float(np.min(ham.eigenvalues()))
 
     def callbacks(
         params,
@@ -137,9 +140,14 @@ def train_vqe(
 
         if iteration_count >= niterations:
             raise StopIteration("Maximum number of iterations reached.")
-
+    
+        if accuracy is not None:
+            if np.abs(np.min(loss_list) - target_energy) <= accuracy:
+                raise StopIteration("Target accuracy reached.")
+            
     callbacks(initial_parameters)
     logging.info("Minimize the energy")
+
     try:
         results = vqe.minimize(
             initial_parameters,
@@ -151,6 +159,7 @@ def train_vqe(
 
     except StopIteration as e:
         logging.info(str(e))
+        results = []
 
     return (
         results,

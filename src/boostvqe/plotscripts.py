@@ -13,11 +13,11 @@ from boostvqe.utils import (
     OPTIMIZATION_FILE,
 )
 
-RED = "#f54242"
+RED = "#F05F51"
 YELLOW = "#edd51a"
 GREEN = "#2db350"
 PURPLE = "#587ADB"
-BLUE = "#4287f5"
+BLUE = "#5D51F0"
 
 LINE_STYLES = ["--", "-", "-.", ":"]
 
@@ -116,12 +116,12 @@ def plot_loss(
     )
     plt.hlines(
         target_energy,
-        1,
+        0,
         max_length,
         color="black",
         lw=1,
         label="Target energy",
-        ls="--",
+        ls="-",
     )
     plt.xlabel("Iterations")
     plt.ylabel("Loss")

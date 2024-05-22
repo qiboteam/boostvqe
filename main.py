@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import pathlib
+from typing import Optional
 
 import numpy as np
 
@@ -47,6 +48,12 @@ logging.basicConfig(level=logging.INFO)
 def main(args):
     """VQE training."""
     # set backend and number of classical threads
+
+    accuracy = args.accuracy
+
+    if accuracy == 0.0:
+        accuracy = None
+
     if args.platform is not None:
         qibo.set_backend(backend=args.backend, platform=args.platform)
     else:
@@ -108,6 +115,7 @@ def main(args):
             niterations=args.boost_frequency,
             nmessage=1,
             loss=loss,
+            accuracy=accuracy,
         )
         # append results to global lists
         params_history[b] = np.array(partial_params_history)
@@ -168,15 +176,15 @@ def main(args):
             initial_parameters = np.zeros(len(initial_parameters))
             circ.set_parameters(initial_parameters)
 
-    opt_results = partial_results[2]
+    # opt_results = partial_results[2]
     # save final results
     output_dict = vars(args)
     output_dict.update(
         {
-            "best_loss": float(opt_results.fun),
+            #"best_loss": float(np.min(loss_history[-1])),
             "true_ground_energy": target_energy,
-            "success": bool(opt_results.success),
-            "message": opt_results.message,
+            # "success": bool(opt_results.success),
+            # "message": opt_results.message,
             "energy": float(vqe.hamiltonian.expectation(zero_state)),
             "fluctuations": float(vqe.hamiltonian.energy_fluctuation(zero_state)),
         }
@@ -240,6 +248,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--tol", default=TOL, type=float, help="Absolute precision to stop VQE training"
+    )
+    parser.add_argument(
+        "--accuracy", default=0.0, type=float, help="Threshold accuracy"
     )
     parser.add_argument(
         "--nqubits", default=6, type=int, help="Number of qubits for Hamiltonian / VQE"
