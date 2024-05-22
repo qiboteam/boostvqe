@@ -139,10 +139,12 @@ def train_vqe(
             logging.info(f"Optimization iteration {iteration_count}/{niterations}")
 
         if iteration_count >= niterations:
+            logging.info("Maximum number of iterations reached.")
             raise StopIteration("Maximum number of iterations reached.")
     
         if accuracy is not None:
             if np.abs(np.min(loss_list) - target_energy) <= accuracy:
+                logging.info("Target accuracy reached.")
                 raise StopIteration("Target accuracy reached.")
             
     callbacks(initial_parameters)

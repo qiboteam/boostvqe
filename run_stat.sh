@@ -1,35 +1,21 @@
 #!/bin/bash
-#SBATCH --job-name=boostvqe_shots
-#SBATCH --output=boostvqe_shots.log
+#SBATCH --job-name=vqedbi
+#SBATCH --output=hybrid.log
 
-OPTIMIZER="Powell"
-TOL=0.00001
-NSHOTS=5000
-BOOST_FREQUENCY=100
+NQUBITS=8
 DBI_STEPS=2
+NBOOST=1
+NSHOTS=10000
+OPTIMIZER="Powell"
+TOL=0.0000000001
+BOOST_FREQUENCY=20
+ACC=0.1
 
 
-for NQUBITS in $(seq 6 1 11); do
-    for NLAYERS in $(seq 1 1 10); do
-        for i in $(seq 1 5 101); do
-            SEED=$i
-            python main.py --nqubits $NQUBITS --nlayers $NLAYERS --optimizer $OPTIMIZER \
-                           --output_folder results/shots_run1 --backend numpy --tol $TOL \
-                           --dbi_step $DBI_STEPS --shot_train --nshots $NSHOTS --seed $SEED \
-                           --boost_frequency $BOOST_FREQUENCY
-        done
-    done
+for NLAYERS in $(seq 1 1 5); do
+    python main.py  --nqubits $NQUBITS --nlayers $NLAYERS --optimizer $OPTIMIZER \
+                    --output_folder "results/hybrid" --backend numpy --tol $TOL \
+                    --dbi_step $DBI_STEPS --seed 42 \
+                    --boost_frequency $BOOST_FREQUENCY --accuracy $ACC --nboost $NBOOST
 done
 
-
-# for NQUBITS in $(seq 6 1 11); do
-#     for NLAYERS in $(seq 1 1 10); do
-#         for i in $(seq 1 5 101); do
-#             SEED=$i
-#             python main.py --nqubits $NQUBITS --nlayers $NLAYERS --optimizer $OPTIMIZER \
-#                            --output_folder results/exact_run1 --backend numpy --tol $TOL \
-#                            --dbi_step $DBI_STEPS --seed $SEED \
-#                            --boost_frequency $BOOST_FREQUENCY
-#         done
-#     done
-# done

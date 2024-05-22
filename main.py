@@ -185,6 +185,7 @@ def main(args):
             "true_ground_energy": target_energy,
             # "success": bool(opt_results.success),
             # "message": opt_results.message,
+            "accuracy": args.accuracy,
             "energy": float(vqe.hamiltonian.expectation(zero_state)),
             "fluctuations": float(vqe.hamiltonian.energy_fluctuation(zero_state)),
         }
