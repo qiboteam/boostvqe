@@ -145,11 +145,7 @@ def train_vqe(
 
         if iteration_count >= niterations:
             logging.info("Maximum number of iterations reached.")
-
             raise StopIteration("Target accuracy reached.")
-            # break
-            raise AttributeError("Maximum number of iterations reached.")
-            # warnings.warn("wwwwwwwwwwwwwwww", TookTooLong)
 
         if accuracy is not None:
             if np.abs(np.min(loss_list) - target_energy) <= accuracy:
@@ -158,8 +154,6 @@ def train_vqe(
 
     callbacks(initial_parameters)
     logging.info("Minimize the energy")
-    # import pdb; pdb.set_trace()
-    # try:
     results = vqe.minimize(
         initial_parameters,
         method=optimizer,
@@ -167,11 +161,6 @@ def train_vqe(
         tol=tol,
         loss_func=loss,
     )
-
-    print("DDDDDDDD", results)
-    # except StopIteration as e:
-    # logging.info(str(e))
-    # results = []
 
     return (
         results,
