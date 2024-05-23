@@ -1,5 +1,6 @@
 import json
 import logging
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -80,6 +81,10 @@ def vqe_loss(params, circuit, hamiltonian):
     return hamiltonian.expectation(final_state)
 
 
+class TookTooLong(Warning):
+    pass
+
+
 def train_vqe(
     circ,
     ham,
@@ -133,35 +138,40 @@ def train_vqe(
             )
         )
 
-        iteration_count = len(loss_list)
+        iteration_count = len(loss_list) - 1
 
         if niterations is not None and iteration_count % nmessage == 0:
             logging.info(f"Optimization iteration {iteration_count}/{niterations}")
 
         if iteration_count >= niterations:
             logging.info("Maximum number of iterations reached.")
-            raise StopIteration("Maximum number of iterations reached.")
-    
+
+            raise StopIteration("Target accuracy reached.")
+            # break
+            raise AttributeError("Maximum number of iterations reached.")
+            # warnings.warn("wwwwwwwwwwwwwwww", TookTooLong)
+
         if accuracy is not None:
             if np.abs(np.min(loss_list) - target_energy) <= accuracy:
                 logging.info("Target accuracy reached.")
                 raise StopIteration("Target accuracy reached.")
-            
+
     callbacks(initial_parameters)
     logging.info("Minimize the energy")
+    # import pdb; pdb.set_trace()
+    # try:
+    results = vqe.minimize(
+        initial_parameters,
+        method=optimizer,
+        callback=callbacks,
+        tol=tol,
+        loss_func=loss,
+    )
 
-    try:
-        results = vqe.minimize(
-            initial_parameters,
-            method=optimizer,
-            callback=callbacks,
-            tol=tol,
-            loss_func=loss,
-        )
-
-    except StopIteration as e:
-        logging.info(str(e))
-        results = []
+    print("DDDDDDDD", results)
+    # except StopIteration as e:
+    # logging.info(str(e))
+    # results = []
 
     return (
         results,
