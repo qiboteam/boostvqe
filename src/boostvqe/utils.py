@@ -97,21 +97,23 @@ def train_vqe(
     accuracy=None,
 ):
     """Helper function which trains the VQE according to `circ` and `ham`."""
-    params_history, loss_list, fluctuations, results_history, grads_history = (
-        [],
+    params_history, loss_list, fluctuations, grads_history = (
         [],
         [],
         [],
         [],
     )
+
+    if accuracy is not None:
+        accuracy_tracker = True
+
     circ.set_parameters(initial_parameters)
+    target_energy = np.min(ham.eigenvalues())
 
     vqe = VQE(
         circuit=circ,
         hamiltonian=ham,
     )
-
-    target_energy = float(np.min(ham.eigenvalues()))
 
     def callbacks(
         params,
@@ -143,23 +145,17 @@ def train_vqe(
         if niterations is not None and iteration_count % nmessage == 0:
             logging.info(f"Optimization iteration {iteration_count}/{niterations}")
 
-        if iteration_count >= niterations:
-            logging.info("Maximum number of iterations reached.")
-
-            raise StopIteration("Target accuracy reached.")
-            # break
-            raise AttributeError("Maximum number of iterations reached.")
-            # warnings.warn("wwwwwwwwwwwwwwww", TookTooLong)
-
         if accuracy is not None:
-            if np.abs(np.min(loss_list) - target_energy) <= accuracy:
-                logging.info("Target accuracy reached.")
-                raise StopIteration("Target accuracy reached.")
+            if (
+                accuracy_tracker
+                and np.abs(target_energy - np.min(loss_list)) <= accuracy
+            ):
+                accuracy_tracker = False
+                logging.info("Target accuracy is reaced here.")
 
     callbacks(initial_parameters)
     logging.info("Minimize the energy")
-    # import pdb; pdb.set_trace()
-    # try:
+
     results = vqe.minimize(
         initial_parameters,
         method=optimizer,
@@ -167,11 +163,6 @@ def train_vqe(
         tol=tol,
         loss_func=loss,
     )
-
-    print("DDDDDDDD", results)
-    # except StopIteration as e:
-    # logging.info(str(e))
-    # results = []
 
     return (
         results,
