@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import pathlib
+from functools import partial
 
 import numpy as np
 
@@ -17,7 +18,7 @@ from qibo.models.dbi.double_bracket import (
 # boostvqe's
 from boostvqe.ansatze import build_circuit
 from boostvqe.plotscripts import plot_gradients, plot_loss
-from boostvqe.shotnoise import loss_shots
+from boostvqe.training_utils import vqe_loss
 from boostvqe.utils import (
     DBI_D_MATRIX,
     DBI_ENERGIES,
@@ -35,7 +36,6 @@ from boostvqe.utils import (
     results_dump,
     rotate_h_with_vqe,
     train_vqe,
-    vqe_loss,
 )
 
 DEFAULT_DELTA = 0.5
@@ -54,26 +54,29 @@ def main(args):
         qibo.set_backend(backend=args.backend)
         args.platform = GlobalBackend().platform
 
-    qibo.set_threads(args.nthreads)
+    if args.optimizer == "sgd":
+        options = {
+            "learning_rate": 0.1,
+            "nmessage": 1,
+            "nepochs": 100,
+        }
+    else:
+        options = {}
 
     # setup the results folder
     logging.info("Set VQE")
     path = pathlib.Path(create_folder(generate_path(args)))
 
     ham = getattr(hamiltonians, args.hamiltonian)(nqubits=args.nqubits)
-    target_energy = float(min(ham.eigenvalues()))
-    circ0 = build_circuit(nqubits=args.nqubits, nlayers=args.nlayers)
+    target_energy = np.real(np.min(np.asarray(ham.eigenvalues())))
+    circ0 = build_circuit(
+        nqubits=args.nqubits, nlayers=args.nlayers, backend=args.backend
+    )
     circ = circ0.copy(deep=True)
     backend = ham.backend
     zero_state = backend.zero_state(args.nqubits)
 
-    # build hamiltonian and variational quantum circuit
-    if args.shot_train:
-        loss = lambda params, circ, _ham: loss_shots(
-            params, circ, _ham, delta=DEFAULT_DELTA, nshots=args.nshots
-        )
-    else:
-        loss = vqe_loss
+    loss = partial(vqe_loss, delta=0.5, nshots=args.nshots)
 
     # fix numpy seed to ensure replicability of the experiment
     np.random.seed(int(args.seed))
@@ -111,13 +114,15 @@ def main(args):
             nmessage=1,
             loss=loss,
             accuracy=args.accuracy,
+            training_options=options,
         )
         # append results to global lists
         params_history[b] = np.array(partial_params_history)
         loss_history[b] = np.array(partial_loss_history)
         grads_history[b] = np.array(partial_grads_history)
         fluctuations[b] = np.array(partial_fluctuations)
-        fun_eval.append(int(partial_results[2].nfev))
+        if args.optimizer not in ["sgd", "cma"]:
+            fun_eval.append(int(partial_results[2].nfev))
 
         # build new hamiltonian using trained VQE
         if b != args.nboost - 1:
@@ -183,17 +188,25 @@ def main(args):
     output_dict = vars(args)
     output_dict.update(
         {
-            "best_loss": float(opt_results.fun),
             "true_ground_energy": target_energy,
-            "success": bool(opt_results.success),
-            "message": opt_results.message,
             "target_accuracy": str(accuracy),
-            "reached_accuracy": float(np.abs(target_energy - float(opt_results.fun))),
             "feval": list(fun_eval),
             "energy": float(vqe.hamiltonian.expectation(zero_state)),
             "fluctuations": float(vqe.hamiltonian.energy_fluctuation(zero_state)),
         }
     )
+    if args.optimizer not in ["sgd", "cma"]:
+        output_dict.update(
+            {
+                "best_loss": float(opt_results.fun),
+                "success": bool(opt_results.success),
+                "message": opt_results.message,
+                "reached_accuracy": float(
+                    np.abs(target_energy - float(opt_results.fun))
+                ),
+                "feval": list(fun_eval),
+            }
+        )
     np.savez(
         path / LOSS_FILE,
         **{json.dumps(key): np.array(value) for key, value in loss_history.items()},
@@ -314,14 +327,8 @@ if __name__ == "__main__":
         help="Random seed",
     )
     parser.add_argument(
-        "--shot_train",
-        action=argparse.BooleanOptionalAction,
-        help="If True the Hamiltonian expactation value is evaluate with the shots, otherwise with the state vector",
-    )
-    parser.add_argument(
         "--nshots",
         type=int,
-        default=10000,
         help="number of shots",
     )
     args = parser.parse_args()

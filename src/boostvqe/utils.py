@@ -1,12 +1,11 @@
 import json
 import logging
-import warnings
 from pathlib import Path
 
 import numpy as np
-from qibo.models.variational import VQE
+from qibo import get_backend
 
-from boostvqe.ansatze import compute_gradients
+from boostvqe.ansatze import VQE, compute_gradients
 
 OPTIMIZATION_FILE = "optimization_results.json"
 PARAMS_FILE = "parameters_history.npy"
@@ -65,24 +64,7 @@ def callback_energy_fluctuations(params, circuit, hamiltonian):
     circ.set_parameters(params)
     result = hamiltonian.backend.execute_circuit(circ)
     final_state = result.state()
-
     return hamiltonian.energy_fluctuation(final_state)
-
-
-def vqe_loss(params, circuit, hamiltonian):
-    """
-    Evaluate the hamiltonian expectation values of the
-    circuit final state.
-    """
-    circ = circuit.copy(deep=True)
-    circ.set_parameters(params)
-    result = hamiltonian.backend.execute_circuit(circ)
-    final_state = result.state()
-    return hamiltonian.expectation(final_state)
-
-
-class TookTooLong(Warning):
-    pass
 
 
 def train_vqe(
@@ -95,6 +77,7 @@ def train_vqe(
     niterations=None,
     nmessage=1,
     accuracy=None,
+    training_options=None,
 ):
     """Helper function which trains the VQE according to `circ` and `ham`."""
     params_history, loss_list, fluctuations, grads_history = (
@@ -104,11 +87,16 @@ def train_vqe(
         [],
     )
 
+    if training_options is None:
+        options = {}
+    else:
+        options = training_options
+
     if accuracy is not None:
         accuracy_tracker = True
 
     circ.set_parameters(initial_parameters)
-    target_energy = np.min(ham.eigenvalues())
+    target_energy = np.real(np.min(np.asarray(ham.eigenvalues())))
 
     vqe = VQE(
         circuit=circ,
@@ -162,6 +150,7 @@ def train_vqe(
         callback=callbacks,
         tol=tol,
         loss_func=loss,
+        options=options,
     )
 
     return (
