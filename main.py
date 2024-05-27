@@ -54,14 +54,10 @@ def main(args):
         qibo.set_backend(backend=args.backend)
         args.platform = GlobalBackend().platform
 
-    if args.optimizer == "sgd":
-        options = {
-            "learning_rate": 0.1,
-            "nmessage": 1,
-            "nepochs": 100,
-        }
+    if args.optimizer_options is None:
+        opt_options = {}
     else:
-        options = {}
+        opt_options = json.loads(args.optimizer_options)
 
     # setup the results folder
     logging.info("Set VQE")
@@ -113,14 +109,14 @@ def main(args):
             niterations=args.boost_frequency,
             nmessage=1,
             loss=loss,
-            accuracy=args.accuracy,
-            training_options=options,
+            training_options=opt_options,
         )
         # append results to global lists
         params_history[b] = np.array(partial_params_history)
         loss_history[b] = np.array(partial_loss_history)
         grads_history[b] = np.array(partial_grads_history)
         fluctuations[b] = np.array(partial_fluctuations)
+        # this works with scipy.optimize.minimize only
         if args.optimizer not in ["sgd", "cma"]:
             fun_eval.append(int(partial_results[2].nfev))
 
@@ -178,10 +174,7 @@ def main(args):
             initial_parameters = np.zeros(len(initial_parameters))
             circ.set_parameters(initial_parameters)
 
-    if args.accuracy is None:
-        accuracy = "none"
-    else:
-        accuracy = str(args.accuracy)
+    best_loss = min(np.min(array) for array in loss_history.values())
 
     opt_results = partial_results[2]
     # save final results
@@ -189,21 +182,19 @@ def main(args):
     output_dict.update(
         {
             "true_ground_energy": target_energy,
-            "target_accuracy": str(accuracy),
             "feval": list(fun_eval),
             "energy": float(vqe.hamiltonian.expectation(zero_state)),
             "fluctuations": float(vqe.hamiltonian.energy_fluctuation(zero_state)),
+            "reached_accuracy": float(np.abs(target_energy - best_loss)),
         }
     )
+    # this works only with scipy.optimize.minimize
     if args.optimizer not in ["sgd", "cma"]:
         output_dict.update(
             {
                 "best_loss": float(opt_results.fun),
                 "success": bool(opt_results.success),
                 "message": opt_results.message,
-                "reached_accuracy": float(
-                    np.abs(target_energy - float(opt_results.fun))
-                ),
                 "feval": list(fun_eval),
             }
         )
@@ -265,12 +256,12 @@ if __name__ == "__main__":
         "--optimizer", default="Powell", type=str, help="Optimizer used by VQE"
     )
     parser.add_argument(
-        "--tol", default=TOL, type=float, help="Absolute precision to stop VQE training"
+        "--optimizer_options",
+        type=str,
+        help="Options to customize the optimizer training",
     )
     parser.add_argument(
-        "--accuracy",
-        type=float,
-        help="Accuracy to be detected during the VQE training.",
+        "--tol", default=TOL, type=float, help="Absolute precision to stop VQE training"
     )
     parser.add_argument(
         "--nqubits", default=6, type=int, help="Number of qubits for Hamiltonian / VQE"

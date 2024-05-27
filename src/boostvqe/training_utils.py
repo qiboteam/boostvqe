@@ -25,7 +25,7 @@ def vqe_loss(params, circuit, hamiltonian, nshots=None, delta=0.5):
     circ = circuit.copy(deep=True)
     circ.set_parameters(params)
 
-    if isinstance(hamiltonian.backend, TensorflowBackend):
+    if isinstance(hamiltonian.backend, TensorflowBackend) and nshots is not None:
         expectation_value = _exp_with_tf(circ, hamiltonian, nshots, delta)
     elif nshots is None:
         expectation_value = _exact(circ, hamiltonian)
@@ -76,6 +76,7 @@ def _exp_with_tf(circuit, hamiltonian, nshots=None, delta=0.5):
     @tf.custom_gradient
     def _expectation(params):
         def grad(upstream):
+            print("with psr")
             gradients = []
             for p in range(nparams):
                 gradients.append(

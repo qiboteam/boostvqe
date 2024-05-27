@@ -76,7 +76,6 @@ def train_vqe(
     loss,
     niterations=None,
     nmessage=1,
-    accuracy=None,
     training_options=None,
 ):
     """Helper function which trains the VQE according to `circ` and `ham`."""
@@ -92,11 +91,7 @@ def train_vqe(
     else:
         options = training_options
 
-    if accuracy is not None:
-        accuracy_tracker = True
-
     circ.set_parameters(initial_parameters)
-    target_energy = np.real(np.min(np.asarray(ham.eigenvalues())))
 
     vqe = VQE(
         circuit=circ,
@@ -132,14 +127,6 @@ def train_vqe(
 
         if niterations is not None and iteration_count % nmessage == 0:
             logging.info(f"Optimization iteration {iteration_count}/{niterations}")
-
-        if accuracy is not None:
-            if (
-                accuracy_tracker
-                and np.abs(target_energy - np.min(loss_list)) <= accuracy
-            ):
-                accuracy_tracker = False
-                logging.info("Target accuracy is reaced here.")
 
     callbacks(initial_parameters)
     logging.info("Minimize the energy")
