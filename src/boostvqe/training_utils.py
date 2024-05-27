@@ -76,7 +76,6 @@ def _exp_with_tf(circuit, hamiltonian, nshots=None, delta=0.5):
     @tf.custom_gradient
     def _expectation(params):
         def grad(upstream):
-            print("with psr")
             gradients = []
             for p in range(nparams):
                 gradients.append(
