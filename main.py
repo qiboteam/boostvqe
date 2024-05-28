@@ -98,7 +98,6 @@ def main(args):
         logging.info(f"Running {b+1}/{args.nboost} max optimization rounds.")
         boost_energies[b], boost_fluctuations_dbi[b] = [], []
         params_history[b], loss_history[b], fluctuations[b] = [], [], []
-        # import pdb; pdb.set_trace()
         # train vqe
         (
             partial_results,
@@ -177,15 +176,11 @@ def main(args):
             initial_parameters = np.zeros(len(initial_parameters))
             circ.set_parameters(initial_parameters)
 
-    # opt_results = partial_results[2]
     # save final results
     output_dict = vars(args)
     output_dict.update(
         {
-            # "best_loss": float(np.min(loss_history[-1])),
             "true_ground_energy": target_energy,
-            # "success": bool(opt_results.success),
-            # "message": opt_results.message,
             "accuracy": args.accuracy,
             "energy": float(vqe.hamiltonian.expectation(zero_state)),
             "fluctuations": float(vqe.hamiltonian.energy_fluctuation(zero_state)),
