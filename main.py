@@ -174,6 +174,10 @@ def main(args):
             initial_parameters = np.zeros(len(initial_parameters))
             circ.set_parameters(initial_parameters)
 
+            # reduce the learning rate after DBI has been applied
+            if "learning_rate" in opt_options.keys():
+                opt_options["learning_rate"] *= args.decay_rate_lr
+
     best_loss = min(np.min(array) for array in loss_history.values())
 
     opt_results = partial_results[2]
@@ -262,6 +266,12 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--tol", default=TOL, type=float, help="Absolute precision to stop VQE training"
+    )
+    parser.add_argument(
+        "--decay_rate_lr",
+        default=1.0,
+        type=float,
+        help="Decay factor of the learning rate if sgd is used",
     )
     parser.add_argument(
         "--nqubits", default=6, type=int, help="Number of qubits for Hamiltonian / VQE"

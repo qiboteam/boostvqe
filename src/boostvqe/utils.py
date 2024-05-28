@@ -127,6 +127,7 @@ def train_vqe(
 
         if niterations is not None and iteration_count % nmessage == 0:
             logging.info(f"Optimization iteration {iteration_count}/{niterations}")
+            logging.info(f"Loss {energy:.5}")
 
     callbacks(initial_parameters)
     logging.info("Minimize the energy")
@@ -186,4 +187,6 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
         energies.append(dbi.h.expectation(zero_state))
         fluctuations.append(dbi.energy_fluctuation(zero_state))
         hamiltonians.append(dbi.h.matrix)
+
+        logging.info(f"DBI energies: {energies}")
     return hamiltonians, energies, fluctuations, steps, d_matrix, operators
