@@ -1,8 +1,10 @@
-import os
 import json
+import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
+from mpl_toolkits.axes_grid1.inset_locator import mark_inset, zoomed_inset_axes
 
 from boostvqe.utils import (
     DBI_ENERGIES,
@@ -207,7 +209,7 @@ def plot_loss_nruns(
     for i, f in enumerate(os.listdir(path)):
         this_path = path + "/" + f + "/"
         if i == 0:
-            with open(this_path + OPTIMIZATION_FILE, 'r') as file:
+            with open(this_path + OPTIMIZATION_FILE) as file:
                 config = json.load(file)
             target_energy = config["true_ground_energy"]
         # accumulating dictionaries with results for each boost
@@ -216,7 +218,7 @@ def plot_loss_nruns(
             losses_dbi.append(dict(np.load(this_path + f"{DBI_ENERGIES + '.npz'}")))
 
     loss_vqe, dbi_energies, stds_vqe, stds_dbi = {}, {}, {}, {}
-    
+
     plt.figure(figsize=(10 * width, 10 * width * 6 / 8))
     plt.title(title)
 
@@ -225,7 +227,7 @@ def plot_loss_nruns(
         for d in range(len(loss_vqe)):
             this_vqe_losses.append(losses_vqe[d][str(i)])
             this_dbi_losses.append(losses_dbi[d][str(i)])
-        
+
         loss_vqe.update({str(i): np.mean(np.asarray(this_vqe_losses), axis=0)})
         dbi_energies.update({str(i): np.mean(np.asarray(this_dbi_losses), axis=0)})
         stds_vqe.update({str(i): np.std(np.asarray(this_vqe_losses), axis=0)})
@@ -301,3 +303,109 @@ def plot_loss_nruns(
         plt.savefig(f"{path}/loss_{title}.pdf", bbox_inches="tight")
 
 
+def plot_lr_analysis(
+    path,
+    training_specs,
+    title="",
+    save=True,
+    width=0.8,
+):
+    losses_dbi = []
+    losses_vqe = []
+    lr = []
+
+    for i, f in enumerate(os.listdir(path)):
+        this_path = path + "/" + f + "/"
+        if i == 0:
+            with open(this_path + OPTIMIZATION_FILE) as file:
+                config = json.load(file)
+            target_energy = config["true_ground_energy"]
+            boost_frequency = config["boost_frequency"]
+        # accumulating dictionaries with results for each boost
+        if training_specs in f:
+            losses_vqe.append(dict(np.load(this_path + f"{LOSS_FILE + '.npz'}")))
+            losses_dbi.append(dict(np.load(this_path + f"{DBI_ENERGIES + '.npz'}")))
+
+    lr = [1.0, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001]
+    colors = sns.color_palette("Spectral", n_colors=len(losses_vqe)).as_hex()
+
+    fig, ax = plt.subplots(figsize=(10 * width, 10 * width * 4 / 8))
+    x1, x2, y1, y2 = 149, 180, -12.1, -11
+    axins = zoomed_inset_axes(
+        ax,
+        zoom=4,
+        loc=1,
+        bbox_to_anchor=(-0.025, -0.025, 1, 1),
+        bbox_transform=ax.transAxes,
+    )
+    axins.set_xlim(x1, x2)
+    axins.set_ylim(y1, y2)
+
+    for i in range(len(losses_vqe)):
+        for b in range(config["nboost"]):
+            if b == 0:
+                if i != 0:
+                    continue
+                else:
+                    ax.plot(
+                        np.arange(
+                            b * boost_frequency + 1, (b + 1) * boost_frequency + 2
+                        ),
+                        losses_vqe[i][str(b)],
+                        color="black",
+                        lw=1.5,
+                    )
+                    axins.plot(
+                        np.arange(
+                            b * boost_frequency + 1, (b + 1) * boost_frequency + 2
+                        ),
+                        losses_vqe[i][str(b)],
+                        color="black",
+                        lw=1.5,
+                    )
+            else:
+                ax.plot(
+                    np.arange(b * boost_frequency + 1, (b + 1) * boost_frequency + 2),
+                    losses_vqe[i][str(b)],
+                    color=colors[i],
+                    label=rf"$\eta=${lr[i]}",
+                    alpha=0.7,
+                    lw=1.5,
+                )
+                axins.plot(
+                    np.arange(b * boost_frequency + 1, (b + 1) * boost_frequency + 2),
+                    losses_vqe[i][str(b)],
+                    color=colors[i],
+                    alpha=0.7,
+                    lw=1.5,
+                )
+
+    max_length = boost_frequency * len(losses_vqe[0])
+    ax.hlines(
+        target_energy,
+        0,
+        max_length,
+        color="black",
+        lw=1,
+        label="Target energy",
+        ls="-",
+    )
+    axins.hlines(
+        target_energy,
+        0,
+        max_length,
+        color="black",
+        lw=1,
+        label="Target energy",
+        ls="-",
+    )
+
+    ax.set_ylim(-13, -5)
+
+    mark_inset(ax, axins, loc1=2, loc2=1, fc="none", ec="0.5")
+    ax.legend(ncol=2, loc=2, framealpha=1)
+    ax.set_xlabel("Optimization iteration")
+    ax.set_ylabel("Loss")
+
+    if save:
+        plt.savefig(f"lr_benchmark.pdf", bbox_inches="tight")
