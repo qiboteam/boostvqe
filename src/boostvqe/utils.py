@@ -81,10 +81,6 @@ def vqe_loss(params, circuit, hamiltonian):
     return hamiltonian.expectation(final_state)
 
 
-class TookTooLong(Warning):
-    pass
-
-
 def train_vqe(
     circ,
     ham,
