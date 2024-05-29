@@ -11,7 +11,7 @@ qibo.set_backend("numpy")
 logging.basicConfig(level=logging.INFO)
 
 NL = 100
-NQ = 17
+NQ = 15
 J = 2
 
 qubits = np.arange(2, NQ, 2)
@@ -25,8 +25,8 @@ if not os.path.exists("./gradients"):
 
 grads_vars = np.zeros((len(layers), len(qubits)))
 
-for j, q in enumerate(qubits):
-    for i, l in enumerate(layers):
+for i, l in enumerate(layers):
+    for j, q in enumerate(qubits):
         # initialize model and hamiltonian
         logging.info(f"Running with {q} qubits and {l} layers")
         c = build_circuit(int(q), int(l))

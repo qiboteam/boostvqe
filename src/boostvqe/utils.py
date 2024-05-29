@@ -1,5 +1,6 @@
 import json
 import logging
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -89,9 +90,10 @@ def train_vqe(
     loss,
     niterations=None,
     nmessage=1,
+    accuracy=None,
 ):
     """Helper function which trains the VQE according to `circ` and `ham`."""
-    params_history, loss_list, fluctuations, hamiltonian_history, grads_history = (
+    params_history, loss_list, fluctuations, results_history, grads_history = (
         [],
         [],
         [],
@@ -104,6 +106,8 @@ def train_vqe(
         circuit=circ,
         hamiltonian=ham,
     )
+
+    target_energy = float(np.min(ham.eigenvalues()))
 
     def callbacks(
         params,
@@ -130,27 +134,29 @@ def train_vqe(
             )
         )
 
-        iteration_count = len(loss_list)
+        iteration_count = len(loss_list) - 1
 
         if niterations is not None and iteration_count % nmessage == 0:
             logging.info(f"Optimization iteration {iteration_count}/{niterations}")
 
         if iteration_count >= niterations:
-            raise StopIteration("Maximum number of iterations reached.")
+            logging.info("Maximum number of iterations reached.")
+            raise StopIteration("Target accuracy reached.")
+
+        if accuracy is not None:
+            if np.abs(np.min(loss_list) - target_energy) <= accuracy:
+                logging.info("Target accuracy reached.")
+                raise StopIteration("Target accuracy reached.")
 
     callbacks(initial_parameters)
     logging.info("Minimize the energy")
-    try:
-        results = vqe.minimize(
-            initial_parameters,
-            method=optimizer,
-            callback=callbacks,
-            tol=tol,
-            loss_func=loss,
-        )
-
-    except StopIteration as e:
-        logging.info(str(e))
+    results = vqe.minimize(
+        initial_parameters,
+        method=optimizer,
+        callback=callbacks,
+        tol=tol,
+        loss_func=loss,
+    )
 
     return (
         results,
