@@ -306,40 +306,56 @@ def plot_loss_nruns(
 def plot_lr_analysis(
     path,
     training_specs,
+    zoom_coord,
+    lr_list,
     title="",
     save=True,
-    width=0.8,
+    width=0.5,
 ):
-    losses_dbi = []
-    losses_vqe = []
-    lr = []
+    losses_vqe, losses_dbi, grads, fluct_dbi = [], [], [], []
 
-    for i, f in enumerate(os.listdir(path)):
-        this_path = path + "/" + f + "/"
+    for i, lr in enumerate(lr_list):
+        this_path = path + "/" + training_specs + f"_{lr}decay/"
         if i == 0:
             with open(this_path + OPTIMIZATION_FILE) as file:
                 config = json.load(file)
             target_energy = config["true_ground_energy"]
             boost_frequency = config["boost_frequency"]
-        # accumulating dictionaries with results for each boost
-        if training_specs in f:
-            losses_vqe.append(dict(np.load(this_path + f"{LOSS_FILE + '.npz'}")))
-            losses_dbi.append(dict(np.load(this_path + f"{DBI_ENERGIES + '.npz'}")))
+            dbi_steps = config["dbi_steps"]
+        losses_vqe.append(dict(np.load(this_path + f"{LOSS_FILE + '.npz'}")))
+        losses_dbi.append(dict(np.load(this_path + f"{DBI_ENERGIES + '.npz'}")))
+        fluct_dbi.append(dict(np.load(this_path + f"{DBI_FLUCTUATIONS + '.npz'}")))
+        grads.append(dict(np.load(this_path + f"{GRADS_FILE + '.npz'}")))
 
-    lr = [1.0, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001]
     colors = sns.color_palette("Spectral", n_colors=len(losses_vqe)).as_hex()
 
-    fig, ax = plt.subplots(figsize=(10 * width, 10 * width * 4 / 8))
-    x1, x2, y1, y2 = 149, 180, -12.1, -11
+    _, ax = plt.subplots(figsize=(10 * width, 10 * width * 6 / 8))
+    x1, x2, y1, y2 = zoom_coord[0], zoom_coord[1], zoom_coord[2], zoom_coord[3]
     axins = zoomed_inset_axes(
         ax,
         zoom=4,
         loc=1,
-        bbox_to_anchor=(-0.025, -0.025, 1, 1),
+        bbox_to_anchor=(-0.015, -0.015, 1, 1),
         bbox_transform=ax.transAxes,
     )
     axins.set_xlim(x1, x2)
     axins.set_ylim(y1, y2)
+
+    for b in range(config["nboost"] - 1):
+        start = (b + 1) * boost_frequency + 1
+        ax.plot(
+            np.arange(start, start + dbi_steps + 1),
+            losses_dbi[0][str(b)],
+            color="black",
+            lw=1.5,
+            label="DBI",
+        )
+        axins.plot(
+            np.arange(start, start + dbi_steps + 1),
+            losses_dbi[0][str(b)],
+            color="black",
+            lw=1.5,
+        )
 
     for i in range(len(losses_vqe)):
         for b in range(config["nboost"]):
@@ -352,7 +368,7 @@ def plot_lr_analysis(
                             b * boost_frequency + 1, (b + 1) * boost_frequency + 2
                         ),
                         losses_vqe[i][str(b)],
-                        color="black",
+                        color=BLUE,
                         lw=1.5,
                     )
                     axins.plot(
@@ -360,23 +376,29 @@ def plot_lr_analysis(
                             b * boost_frequency + 1, (b + 1) * boost_frequency + 2
                         ),
                         losses_vqe[i][str(b)],
-                        color="black",
+                        color=BLUE,
                         lw=1.5,
                     )
             else:
                 ax.plot(
-                    np.arange(b * boost_frequency + 1, (b + 1) * boost_frequency + 2),
+                    np.arange(
+                        b * boost_frequency + dbi_steps * (b + 1) - 1,
+                        (b + 1) * boost_frequency + dbi_steps * (b + 1),
+                    ),
                     losses_vqe[i][str(b)],
                     color=colors[i],
-                    label=rf"$\eta=${lr[i]}",
-                    alpha=0.7,
+                    label=rf"$f=${lr_list[i]}",
+                    alpha=1,
                     lw=1.5,
                 )
                 axins.plot(
-                    np.arange(b * boost_frequency + 1, (b + 1) * boost_frequency + 2),
+                    np.arange(
+                        b * boost_frequency + dbi_steps * (b + 1) - 1,
+                        (b + 1) * boost_frequency + dbi_steps * (b + 1),
+                    ),
                     losses_vqe[i][str(b)],
                     color=colors[i],
-                    alpha=0.7,
+                    alpha=1,
                     lw=1.5,
                 )
 
@@ -386,26 +408,92 @@ def plot_lr_analysis(
         0,
         max_length,
         color="black",
-        lw=1,
+        lw=1.5,
         label="Target energy",
-        ls="-",
+        ls="--",
     )
     axins.hlines(
         target_energy,
         0,
         max_length,
         color="black",
-        lw=1,
+        lw=1.5,
         label="Target energy",
-        ls="-",
+        ls="--",
     )
 
-    ax.set_ylim(-13, -5)
-
     mark_inset(ax, axins, loc1=2, loc2=1, fc="none", ec="0.5")
-    ax.legend(ncol=2, loc=2, framealpha=1)
+    ax.legend(ncol=1, loc=2, framealpha=0.7)
     ax.set_xlabel("Optimization iteration")
     ax.set_ylabel("Loss")
 
     if save:
         plt.savefig(f"lr_benchmark.pdf", bbox_inches="tight")
+
+    plt.figure(figsize=(10 * width, 10 * width * 6 / 8))
+
+    for i in range(len(grads)):
+        ave_grads = []
+        dbi_steps = config["dbi_steps"]
+        iterations = []
+
+        for epoch in range(len(grads[i])):
+            len_iterations = len(iterations)
+            iterations.extend(
+                [
+                    i + int(epoch) * (dbi_steps - 1) + len_iterations
+                    for i in range(len(grads[i][str(epoch)]))
+                ]
+            )
+            for grads_list in grads[i][str(epoch)]:
+                ave_grads.append(np.mean(np.abs(grads_list)))
+
+        plt.title(title)
+        boost_x = 0
+        for b in range(config["nboost"] - 1):
+            boost_x += len(grads[i][str(b)])
+            if i == 0:
+                label = "DBI"
+            else:
+                label = None
+            plt.plot(
+                (
+                    boost_x + b * (dbi_steps - 1) - 1,
+                    boost_x + (b + 1) * (dbi_steps - 1),
+                ),
+                (ave_grads[boost_x - 1], ave_grads[boost_x]),
+                color="black",
+                label=label,
+                lw=1.6,
+                alpha=1,
+            )
+        for b in range(config["nboost"]):
+            if b == 0:
+                if i == 0:
+                    plt.plot(
+                        iterations[
+                            b * boost_frequency + 1 : (b + 1) * boost_frequency + 2
+                        ],
+                        ave_grads[
+                            b * boost_frequency + 1 : (b + 1) * boost_frequency + 2
+                        ],
+                        color=BLUE,
+                        lw=1.5,
+                    )
+                else:
+                    continue
+            else:
+                plt.plot(
+                    iterations[b * boost_frequency + 1 : (b + 1) * boost_frequency + 2],
+                    ave_grads[b * boost_frequency + 1 : (b + 1) * boost_frequency + 2],
+                    color=colors[i],
+                    lw=1.5,
+                    label=rf"$f=${lr_list[i]}",
+                )
+
+    plt.yscale("log")
+    plt.xlabel("Iterations")
+    plt.ylabel("Gradients magnitude")
+    plt.legend(loc=3)
+    if save:
+        plt.savefig(f"lr_grads_{title}.pdf", bbox_inches="tight")
