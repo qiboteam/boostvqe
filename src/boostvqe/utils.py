@@ -16,6 +16,7 @@ LOSS_FILE = "energies"
 GRADS_FILE = "gradients"
 HAMILTONIAN_FILE = "hamiltonian_matrix.npz"
 SEED = 42
+DELTA = 0.5
 TOL = 1e-10
 DBI_ENERGIES = "dbi_energies"
 DBI_FLUCTUATIONS = "dbi_fluctuations"

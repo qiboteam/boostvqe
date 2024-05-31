@@ -24,6 +24,7 @@ from boostvqe.utils import (
     DBI_ENERGIES,
     DBI_FLUCTUATIONS,
     DBI_STEPS,
+    DELTA,
     FLUCTUATION_FILE,
     GRADS_FILE,
     HAMILTONIAN_FILE,
@@ -66,7 +67,8 @@ def main(args):
     ham = getattr(hamiltonians, args.hamiltonian)(nqubits=args.nqubits)
     target_energy = np.real(np.min(np.asarray(ham.eigenvalues())))
     circ0 = build_circuit(
-        nqubits=args.nqubits, nlayers=args.nlayers, backend=args.backend
+        nqubits=args.nqubits,
+        nlayers=args.nlayers,
     )
     circ = circ0.copy(deep=True)
     backend = ham.backend
