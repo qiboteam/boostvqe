@@ -160,7 +160,9 @@ def rotate_h_with_vqe(hamiltonian, vqe):
     matrix_circ = np.matrix(backend.to_numpy(circuit.unitary()))
     matrix_circ_dagger = backend.cast(matrix_circ.getH())
     matrix_circ = backend.cast(matrix_circ)
-    new_hamiltonian = matrix_circ_dagger @ hamiltonian.matrix @ matrix_circ
+    new_hamiltonian = np.matmul(
+        matrix_circ_dagger, np.matmul(hamiltonian.matrix, matrix_circ)
+    )
     return new_hamiltonian
 
 

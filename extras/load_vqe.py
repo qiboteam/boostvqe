@@ -16,12 +16,12 @@ from boostvqe.utils import apply_dbi_steps, rotate_h_with_vqe
 qibo.set_backend("numpy")
 
 # set the path string which define the results
-path = "../results/debugging/sgd_7q_5l_42/"
+path = "../results/big_architectures_trains/sgd_11q_20l_42/"
 paramspath = Path(path + "parameters_history.npy")
 
 # set the target epoch to which apply DBQA and the number of steps
-target_epoch = 10
-dbi_steps = 3
+target_epoch = 50
+dbi_steps = 1
 
 # upload system configuration and parameters for all the training
 with open(path + "optimization_results.json") as file:
