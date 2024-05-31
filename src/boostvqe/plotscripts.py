@@ -190,29 +190,114 @@ def plot_gradients(
         plt.savefig(f"{path}/grads_{title}.pdf", bbox_inches="tight")
 
 
-def plot_nruns_result(
+def plot_loss_nruns(
     path,
     training_specs,
     title="",
     save=True,
     width=0.5,
 ):
-    
-    losses = []
+    """
+    Plot loss with confidence belt.
+    """
 
-    for f in os.listdir(path):
+    losses_dbi = []
+    losses_vqe = []
+
+    for i, f in enumerate(os.listdir(path)):
+        this_path = path + "/" + f + "/"
+        if i == 0:
+            with open(this_path + OPTIMIZATION_FILE, 'r') as file:
+                config = json.load(file)
+            target_energy = config["true_ground_energy"]
+        # accumulating dictionaries with results for each boost
         if training_specs in f:
-            losses.append(np.load(path + "/" + f))
-    
-    losses = np.array(losses)
-    means = np.mean(losses, axis=0)
-    stds = np.std(losses, axis=0)
+            losses_vqe.append(dict(np.load(this_path + f"{LOSS_FILE + '.npz'}")))
+            losses_dbi.append(dict(np.load(this_path + f"{DBI_ENERGIES + '.npz'}")))
 
+    loss_vqe, dbi_energies, stds_vqe, stds_dbi = {}, {}, {}, {}
+    
     plt.figure(figsize=(10 * width, 10 * width * 6 / 8))
-    plt.plot(means, color=BLUE)
-    plt.fill_between(means - stds, means + stds, alpha=0.3, color=BLUE)
     plt.title(title)
-    plt.xlabel("Iteration")
-    plt.ylabel(r"$\langle L \rangle$")
+
+    for i in range(config["nboost"]):
+        this_vqe_losses, this_dbi_losses = [], []
+        for d in range(len(loss_vqe)):
+            this_vqe_losses.append(losses_vqe[d][str(i)])
+            this_dbi_losses.append(losses_dbi[d][str(i)])
+        
+        loss_vqe.update({str(i): np.mean(np.asarray(this_vqe_losses), axis=0)})
+        dbi_energies.update({str(i): np.mean(np.asarray(this_dbi_losses), axis=0)})
+        stds_vqe.update({str(i): np.std(np.asarray(this_vqe_losses), axis=0)})
+        stds_dbi.update({str(i): np.std(np.asarray(this_dbi_losses), axis=0)})
+
+    for i in range(config["nboost"]):
+        start = (
+            0
+            if str(i - 1) not in loss_vqe
+            else sum(
+                len(loss_vqe[str(j)]) + len(dbi_energies[str(j)])
+                for j in range(config["nboost"])
+                if j < i
+            )
+            - 2 * i
+        )
+        plt.plot(
+            np.arange(start, len(loss_vqe[str(i)]) + start),
+            loss_vqe[str(i)],
+            color=BLUE,
+            lw=1.5,
+            label="VQE",
+        )
+        plt.plot(
+            np.arange(
+                len(loss_vqe[str(i)]) + start - 1,
+                len(dbi_energies[str(i)]) + len(loss_vqe[str(i)]) + start - 1,
+            ),
+            dbi_energies[str(i)],
+            color=RED,
+            lw=1.5,
+            label="DBI",
+        )
+        plt.fill_between(
+            np.arange(start, len(loss_vqe[str(i)]) + start),
+            loss_vqe[str(i)] - stds_vqe[str(i)],
+            loss_vqe[str(i)] + stds_vqe[str(i)],
+            color=BLUE,
+            alpha=0.4,
+        )
+        plt.fill_between(
+            np.arange(
+                len(loss_vqe[str(i)]) + start - 1,
+                len(dbi_energies[str(i)]) + len(loss_vqe[str(i)]) + start - 1,
+            ),
+            dbi_energies[str(i)] - stds_vqe[str(i)],
+            dbi_energies[str(i)] + stds_dbi[str(i)],
+            color=RED,
+            alpha=0.4,
+        )
+
+    max_length = (
+        sum(len(l) for l in list(dbi_energies.values()))
+        + sum(len(l) for l in list(loss_vqe.values()))
+        - 2 * config["nboost"]
+        + 1
+    )
+    plt.hlines(
+        target_energy,
+        0,
+        max_length,
+        color="black",
+        lw=1,
+        label="Target energy",
+        ls="-",
+    )
+    plt.xlabel("Iterations")
+    plt.ylabel("Loss")
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    plt.legend(by_label.values(), by_label.keys())
     if save:
-        plt.savefig("runs.png")
+        plt.savefig(f"{path}/loss_{title}.pdf", bbox_inches="tight")
+
+
