@@ -52,7 +52,6 @@ class VQE:
 
     def __init__(self, circuit, hamiltonian):
         """Initialize circuit ansatz and hamiltonian."""
-        print("In the VQE", get_backend())
         self.circuit = circuit
         self.hamiltonian = hamiltonian
         self.backend = hamiltonian.backend
