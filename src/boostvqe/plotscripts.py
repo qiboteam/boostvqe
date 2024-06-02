@@ -1,10 +1,10 @@
-import os
 import json
+import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
+import seaborn as sns
 
 from boostvqe.utils import (
     DBI_ENERGIES,
@@ -209,7 +209,7 @@ def plot_loss_nruns(
     for i, f in enumerate(os.listdir(path)):
         this_path = path + "/" + f + "/"
         if i == 0:
-            with open(this_path + OPTIMIZATION_FILE, 'r') as file:
+            with open(this_path + OPTIMIZATION_FILE) as file:
                 config = json.load(file)
             target_energy = config["true_ground_energy"]
         # accumulating dictionaries with results for each boost
@@ -218,7 +218,7 @@ def plot_loss_nruns(
             losses_dbi.append(dict(np.load(this_path + f"{DBI_ENERGIES + '.npz'}")))
 
     loss_vqe, dbi_energies, stds_vqe, stds_dbi = {}, {}, {}, {}
-    
+
     plt.figure(figsize=(10 * width, 10 * width * 6 / 8))
     plt.title(title)
 
@@ -227,7 +227,7 @@ def plot_loss_nruns(
         for d in range(len(loss_vqe)):
             this_vqe_losses.append(losses_vqe[d][str(i)])
             this_dbi_losses.append(losses_dbi[d][str(i)])
-        
+
         loss_vqe.update({str(i): np.mean(np.asarray(this_vqe_losses), axis=0)})
         dbi_energies.update({str(i): np.mean(np.asarray(this_dbi_losses), axis=0)})
         stds_vqe.update({str(i): np.std(np.asarray(this_vqe_losses), axis=0)})
@@ -303,7 +303,6 @@ def plot_loss_nruns(
         plt.savefig(f"{path}/loss_{title}.pdf", bbox_inches="tight")
 
 
-
 def plot_lr_hyperopt(
     path,
     lr_list,
@@ -311,17 +310,17 @@ def plot_lr_hyperopt(
     save=True,
     width=0.5,
 ):
-
-    losses_vqe =[]
+    losses_vqe = []
     for lr in lr_list:
         losses_vqe.append(dict(np.load(path / f"{LOSS_FILE}_{lr}.npz"))["0"])
-            
+
     colors = sns.color_palette("Spectral", n_colors=len(losses_vqe)).as_hex()
 
     plt.figure(figsize=(10 * width, 10 * width * 6 / 8))
+
     plt.title(title)
     for i, lr in enumerate(lr_list):
-        plt.plot(losses_vqe[i], color=colors[i], label=fr"$\eta=${lr}", lw=1.5)
+        plt.plot(losses_vqe[i], color=colors[i], label=rf"$\eta=${lr}", lw=1.5)
     plt.legend()
     plt.xlabel("Optimization iterations")
     plt.ylabel("Loss")
