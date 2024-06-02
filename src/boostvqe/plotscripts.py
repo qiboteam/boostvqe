@@ -1,7 +1,9 @@
 import os
 import json
+from pathlib import Path
 
 import matplotlib.pyplot as plt
+import seaborn as sns
 import numpy as np
 
 from boostvqe.utils import (
@@ -301,3 +303,27 @@ def plot_loss_nruns(
         plt.savefig(f"{path}/loss_{title}.pdf", bbox_inches="tight")
 
 
+
+def plot_lr_hyperopt(
+    path,
+    lr_list,
+    title="",
+    save=True,
+    width=0.5,
+):
+
+    losses_vqe =[]
+    for lr in lr_list:
+        losses_vqe.append(dict(np.load(path / f"{LOSS_FILE}_{lr}.npz"))["0"])
+            
+    colors = sns.color_palette("Spectral", n_colors=len(losses_vqe)).as_hex()
+
+    plt.figure(figsize=(10 * width, 10 * width * 6 / 8))
+    plt.title(title)
+    for i, lr in enumerate(lr_list):
+        plt.plot(losses_vqe[i], color=colors[i], label=fr"$\eta=${lr}", lw=1.5)
+    plt.legend()
+    plt.xlabel("Optimization iterations")
+    plt.ylabel("Loss")
+    if save:
+        plt.savefig("lr_hyperopt.pdf", bbox_inches="tight")
