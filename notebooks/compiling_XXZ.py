@@ -1,17 +1,15 @@
 import numpy as np
 from qibo import Circuit,gates
 
-def add_gates(circuit,list_q_i,list_q_ip1,t,delta,steps):
+def _add_gates(circuit,list_q_i,list_q_ip1,t,delta,steps):
     """
     Adds gates for an XXZ model time evolution step.
     
-    Parameters:
+    Args:
     circuit (Circuit): The quantum circuit.
     list_q_i (list): Control qubit indices.
     list_q_ip1 (list): Target qubit indices.
-    t (float): Total evolution time.
     delta (float): Coefficient for the Z component.
-    steps (int): Number of time steps.
 
     Returns:
     Circuit: Updated circuit.
@@ -32,7 +30,7 @@ def add_gates(circuit,list_q_i,list_q_ip1,t,delta,steps):
     circuit.add(gates.RZ(q_i, np.pi/2) for q_i in list_q_i)
     return circuit
 
-def nqubit_XXZ_decomposition(nqubits,t,delta,steps):
+def nqubit_XXZ_decomposition(nqubits,t,delta=0.5,steps=1):
     """
     Constructs an XXZ model circuit for n qubits, given by:
     .. math::
@@ -41,7 +39,7 @@ def nqubit_XXZ_decomposition(nqubits,t,delta,steps):
     This function decomposes the time evolution operator of the XXZ model
     into a sequence of quantum gates applied to a quantum circuit.
     
-    Parameters:
+    Args:
     nqubits (int): Number of qubits.
     t (float): Total evolution time.
     delta (float): Coefficient for the Z component (default 0.5).
@@ -69,17 +67,17 @@ def nqubit_XXZ_decomposition(nqubits,t,delta,steps):
         even_numbers_end_0 = [num for num in range(1,nqubits) if num % 2 == 0]
         even_numbers_end_0.append(0)
         
-        circuit = add_gates(circuit,even_numbers,odd_numbers,t,delta,steps)
-        circuit = add_gates(circuit,odd_numbers,even_numbers_end_0,t,delta,steps)
+        circuit = _add_gates(circuit,even_numbers,odd_numbers,t,delta,steps)
+        circuit = _add_gates(circuit,odd_numbers,even_numbers_end_0,t,delta,steps)
 
     elif nqubits%2 == 1:
         # Handle odd number of qubits (since XXZ model has periodic boundary conditions)
-        circuit = add_gates(circuit,even_numbers[:-1],odd_numbers,t,delta,steps)
-        circuit = add_gates(circuit,odd_numbers,even_numbers[1:],t,delta,steps)
-        circuit = add_gates(circuit,[nqubits-1],[0],t,delta,steps)
+        circuit = _add_gates(circuit,even_numbers[:-1],odd_numbers,t,delta,steps)
+        circuit = _add_gates(circuit,odd_numbers,even_numbers[1:],t,delta,steps)
+        circuit = _add_gates(circuit,[nqubits-1],[0],t,delta,steps)
 
     # Create a multi-layer circuit with the time evolution steps
     multi_layer = Circuit(nqubits = nqubits)
-    for step in range(steps):
+    for _step in range(steps):
         multi_layer += circuit
     return multi_layer
