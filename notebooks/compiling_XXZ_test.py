@@ -1,6 +1,6 @@
 from qibo import hamiltonians
 import numpy as np
-from compiling_XXZ import *
+from boostvqe.src.boostvqe.compiling_XXZ import *
 
 t = 0.01
 steps = 3
