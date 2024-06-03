@@ -16,7 +16,7 @@ from boostvqe.utils import apply_dbi_steps, rotate_h_with_vqe
 qibo.set_backend("numpy")
 
 # set the path string which define the results
-path = "../results/big_architectures_trains/sgd_11q_20l_42/"
+path = "../results/big_architectures_trains/sgd_13q_50l_42/"
 paramspath = Path(path + "parameters_history.npy")
 
 # set the target epoch to which apply DBQA and the number of steps
