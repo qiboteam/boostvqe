@@ -1,12 +1,11 @@
 import json
 import logging
-import warnings
 from pathlib import Path
 
 import numpy as np
-from qibo.models.variational import VQE
+from qibo import get_backend
 
-from boostvqe.ansatze import compute_gradients
+from boostvqe.ansatze import VQE, compute_gradients
 
 OPTIMIZATION_FILE = "optimization_results.json"
 PARAMS_FILE = "parameters_history.npy"
@@ -65,24 +64,7 @@ def callback_energy_fluctuations(params, circuit, hamiltonian):
     circ.set_parameters(params)
     result = hamiltonian.backend.execute_circuit(circ)
     final_state = result.state()
-
     return hamiltonian.energy_fluctuation(final_state)
-
-
-def vqe_loss(params, circuit, hamiltonian):
-    """
-    Evaluate the hamiltonian expectation values of the
-    circuit final state.
-    """
-    circ = circuit.copy(deep=True)
-    circ.set_parameters(params)
-    result = hamiltonian.backend.execute_circuit(circ)
-    final_state = result.state()
-    return hamiltonian.expectation(final_state)
-
-
-class TookTooLong(Warning):
-    pass
 
 
 def train_vqe(
@@ -94,24 +76,27 @@ def train_vqe(
     loss,
     niterations=None,
     nmessage=1,
-    accuracy=None,
+    training_options=None,
 ):
     """Helper function which trains the VQE according to `circ` and `ham`."""
-    params_history, loss_list, fluctuations, results_history, grads_history = (
-        [],
+    params_history, loss_list, fluctuations, grads_history = (
         [],
         [],
         [],
         [],
     )
+
+    if training_options is None:
+        options = {}
+    else:
+        options = training_options
+
     circ.set_parameters(initial_parameters)
 
     vqe = VQE(
         circuit=circ,
         hamiltonian=ham,
     )
-
-    target_energy = float(np.min(ham.eigenvalues()))
 
     def callbacks(
         params,
@@ -142,24 +127,18 @@ def train_vqe(
 
         if niterations is not None and iteration_count % nmessage == 0:
             logging.info(f"Optimization iteration {iteration_count}/{niterations}")
-
-        if iteration_count >= niterations:
-            logging.info("Maximum number of iterations reached.")
-            raise StopIteration("Target accuracy reached.")
-
-        if accuracy is not None:
-            if np.abs(np.min(loss_list) - target_energy) <= accuracy:
-                logging.info("Target accuracy reached.")
-                raise StopIteration("Target accuracy reached.")
+            logging.info(f"Loss {energy:.5}")
 
     callbacks(initial_parameters)
     logging.info("Minimize the energy")
+
     results = vqe.minimize(
         initial_parameters,
         method=optimizer,
         callback=callbacks,
         tol=tol,
         loss_func=loss,
+        options=options,
     )
 
     return (
@@ -181,7 +160,9 @@ def rotate_h_with_vqe(hamiltonian, vqe):
     matrix_circ = np.matrix(backend.to_numpy(circuit.unitary()))
     matrix_circ_dagger = backend.cast(matrix_circ.getH())
     matrix_circ = backend.cast(matrix_circ)
-    new_hamiltonian = matrix_circ_dagger @ hamiltonian.matrix @ matrix_circ
+    new_hamiltonian = np.matmul(
+        matrix_circ_dagger, np.matmul(hamiltonian.matrix, matrix_circ)
+    )
     return new_hamiltonian
 
 
@@ -208,4 +189,6 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
         energies.append(dbi.h.expectation(zero_state))
         fluctuations.append(dbi.energy_fluctuation(zero_state))
         hamiltonians.append(dbi.h.matrix)
+
+        logging.info(f"DBI energies: {energies}")
     return hamiltonians, energies, fluctuations, steps, d_matrix, operators

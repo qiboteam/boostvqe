@@ -1,10 +1,15 @@
-from qibo import gates
+import qibo
+from qibo import gates, get_backend
 from qibo.backends import construct_backend
 from qibo.models import Circuit
 
+from boostvqe.training_utils import vqe_loss
 
-def build_circuit(nqubits, nlayers):
+
+def build_circuit(nqubits, nlayers, backend):
     """Build qibo's aavqe example circuit."""
+
+    qibo.set_backend(backend)
 
     circuit = Circuit(nqubits)
     for _ in range(nlayers):
@@ -38,3 +43,97 @@ def compute_gradients(parameters, circuit, hamiltonian):
         )
 
     return hamiltonian.backend.cast(tape.gradient(expectation, parameters))
+
+
+class VQE:
+    """This class implements the variational quantum eigensolver algorithm."""
+
+    from qibo import optimizers
+
+    def __init__(self, circuit, hamiltonian):
+        """Initialize circuit ansatz and hamiltonian."""
+        print("In the VQE", get_backend())
+        self.circuit = circuit
+        self.hamiltonian = hamiltonian
+        self.backend = hamiltonian.backend
+
+    def minimize(
+        self,
+        initial_state,
+        method="Powell",
+        loss_func=None,
+        jac=None,
+        hess=None,
+        hessp=None,
+        bounds=None,
+        constraints=(),
+        tol=None,
+        callback=None,
+        options=None,
+        compile=False,
+        processes=None,
+    ):
+        """Search for parameters which minimizes the hamiltonian expectation.
+
+        Args:
+            initial_state (array): a initial guess for the parameters of the
+                variational circuit.
+            method (str): the desired minimization method.
+                See :meth:`qibo.optimizers.optimize` for available optimization
+                methods.
+            loss (callable): loss function, the default one is :func:`qibo.models.utils.vqe_loss`.
+            jac (dict): Method for computing the gradient vector for scipy optimizers.
+            hess (dict): Method for computing the hessian matrix for scipy optimizers.
+            hessp (callable): Hessian of objective function times an arbitrary
+                vector for scipy optimizers.
+            bounds (sequence or Bounds): Bounds on variables for scipy optimizers.
+            constraints (dict): Constraints definition for scipy optimizers.
+            tol (float): Tolerance of termination for scipy optimizers.
+            callback (callable): Called after each iteration for scipy optimizers.
+            options (dict): a dictionary with options for the different optimizers.
+            compile (bool): whether the TensorFlow graph should be compiled.
+            processes (int): number of processes when using the paralle BFGS method.
+
+        Return:
+            The final expectation value.
+            The corresponding best parameters.
+            The optimization result object. For scipy methods it returns
+            the ``OptimizeResult``, for ``'cma'`` the ``CMAEvolutionStrategy.result``,
+            and for ``'sgd'`` the options used during the optimization.
+        """
+        if loss_func is None:
+            loss_func = vqe_loss
+        if compile:
+            loss = self.hamiltonian.backend.compile(loss_func)
+        else:
+            loss = loss_func
+
+        if method == "cma":
+            dtype = self.hamiltonian.backend.np.float64
+            loss = lambda p, c, h: dtype(loss_func(p, c, h))
+        elif method != "sgd":
+            loss = lambda p, c, h: self.hamiltonian.backend.to_numpy(loss_func(p, c, h))
+
+        result, parameters, extra = self.optimizers.optimize(
+            loss,
+            initial_state,
+            args=(self.circuit, self.hamiltonian),
+            method=method,
+            jac=jac,
+            hess=hess,
+            hessp=hessp,
+            bounds=bounds,
+            constraints=constraints,
+            tol=tol,
+            callback=callback,
+            options=options,
+            compile=compile,
+            processes=processes,
+            backend=self.hamiltonian.backend,
+        )
+        self.circuit.set_parameters(parameters)
+        return result, parameters, extra
+
+    def energy_fluctuation(self, state):
+        """Compute Energy Fluctuation."""
+        return self.hamiltonian.energy_fluctuation(state)
