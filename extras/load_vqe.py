@@ -16,17 +16,19 @@ from boostvqe.utils import apply_dbi_steps, rotate_h_with_vqe
 qibo.set_backend("numpy")
 
 # set the path string which define the results
-path = "../results/big_architectures_trains/sgd_13q_50l_42/"
-paramspath = Path(path + "parameters_history.npy")
+path = "../results/vqe_data/with_params/10q3l/sgd_10q_3l_42/"
 
 # set the target epoch to which apply DBQA and the number of steps
-target_epoch = 50
+target_epoch = 20
 dbi_steps = 1
 
 # upload system configuration and parameters for all the training
 with open(path + "optimization_results.json") as file:
     config = json.load(file)
-params = np.load(paramspath, allow_pickle=True).tolist()[0]
+
+losses = dict(np.load(path + "energies.npz"))["0"]
+params = np.load(path + f"parameters/params_ite{target_epoch}.npy")
+
 
 # build circuit, hamiltonian and VQE
 hamiltonian = hamiltonians.XXZ(nqubits=config["nqubits"], delta=0.5)
@@ -35,8 +37,9 @@ vqe = VQE(circuit, hamiltonian)
 zero_state = hamiltonian.backend.zero_state(config["nqubits"])
 target_energy = np.min(hamiltonian.eigenvalues())
 
+
 # set target parameters into the VQE
-vqe.circuit.set_parameters(params[target_epoch])
+vqe.circuit.set_parameters(params)
 vqe_state = vqe.circuit().state()
 
 ene1 = hamiltonian.expectation(vqe_state)
@@ -71,5 +74,12 @@ print("Applying DBI steps")
     nsteps=dbi_steps,
 )
 print(time.time() - t0)
-print(f"\nReached accuracy before DBI: {np.abs(target_energy - ene1)}")
-print(f"Reached accuracy after DBI: {np.abs(target_energy - dbi_energies[-1])}")
+print(
+    f"\nReached accuracy before DBI at iter {target_epoch}: {np.abs(target_energy - ene1)}"
+)
+print(
+    f"Reached accuracy after DBI at iter {target_epoch}: {np.abs(target_energy - dbi_energies[-1])}"
+)
+print(
+    f"Reached accuracy in the end of VQE long training: {np.abs(target_energy - losses[-1])}"
+)
