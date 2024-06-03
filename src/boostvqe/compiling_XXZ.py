@@ -51,7 +51,7 @@ def nqubit_XXZ_decomposition(nqubits,t,delta=0.5,steps=1):
     Example:
         .. testcode::
 
-            from compiling_XXZ_utils import *
+            from boostvqe.compiling_XXZ_utils import *
             # Create circuit to decompose 6 qubits XXZ with 3 decomposition steps
             circ = nqubit_XXZ_decomposition(nqubits=6,t=0.01,delta=0.5,steps=3)
             print(circ.draw())
