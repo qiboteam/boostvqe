@@ -63,6 +63,10 @@ def main(args):
     logging.info("Set VQE")
     path = pathlib.Path(create_folder(generate_path(args)))
 
+    # folder to save params
+    params_path = path / "parameters"
+    params_path.mkdir(parents=True, exist_ok=True)
+
     ham = getattr(hamiltonians, args.hamiltonian)(nqubits=args.nqubits)
     target_energy = np.real(np.min(np.asarray(ham.eigenvalues())))
     circ0 = build_circuit(
@@ -109,6 +113,7 @@ def main(args):
             nmessage=1,
             loss=loss,
             training_options=opt_options,
+            params_path=params_path,
         )
         # append results to global lists
         params_history[b] = np.array(partial_params_history)
