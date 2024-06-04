@@ -74,6 +74,7 @@ def train_vqe(
     initial_parameters,
     tol,
     loss,
+    params_path,
     niterations=None,
     nmessage=1,
     training_options=None,
@@ -106,6 +107,7 @@ def train_vqe(
         params_history=params_history,
         grads_history=grads_history,
         loss=loss,
+        params_path=params_path,
     ):
         """
         Callback function that updates the energy, the energy fluctuations and
@@ -124,6 +126,7 @@ def train_vqe(
         )
 
         iteration_count = len(loss_list) - 1
+        np.save(arr=params, file=params_path / f"params_ite{iteration_count}")
 
         if niterations is not None and iteration_count % nmessage == 0:
             logging.info(f"Optimization iteration {iteration_count}/{niterations}")
