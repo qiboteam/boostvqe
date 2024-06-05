@@ -46,6 +46,7 @@ def nqubit_XXZ_decomposition(nqubits, t, delta=0.5, steps=1, order=1):
     t (float): Total evolution time.
     delta (float): Coefficient for the Z component (default 0.5).
     steps (int): Number of time steps (default 1).
+    order (int): the order of product formula, as of now, it takes value 1 or 2.
 
     Returns:
     Circuit: The final multi-layer circuit.
