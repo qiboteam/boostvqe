@@ -48,10 +48,11 @@ class VQE:
 
     from qibo import optimizers
 
-    def __init__(self, circuit, hamiltonian):
+    def __init__(self, circuit, hamiltonian, ham_name):
         """Initialize circuit ansatz and hamiltonian."""
         self.circuit = circuit
         self.hamiltonian = hamiltonian
+        self.ham_name = ham_name
         self.backend = hamiltonian.backend
 
     def minimize(
@@ -107,14 +108,16 @@ class VQE:
 
         if method == "cma":
             dtype = self.hamiltonian.backend.np.float64
-            loss = lambda p, c, h: dtype(loss_func(p, c, h))
+            loss = lambda p, c, h, hn: dtype(loss_func(p, c, h, hn))
         elif method != "sgd":
-            loss = lambda p, c, h: self.hamiltonian.backend.to_numpy(loss_func(p, c, h))
+            loss = lambda p, c, h, hn: self.hamiltonian.backend.to_numpy(
+                loss_func(p, c, h, hn)
+            )
 
         result, parameters, extra = self.optimizers.optimize(
             loss,
             initial_state,
-            args=(self.circuit, self.hamiltonian),
+            args=(self.circuit, self.hamiltonian, self.ham_name),
             method=method,
             jac=jac,
             hess=hess,

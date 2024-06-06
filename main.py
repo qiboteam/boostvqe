@@ -18,7 +18,14 @@ from qibo.models.dbi.double_bracket import (
 # boostvqe's
 from boostvqe.ansatze import build_circuit
 from boostvqe.plotscripts import plot_gradients, plot_loss
-from boostvqe.training_utils import vqe_loss
+from boostvqe.training_utils import (
+    DEFAULT_DELTA,
+    DEFAULT_DELTAS,
+    TLFIM,
+    XYZ,
+    Ham,
+    vqe_loss,
+)
 from boostvqe.utils import (
     DBI_D_MATRIX,
     DBI_ENERGIES,
@@ -38,9 +45,6 @@ from boostvqe.utils import (
     rotate_h_with_vqe,
     train_vqe,
 )
-
-DEFAULT_DELTA = 0.5
-"""Default `delta` value of XXZ Hamiltonian"""
 
 logging.basicConfig(level=logging.INFO)
 
@@ -63,8 +67,16 @@ def main(args):
     # setup the results folder
     logging.info("Set VQE")
     path = pathlib.Path(create_folder(generate_path(args)))
-
-    ham = getattr(hamiltonians, args.hamiltonian)(nqubits=args.nqubits)
+    # import pdb; pdb.set_trace()
+    ham = getattr(Ham, args.hamiltonian)(args.nqubits)
+    # if args.hamiltonian == "XXZ":
+    #     ham = hamiltonians.XXZ(nqubits=args.nqubits, delta=DEFAULT_DELTA, dense = False)
+    # if args.hamiltonian == "XYZ":
+    #     ham = XYZ(nqubits=args.nqubits, delta=DEFAULT_DELTAS, dense = False)
+    # if args.hamiltonian == "TFIM":
+    #     ham = hamiltonians.TFIM(nqubits=args.nqubits, h=DEFAULT_DELTA, dense = False)
+    # if args.hamiltonian == "TLFIM":
+    #     ham = TLFIM(nqubits=args.nqubits, h=DEFAULT_DELTAS, dense = False)
     target_energy = np.real(np.min(np.asarray(ham.eigenvalues())))
     circ0 = build_circuit(
         nqubits=args.nqubits,
@@ -104,6 +116,7 @@ def main(args):
         ) = train_vqe(
             circ,
             ham,  # Fixed hamiltonian
+            args.hamiltonian,
             args.optimizer,
             initial_parameters,
             args.tol,
@@ -189,7 +202,7 @@ def main(args):
             "true_ground_energy": target_energy,
             "feval": list(fun_eval),
             "energy": float(vqe.hamiltonian.expectation(zero_state)),
-            "fluctuations": float(vqe.hamiltonian.energy_fluctuation(zero_state)),
+            "fluctuations": float(vqe.hamiltonian.dense.energy_fluctuation(zero_state)),
             "reached_accuracy": float(np.abs(target_energy - best_loss)),
         }
     )

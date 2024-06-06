@@ -65,12 +65,13 @@ def callback_energy_fluctuations(params, circuit, hamiltonian):
     circ.set_parameters(params)
     result = hamiltonian.backend.execute_circuit(circ)
     final_state = result.state()
-    return hamiltonian.energy_fluctuation(final_state)
+    return hamiltonian.dense.energy_fluctuation(final_state)
 
 
 def train_vqe(
     circ,
     ham,
+    ham_name,
     optimizer,
     initial_parameters,
     tol,
@@ -97,6 +98,7 @@ def train_vqe(
     vqe = VQE(
         circuit=circ,
         hamiltonian=ham,
+        ham_name=ham_name,
     )
 
     def callbacks(
@@ -112,7 +114,7 @@ def train_vqe(
         Callback function that updates the energy, the energy fluctuations and
         the parameters lists.
         """
-        energy = loss(params, vqe.circuit, vqe.hamiltonian)
+        energy = loss(params, vqe.circuit, vqe.hamiltonian, ham_name)
         loss_list.append(float(energy))
         loss_fluctuation.append(
             callback_energy_fluctuations(params, vqe.circuit, vqe.hamiltonian)
@@ -128,6 +130,7 @@ def train_vqe(
 
         if niterations is not None and iteration_count % nmessage == 0:
             logging.info(f"Optimization iteration {iteration_count}/{niterations}")
+            print(energy)
             logging.info(f"Loss {energy:.5}")
 
     callbacks(initial_parameters)
