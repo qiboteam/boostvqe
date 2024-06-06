@@ -41,6 +41,24 @@ def nqubit_XXZ_decomposition(nqubits, t, delta=0.5, steps=1, order=1):
     This function decomposes the time evolution operator of the XXZ model
     into a sequence of quantum gates applied to a quantum circuit.
 
+    We use the product formula from the paper :ref:`Nearly optimal lattice simulation by product 
+    formulas<https://arxiv.org/pdf/1901.00564>`.
+
+    For first-order formula, we have 
+
+    ..math::
+        L_1(t) = exp(-itB)exp(-itA)
+
+    while for the second-order formula, we have 
+
+    ..math::
+        L_2(t) = exp(-itA/2)exp(-itB)exp(-itA/2)
+
+    where A are the odd terms and B are the even terms.
+
+    The asymptotic upper bound on the product-formula error are :math:`O(nt^2)` and 
+    :math:`O(nt^3)` for the first-order and second-order formula respectively.
+
     Args:
     nqubits (int): Number of qubits.
     t (float): Total evolution time.
@@ -92,7 +110,7 @@ def nqubit_XXZ_decomposition(nqubits, t, delta=0.5, steps=1, order=1):
             circuit = _add_gates(circuit, odd_numbers, even_numbers[1:], t / 2, delta, steps)
             circuit = _add_gates(circuit, [nqubits - 1], [0], t / 2, delta, steps)
     else:
-        print("we only accepts order 1 and 2 for now, returning emtpy circuit")
+        print("we only accepts order 1 and 2 for now, returning empty circuit")
         return Circuit(nqubits=nqubits)
     # Create a multi-layer circuit with the time evolution steps
     multi_layer = Circuit(nqubits=nqubits)
