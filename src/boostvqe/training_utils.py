@@ -8,7 +8,7 @@ import tensorflow as tf
 tf.get_logger().setLevel("ERROR")
 
 from qibo import gates, hamiltonians
-from qibo.backends import NumpyBackend, TensorflowBackend
+from qibo.backends import GlobalBackend, NumpyBackend, TensorflowBackend
 from qibo.config import raise_error
 from qibo.hamiltonians import AbstractHamiltonian
 from qibo.symbols import Z
@@ -52,20 +52,41 @@ def _with_shots(circ, hamiltonian, nshots, delta=0.5, exec_backend=None):
     hamiltonian = sum(Z(i) * Z(i + 1) for i in range(circ.nqubits - 1))
     hamiltonian += Z(0) * Z(circ.nqubits - 1)
     hamiltonian = hamiltonians.SymbolicHamiltonian(hamiltonian)
-    coefficients = [1, 1, delta]
-    mgates = ["X", "Y", "Z"]
     expectation_value = 0
-    for i, mgate in enumerate(mgates):
-        circ1 = circ.copy(deep=True)
-        if mgate != "Z":
-            circ1.add(gates.M(*range(circ1.nqubits), basis=getattr(gates, mgate)))
-        else:
-            circ1.add(gates.M(*range(circ1.nqubits)))
 
+    if type(hamiltonian) == "TFIM":
+        # Evaluate the ZZ terms
+        circ1 = circ.copy(deep=True)
+        circ1.add(gates.M(*range(circ1.nqubits)))
         expval_contribution = exec_backend.execute_circuit(
             circuit=circ1, nshots=nshots
         ).expectation_from_samples(hamiltonian)
-        expectation_value += coefficients[i] * expval_contribution
+        expectation_value += expval_contribution
+
+        # Evaluate X terms
+        circ1 = circ.copy(deep=True)
+        circ1.add(gates.M(*range(circ1.nqubits), basis=gates.X))
+        hamiltonian = sum(Z(i) for i in range(circ.nqubits))
+        hamiltonian = hamiltonians.SymbolicHamiltonian(hamiltonian)
+        expval_contribution = exec_backend.execute_circuit(
+            circuit=circ1, nshots=nshots
+        ).expectation_from_samples(hamiltonian)
+        expectation_value += delta * expval_contribution
+
+    elif type(hamiltonian) == "XXZ":
+        coefficients = [1, 1, delta]
+        mgates = ["X", "Y", "Z"]
+        for i, mgate in enumerate(mgates):
+            circ1 = circ.copy(deep=True)
+            if mgate != "Z":
+                circ1.add(gates.M(*range(circ1.nqubits), basis=getattr(gates, mgate)))
+            else:
+                circ1.add(gates.M(*range(circ1.nqubits)))
+
+            expval_contribution = exec_backend.execute_circuit(
+                circuit=circ1, nshots=nshots
+            ).expectation_from_samples(hamiltonian)
+            expectation_value += coefficients[i] * expval_contribution
     return expectation_value
 
 
