@@ -115,10 +115,8 @@ def vqe_loss(params, circuit, hamiltonian, ham_name, nshots=None, delta=0.5):
     TODO: fix the following statement.
     IMPORTANT: this works only for Heisemberg hamiltonians XXZ.
     """
-    print(type(hamiltonian))
     circ = circuit.copy(deep=True)
     circ.set_parameters(params)
-    # import pdb; pdb.set_trace()
     if isinstance(hamiltonian.backend, TensorflowBackend) and nshots is not None:
         expectation_value = _exp_with_tf(circ, hamiltonian, nshots)
     elif nshots is None:
@@ -138,38 +136,35 @@ def _exact(circ, hamiltonian):
 
 def _with_shots(circ, ham, ham_name, nshots, exec_backend=None):
     """Helper function to compute XXZ expectation value from frequencies."""
-
+    # import pdb; pdb.set_trace()
     # we may prefer run this on a different backend (e.g. with TF and PSR)
     if exec_backend is None:
-        print(ham.backend)
         exec_backend = ham.backend
 
     hamiltonian = sum(Z(i) * Z(i + 1) for i in range(circ.nqubits - 1))
     hamiltonian += Z(0) * Z(circ.nqubits - 1)
     hamiltonian = hamiltonians.SymbolicHamiltonian(hamiltonian)
+    hamiltonian1 = sum(Z(i) for i in range(circ.nqubits))
+    hamiltonian1 = hamiltonians.SymbolicHamiltonian(hamiltonian1)
     expectation_value = 0
-    print("KKKKKKK", ham, exec_backend, ham.backend)
     nqubits = circ.nqubits
 
     if (ham.matrix == Ham.TFIM(nqubits=nqubits).matrix).all():
-        print("DDDDDDDDDDDDDDDDDD")
         # Evaluate the ZZ terms
         circ1 = circ.copy(deep=True)
         circ1.add(gates.M(*range(circ1.nqubits)))
         expval_contribution = exec_backend.execute_circuit(
             circuit=circ1, nshots=nshots
         ).expectation_from_samples(hamiltonian)
-        expectation_value += expval_contribution
+        expectation_value -= expval_contribution
 
         # Evaluate X terms
         circ1 = circ.copy(deep=True)
         circ1.add(gates.M(*range(circ1.nqubits), basis=gates.X))
-        hamiltonian = sum(Z(i) for i in range(circ.nqubits))
-        hamiltonian = hamiltonians.SymbolicHamiltonian(hamiltonian)
         expval_contribution = exec_backend.execute_circuit(
             circuit=circ1, nshots=nshots
-        ).expectation_from_samples(hamiltonian)
-        expectation_value += DEFAULT_DELTA * expval_contribution
+        ).expectation_from_samples(hamiltonian1)
+        expectation_value -= DEFAULT_DELTA * expval_contribution
 
     elif (ham.matrix == Ham.TLFIM(nqubits=nqubits).matrix).all():
         # Evaluate the ZZ terms
@@ -178,26 +173,19 @@ def _with_shots(circ, ham, ham_name, nshots, exec_backend=None):
         expval_contribution = exec_backend.execute_circuit(
             circuit=circ1, nshots=nshots
         ).expectation_from_samples(hamiltonian)
-        expectation_value += expval_contribution
+        expectation_value -= expval_contribution
 
-        # Evaluate X terms
-        circ1 = circ.copy(deep=True)
-        circ1.add(gates.M(*range(circ1.nqubits), basis=gates.X))
-        hamiltonian = sum(Z(i) for i in range(circ.nqubits))
-        hamiltonian = hamiltonians.SymbolicHamiltonian(hamiltonian)
-        expval_contribution = exec_backend.execute_circuit(
-            circuit=circ1, nshots=nshots
-        ).expectation_from_samples(hamiltonian)
-        expectation_value += DEFAULT_DELTAS[0] * expval_contribution
-        # Evaluate Z terms
-        circ1 = circ.copy(deep=True)
-        circ1.add(gates.M(*range(circ1.nqubits)))
-        hamiltonian = sum(Z(i) for i in range(circ.nqubits))
-        hamiltonian = hamiltonians.SymbolicHamiltonian(hamiltonian)
-        expval_contribution = exec_backend.execute_circuit(
-            circuit=circ1, nshots=nshots
-        ).expectation_from_samples(hamiltonian)
-        expectation_value += DEFAULT_DELTAS[1] * expval_contribution
+        # Evaluate X and Z terms
+        for i, gate in enumerate([gates.X, gates.Z]):
+            circ1 = circ.copy(deep=True)
+            if gate == gates.X:
+                circ1.add(gates.M(*range(circ1.nqubits), basis=gate))
+            else:
+                circ1.add(gates.M(*range(circ1.nqubits)))
+            expval_contribution = exec_backend.execute_circuit(
+                circuit=circ1, nshots=nshots
+            ).expectation_from_samples(hamiltonian1)
+            expectation_value -= DEFAULT_DELTAS[i] * expval_contribution
 
     else:
         if (ham.matrix == Ham.XXZ(nqubits=nqubits).matrix).all():

@@ -67,16 +67,7 @@ def main(args):
     # setup the results folder
     logging.info("Set VQE")
     path = pathlib.Path(create_folder(generate_path(args)))
-    # import pdb; pdb.set_trace()
     ham = getattr(Ham, args.hamiltonian)(args.nqubits)
-    # if args.hamiltonian == "XXZ":
-    #     ham = hamiltonians.XXZ(nqubits=args.nqubits, delta=DEFAULT_DELTA, dense = False)
-    # if args.hamiltonian == "XYZ":
-    #     ham = XYZ(nqubits=args.nqubits, delta=DEFAULT_DELTAS, dense = False)
-    # if args.hamiltonian == "TFIM":
-    #     ham = hamiltonians.TFIM(nqubits=args.nqubits, h=DEFAULT_DELTA, dense = False)
-    # if args.hamiltonian == "TLFIM":
-    #     ham = TLFIM(nqubits=args.nqubits, h=DEFAULT_DELTAS, dense = False)
     target_energy = np.real(np.min(np.asarray(ham.eigenvalues())))
     circ0 = build_circuit(
         nqubits=args.nqubits,
