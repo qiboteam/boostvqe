@@ -18,14 +18,7 @@ from qibo.models.dbi.double_bracket import (
 # boostvqe's
 from boostvqe.ansatze import build_circuit
 from boostvqe.plotscripts import plot_gradients, plot_loss
-from boostvqe.training_utils import (
-    DEFAULT_DELTA,
-    DEFAULT_DELTAS,
-    TLFIM,
-    XYZ,
-    Ham,
-    vqe_loss,
-)
+from boostvqe.training_utils import Ham, vqe_loss
 from boostvqe.utils import (
     DBI_D_MATRIX,
     DBI_ENERGIES,
@@ -77,7 +70,7 @@ def main(args):
     backend = ham.backend
     zero_state = backend.zero_state(args.nqubits)
 
-    loss = partial(vqe_loss, delta=DELTA, nshots=args.nshots)
+    loss = partial(vqe_loss, nshots=args.nshots)
 
     # fix numpy seed to ensure replicability of the experiment
     np.random.seed(int(args.seed))
@@ -107,7 +100,6 @@ def main(args):
         ) = train_vqe(
             circ,
             ham,  # Fixed hamiltonian
-            args.hamiltonian,
             args.optimizer,
             initial_parameters,
             args.tol,

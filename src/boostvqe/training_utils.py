@@ -109,7 +109,7 @@ def XYZ(nqubits, delta=[0.5, 0.5], dense=True, backend=None):
     return ham
 
 
-def vqe_loss(params, circuit, hamiltonian, ham_name, nshots=None, delta=0.5):
+def vqe_loss(params, circuit, hamiltonian, nshots=None):
     """Evaluate the hamiltonian expectation values of the circuit final state.
 
     TODO: fix the following statement.
@@ -122,7 +122,7 @@ def vqe_loss(params, circuit, hamiltonian, ham_name, nshots=None, delta=0.5):
     elif nshots is None:
         expectation_value = _exact(circ, hamiltonian)
     else:
-        expectation_value = _with_shots(circ, hamiltonian, ham_name, nshots)
+        expectation_value = _with_shots(circ, hamiltonian, nshots)
     return expectation_value
 
 
@@ -134,7 +134,7 @@ def _exact(circ, hamiltonian):
     return expectation_value
 
 
-def _with_shots(circ, ham, ham_name, nshots, exec_backend=None):
+def _with_shots(circ, ham, nshots, exec_backend=None):
     """Helper function to compute XXZ expectation value from frequencies."""
     # import pdb; pdb.set_trace()
     # we may prefer run this on a different backend (e.g. with TF and PSR)

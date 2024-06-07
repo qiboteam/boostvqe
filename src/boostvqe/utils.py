@@ -71,7 +71,6 @@ def callback_energy_fluctuations(params, circuit, hamiltonian):
 def train_vqe(
     circ,
     ham,
-    ham_name,
     optimizer,
     initial_parameters,
     tol,
@@ -98,7 +97,6 @@ def train_vqe(
     vqe = VQE(
         circuit=circ,
         hamiltonian=ham,
-        ham_name=ham_name,
     )
 
     def callbacks(
@@ -114,7 +112,7 @@ def train_vqe(
         Callback function that updates the energy, the energy fluctuations and
         the parameters lists.
         """
-        energy = loss(params, vqe.circuit, vqe.hamiltonian, ham_name)
+        energy = loss(params, vqe.circuit, vqe.hamiltonian)
         loss_list.append(float(energy))
         loss_fluctuation.append(
             callback_energy_fluctuations(params, vqe.circuit, vqe.hamiltonian)
