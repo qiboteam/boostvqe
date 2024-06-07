@@ -7,6 +7,7 @@ from qibo import Circuit
 from qibo.config import raise_error
 from qibo.hamiltonians import AbstractHamiltonian, SymbolicHamiltonian
 
+from boostvqe.compiling_XXZ import *
 
 class EvolutionOracleType(Enum):
     text_strings = auto()
@@ -166,3 +167,29 @@ class FrameShiftedEvolutionOracle(EvolutionOracle):
                 c = c + fseo.after_circuit
             fseo = fseo.base_evolution_oracle
         return c
+
+
+
+class XXZ_EvolutionOracle(EvolutionOracle):
+    def __init__(
+        self,
+        h_xxz,
+        name = "XXZ",
+        mode_evolution_oracle: EvolutionOracleType = EvolutionOracleType.text_strings
+    ):
+        super().__init__(            
+        h_xxz,
+        name,
+        mode_evolution_oracle
+        )
+
+        self.delta = h_xxz.delta        
+        self.h.circuit = lambda t_duration: nqubit_XXZ_decomposition(nqubits=self.h.nqubits,t=t_duration,delta=self.delta,steps=1)
+        self.please_assess_how_many_steps_to_use = False
+    def discretized_evolution_circuit_binary_search(self, t_duration, eps=None):
+        if self.please_assess_how_many_steps_to_use:
+            return super().discretized_evolution_circuit_binary_search(t_duration,eps=eps)
+        else:
+            return self.h.circuit(t_duration)
+
+

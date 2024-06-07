@@ -6,16 +6,13 @@ import hyperopt
 import numpy as np
 
 from qibo.hamiltonians import Hamiltonian
-<<<<<<< HEAD
-from qibo.models.dbi.utils import *
-from qibo.models.dbi.utils_scheduling import (
+from boostvqe.models.dbi.utils import *
+from boostvqe.models.dbi.utils_scheduling import (
     grid_search_step,
     hyperopt_step,
     polynomial_step,
     simulated_annealing_step,
 )
-=======
->>>>>>> origin/DBI-transpiling-into-Hamiltonian-Simulation
 
 
 class DoubleBracketGeneratorType(Enum):
@@ -46,7 +43,6 @@ class DoubleBracketCostFunction(str, Enum):
     """Use energy fluctuation as cost function."""
 
 
-<<<<<<< HEAD
 class DoubleBracketScheduling(Enum):
     """Define the DBI scheduling strategies."""
 
@@ -60,8 +56,6 @@ class DoubleBracketScheduling(Enum):
     """Use simulated annealing algorithm"""
 
 
-=======
->>>>>>> origin/DBI-transpiling-into-Hamiltonian-Simulation
 class DoubleBracketIteration:
     """
     Class implementing the Double Bracket iteration algorithm.
@@ -90,17 +84,13 @@ class DoubleBracketIteration:
         self,
         hamiltonian: Hamiltonian,
         mode: DoubleBracketGeneratorType = DoubleBracketGeneratorType.canonical,
-<<<<<<< HEAD
         scheduling: DoubleBracketScheduling = DoubleBracketScheduling.grid_search,
         cost: DoubleBracketCostFunction = DoubleBracketCostFunction.off_diagonal_norm,
         ref_state: np.array = None,
-=======
->>>>>>> origin/DBI-transpiling-into-Hamiltonian-Simulation
     ):
         self.h = hamiltonian
         self.h0 = deepcopy(self.h)
         self.mode = mode
-<<<<<<< HEAD
         self.scheduling = scheduling
         self.cost = cost
         self.ref_state = ref_state
@@ -112,8 +102,6 @@ class DoubleBracketIteration:
             cost (DoubleBracketCost): type of cost function.
             ref_state (np.array): reference state for computing the energy fluctuation.
         """
-=======
->>>>>>> origin/DBI-transpiling-into-Hamiltonian-Simulation
 
     def __call__(
         self, step: float, mode: DoubleBracketGeneratorType = None, d: np.array = None
@@ -162,11 +150,7 @@ class DoubleBracketIteration:
                 d = self.diagonal_h_matrix
             operator = self.backend.calculate_matrix_exp(
                 -1.0j * step,
-<<<<<<< HEAD
                 self.commutator(self.backend.cast(d), self.h.matrix),
-=======
-                self.commutator(d, self.h.matrix),
->>>>>>> origin/DBI-transpiling-into-Hamiltonian-Simulation
             )
         elif mode is DoubleBracketGeneratorType.group_commutator:
             if d is None:

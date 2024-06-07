@@ -1,8 +1,8 @@
 import hyperopt
 
 from qibo.backends import _check_backend
-from qibo.models.dbi.double_bracket import *
-from qibo.models.dbi.utils import *
+from boostvqe.models.dbi.double_bracket import *
+from boostvqe.models.dbi.utils import *
 
 
 def select_best_dbr_generator(
