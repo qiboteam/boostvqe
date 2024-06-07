@@ -52,7 +52,6 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         self,
         input_hamiltonian_evolution_oracle: EvolutionOracle,
         mode_double_bracket_rotation: DoubleBracketRotationType = DoubleBracketRotationType.group_commutator,
-        mode_evolution_oracle: EvolutionOracleType = EvolutionOracleType.numerical,
     ):
         if mode_double_bracket_rotation is DoubleBracketRotationType.single_commutator:
             mode_double_bracket_rotation_old = (
