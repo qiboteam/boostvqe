@@ -1,3 +1,32 @@
+"""
+Module for constructing a quantum circuit that simulates the time evolution
+of an XXZ spin chain model using a sequence of quantum gates.
+
+This module provides functions to add gates to a quantum circuit for the XXZ
+model and to decompose the time evolution operator into a multi-layer quantum
+circuit, according to https://arxiv.org/pdf/quant-ph/0308006 (fig 6). 
+
+The XXZ model is represented by the Hamiltonian:
+
+.. math::
+    H = \\sum_{i=0}^{N-1} \\left( X_i X_{i+1} + Y_i Y_{i+1} + \\delta Z_i Z_{i+1} \\right)
+
+Functions:
+    _add_gates(circuit, list_q_i, list_q_ip1, t, delta, steps):
+        Adds gates for an XXZ model time evolution step.
+    
+    nqubit_XXZ_decomposition(nqubits, t, delta=0.5, steps=1):
+        Constructs an XXZ model circuit for n qubits, decomposing the
+        time evolution operator into a sequence of quantum gates.
+
+Example:
+    .. testcode::
+            from boostvqe.compiling_XXZ_utils import *
+            # Create circuit to decompose 6 qubits XXZ with 3 decomposition steps
+            circ = nqubit_XXZ_decomposition(nqubits=6,t=0.01,delta=0.5,steps=3)
+            print(circ.draw())
+"""
+
 import numpy as np
 from qibo import Circuit,gates
 
