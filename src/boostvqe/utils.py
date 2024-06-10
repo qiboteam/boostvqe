@@ -1,4 +1,5 @@
 import json
+import copy
 import logging
 from pathlib import Path
 
@@ -119,7 +120,7 @@ def train_vqe(
         loss_fluctuation.append(
             callback_energy_fluctuations(params, vqe.circuit, vqe.hamiltonian)
         )
-        params_history.append(params)
+        params_history.append(copy.deepcopy(params))
         grads_history.append(
             compute_gradients(
                 parameters=params, circuit=circ.copy(deep=True), hamiltonian=ham
