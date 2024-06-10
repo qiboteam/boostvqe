@@ -30,7 +30,7 @@ class DoubleBracketGeneratorType(Enum):
     which is equation (8) in https://arxiv.org/abs/2111.12177]
     s must be taken as $\\sqrt{s}$ to approximate the flow using the commutator
     """
-
+    group_commutator_3_reduced = auto()
 
 class DoubleBracketCostFunction(str, Enum):
     """Define the DBI cost function."""
@@ -168,6 +168,16 @@ class DoubleBracketIteration:
             operator = (
                 self.h.exp(-step * (np.sqrt(5) - 1) / 2)
                 @ self.backend.calculate_matrix_exp(-step * (np.sqrt(5) - 1) / 2, d)
+                @ self.h.exp(step)
+                @ self.backend.calculate_matrix_exp(step * (np.sqrt(5) + 1) / 2, d)
+                @ self.h.exp(-step * (3 - np.sqrt(5)) / 2)
+                @ self.backend.calculate_matrix_exp(-step, d)
+            )
+        elif mode is DoubleBracketGeneratorType.group_commutator_3_reduced:
+            if d is None:
+                d = self.diagonal_h_matrix
+            operator = (
+                 self.backend.calculate_matrix_exp(-step * (np.sqrt(5) - 1) / 2, d)
                 @ self.h.exp(step)
                 @ self.backend.calculate_matrix_exp(step * (np.sqrt(5) + 1) / 2, d)
                 @ self.h.exp(-step * (3 - np.sqrt(5)) / 2)

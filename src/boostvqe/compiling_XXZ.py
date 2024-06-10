@@ -80,4 +80,13 @@ def nqubit_XXZ_decomposition(nqubits,t,delta=0.5,steps=1):
     multi_layer = Circuit(nqubits = nqubits)
     for _step in range(steps):
         multi_layer += circuit
-    return multi_layer
+    return multi_layer  
+
+def vw_xxz_compiling_phase(nqubits, steps):
+    return np.exp(1j *np.pi/4* nqubits * steps)
+
+
+def test_compiling_XXZ(t = 0.1, nqubits = 4, steps = 3):
+    h = hamiltonians.XXZ(nqubits=nqubits, delta=0.5)
+    return  np.linalg.norm(h.exp(t) - circuit_compiling_phase(nqubits, steps) * nqubit_XXZ_decomposition(
+            nqubits=nqubits,t=0.1,delta=0.5,steps=steps))

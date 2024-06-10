@@ -168,11 +168,11 @@ class FrameShiftedEvolutionOracle(EvolutionOracle):
         fseo = self
         while isinstance(fseo, FrameShiftedEvolutionOracle):
             if self.mode_evolution_oracle is EvolutionOracleType.numerical:
-                c = fseo.after_circuit @ c
+                c =  c @fseo.after_circuit 
             elif (
                 self.mode_evolution_oracle is EvolutionOracleType.hamiltonian_simulation
             ):
-                c = c + fseo.after_circuit
+                c = fseo.after_circuit + c 
             fseo = fseo.base_evolution_oracle
         return c
 
@@ -193,12 +193,17 @@ class XXZ_EvolutionOracle(EvolutionOracle):
 
         self.delta = h_xxz.delta        
         self.h.circuit = lambda t_duration: nqubit_XXZ_decomposition(
-            nqubits=self.h.nqubits,t=t_duration,delta=self.delta,steps=9)
+            nqubits=self.h.nqubits,t=t_duration,delta=self.delta,steps=1)
+        
         self.please_assess_how_many_steps_to_use = False
+
     def discretized_evolution_circuit_binary_search(self, t_duration, eps=None):
         if self.please_assess_how_many_steps_to_use:
             return super().discretized_evolution_circuit_binary_search(t_duration,eps=eps)
         else:
             return self.h.circuit(t_duration)
+
+
+
 
 
