@@ -8,6 +8,9 @@ from qibo.config import raise_error
 from qibo.hamiltonians import AbstractHamiltonian, SymbolicHamiltonian
 
 from boostvqe.compiling_XXZ import *
+from copy import deepcopy
+
+from functools import reduce
 
 class EvolutionOracleType(Enum):
     text_strings = auto()
@@ -47,6 +50,7 @@ class EvolutionOracle:
         self.mode_find_number_of_trottersuzuki_steps = True
         self.eps_trottersuzuki = 0.0001
         self.please_be_verbose = False
+        self.please_use_prescribed_nmb_ts_steps = False
 
     def __call__(self, t_duration: float):
         """Returns either the name or the circuit"""
@@ -68,9 +72,16 @@ class EvolutionOracle:
         elif self.mode_evolution_oracle is EvolutionOracleType.numerical:
             return self.h.exp(t_duration)
         elif self.mode_evolution_oracle is EvolutionOracleType.hamiltonian_simulation:
-            return self.discretized_evolution_circuit_binary_search(
-                t_duration, eps=self.eps_trottersuzuki
-            )
+            if self.please_use_prescribed_nmb_ts_steps is False:
+                return self.discretized_evolution_circuit_binary_search(
+                    t_duration, eps=self.eps_trottersuzuki
+                    )
+            else:
+                dt = t_duration / self.please_use_prescribed_nmb_ts_steps
+                return  reduce(
+                    Circuit.__add__, 
+                    [deepcopy(self.h).circuit(dt)] * self.please_use_prescribed_nmb_ts_steps
+                    )
 
     def discretized_evolution_circuit_binary_search(self, t_duration, eps=None):
         nmb_trottersuzuki_steps = 1  # this is the smallest size
@@ -78,8 +89,6 @@ class EvolutionOracle:
         if eps is None:
             eps = self.eps_trottersuzuki
         target_unitary = self.h.exp(t_duration)
-
-        from copy import deepcopy
 
         def check_accuracy(n_steps):
             proposed_circuit_unitary = np.linalg.matrix_power(
@@ -102,8 +111,6 @@ class EvolutionOracle:
                 nmb_trottersuzuki_steps = mid + 1
         nmb_trottersuzuki_steps = nmb_trottersuzuki_steps_used
 
-        from functools import reduce
-
         circuit_1_step = deepcopy(self.h.circuit(t_duration / nmb_trottersuzuki_steps))
         combined_circuit = reduce(
             Circuit.__add__, [circuit_1_step] * nmb_trottersuzuki_steps
@@ -112,6 +119,7 @@ class EvolutionOracle:
             np.linalg.norm(combined_circuit.unitary() - target_unitary) < eps
         ), f"{np.linalg.norm(combined_circuit.unitary() - target_unitary)},{eps}, {nmb_trottersuzuki_steps}"
         return combined_circuit
+
 
 
 class FrameShiftedEvolutionOracle(EvolutionOracle):
@@ -184,7 +192,8 @@ class XXZ_EvolutionOracle(EvolutionOracle):
         )
 
         self.delta = h_xxz.delta        
-        self.h.circuit = lambda t_duration: nqubit_XXZ_decomposition(nqubits=self.h.nqubits,t=t_duration,delta=self.delta,steps=1)
+        self.h.circuit = lambda t_duration: nqubit_XXZ_decomposition(
+            nqubits=self.h.nqubits,t=t_duration,delta=self.delta,steps=9)
         self.please_assess_how_many_steps_to_use = False
     def discretized_evolution_circuit_binary_search(self, t_duration, eps=None):
         if self.please_assess_how_many_steps_to_use:

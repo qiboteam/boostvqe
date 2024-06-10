@@ -7,9 +7,9 @@ from qibo import *
 from qibo import symbols
 from qibo.config import raise_error
 from qibo.hamiltonians import Hamiltonian, SymbolicHamiltonian
-from qibo.models.dbi import *
-from qibo.models.dbi.double_bracket import *
-from qibo.models.dbi.double_bracket_evolution_oracles import *
+from boostvqe.models.dbi import *
+from boostvqe.models.dbi.double_bracket import *
+from boostvqe.models.dbi.double_bracket_evolution_oracles import *
 
 
 class DoubleBracketRotationType(Enum):
@@ -25,23 +25,11 @@ class DoubleBracketRotationType(Enum):
     """Use group commutator approximation with reordering of the operators"""
 
     group_commutator_reduced = auto()
-    """Use group commutator approximation with a reduction using symmetry
-
-    """
-    ## Reserving for later development
-    exact_GWW = auto()
-    r""" $e^{-s [\Delta(H),H]}$"""
-    group_commutator_imperfect = auto()
-    """Use group commutator approximation"""
-
-    group_commutator_reduced_imperfect = auto()
-    """Use group commutator approximation:
-    symmetry of the Hamiltonian implies that with perfect reversion of the input evolution the first order needs less queries.
-    We extrapolate that symmetry to the imperfect reversal.
-    Note that while may not be performing a similarity operation on the generator of the double bracket iteration,
-    the unfolded operation applied to a state vector will still be unitary:
-
-    """
+    """Use group commutator approximation with a reduction using symmetry"""
+    group_commutator_third_order = auto()
+    """Higher order approximation    """
+    group_commutator_third_order_reduced = auto()
+    """Higher order approximation    """
 
 
 class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
@@ -74,6 +62,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         self.iterated_hamiltonian_evolution_oracle = deepcopy(
             self.input_hamiltonian_evolution_oracle
         )
+        self.please_evaluate_matrices = False
 
     def __call__(
         self,
@@ -106,29 +95,29 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             before_circuit,
             after_circuit,
         )
+        if self.please_evaluate_matrices:
+            if (
+                self.input_hamiltonian_evolution_oracle.mode_evolution_oracle
+                is EvolutionOracleType.numerical
+            ):
+                self.h.matrix = before_circuit @ self.h.matrix @ after_circuit
 
-        if (
-            self.input_hamiltonian_evolution_oracle.mode_evolution_oracle
-            is EvolutionOracleType.numerical
-        ):
-            self.h.matrix = before_circuit @ self.h.matrix @ after_circuit
+            elif (
+                self.input_hamiltonian_evolution_oracle.mode_evolution_oracle
+                is EvolutionOracleType.hamiltonian_simulation
+            ):
 
-        elif (
-            self.input_hamiltonian_evolution_oracle.mode_evolution_oracle
-            is EvolutionOracleType.hamiltonian_simulation
-        ):
+                self.h.matrix = (
+                    before_circuit.unitary() @ self.h.matrix @ after_circuit.unitary()
+                )
 
-            self.h.matrix = (
-                before_circuit.unitary() @ self.h.matrix @ after_circuit.unitary()
-            )
-
-        elif (
-            self.input_hamiltonian_evolution_oracle.mode_evolution_oracle
-            is EvolutionOracleType.text_strings
-        ):
-            raise_error(NotImplementedError)
-        else:
-            super().__call__(step_duration, diagonal_association.h.dense.matrix)
+            elif (
+                self.input_hamiltonian_evolution_oracle.mode_evolution_oracle
+                is EvolutionOracleType.text_strings
+            ):
+                raise_error(NotImplementedError)
+            else:
+                super().__call__(step_duration, diagonal_association.h.dense.matrix)
 
     def eval_gcr_unitary(
         self,
@@ -153,7 +142,6 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         mode_dbr: DoubleBracketRotationType = None,
     ):
         s_step = np.sqrt(t_step)
-
         if eo2 is None:
             eo2 = self.iterated_hamiltonian_evolution_oracle
 
@@ -176,7 +164,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
                 eo1.circuit(s_step),
                 eo2.circuit(s_step),
                 eo1.circuit(-s_step),
-            ]
+            ]          
             query_list_backward = [
                 eo1.circuit(s_step),
                 eo2.circuit(-s_step),
@@ -207,7 +195,25 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
                 eo2.circuit(-s_step),
                 eo1.circuit(-s_step),
             ]
-
+        elif gc_type is DoubleBracketRotationType.group_commutator_third_order:
+            query_list_forward = [
+                eo2.circuit(-s_step * (np.sqrt(5) - 1) / 2),
+                eo1.circuit(-s_step * (np.sqrt(5) - 1) / 2),
+                eo2.circuit(s_step),
+                eo1.circuit(s_step * (np.sqrt(5) + 1) / 2),
+                eo2.circuit(-s_step * (3 - np.sqrt(5)) / 2),
+                eo1.circuit(-s_step)            
+            ]
+            query_list_backward = [ Circuit.invert(c) for c in query_list_forward[::-1]]
+        elif gc_type is DoubleBracketRotationType.group_commutator_third_order_reduced:
+            query_list_forward = [
+                eo1.circuit(-s_step * (np.sqrt(5) - 1) / 2),
+                eo2.circuit(s_step),
+                eo1.circuit(s_step * (np.sqrt(5) + 1) / 2),
+                eo2.circuit(-s_step * (3 - np.sqrt(5)) / 2),
+                eo1.circuit(-s_step)            
+            ]
+            query_list_backward = [ Circuit.invert(c) for c in query_list_forward[::-1]]
         else:
             raise_error(
                 ValueError,
@@ -215,7 +221,6 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             )
 
         eo_mode = eo1.mode_evolution_oracle
-        from functools import reduce
 
         if eo_mode is EvolutionOracleType.text_strings:
             return {
