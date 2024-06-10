@@ -165,6 +165,7 @@ class DoubleBracketIteration:
         elif mode is DoubleBracketGeneratorType.group_commutator_3:
             if d is None:
                 d = self.diagonal_h_matrix
+            sqrt_step = np.sqrt(step)
             operator = (
                 self.h.exp(-step * (np.sqrt(5) - 1) / 2)
                 @ self.backend.calculate_matrix_exp(-step * (np.sqrt(5) - 1) / 2, d)
@@ -176,6 +177,7 @@ class DoubleBracketIteration:
         elif mode is DoubleBracketGeneratorType.group_commutator_3_reduced:
             if d is None:
                 d = self.diagonal_h_matrix
+            sqrt_step = np.sqrt(step)
             operator = (
                  self.backend.calculate_matrix_exp(-step * (np.sqrt(5) - 1) / 2, d)
                 @ self.h.exp(step)
