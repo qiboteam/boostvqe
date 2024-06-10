@@ -1,5 +1,5 @@
-import json
 import copy
+import json
 import logging
 from pathlib import Path
 
@@ -131,7 +131,6 @@ def train_vqe(
 
         if niterations is not None and iteration_count % nmessage == 0:
             logging.info(f"Optimization iteration {iteration_count}/{niterations}")
-            print(energy)
             logging.info(f"Loss {energy:.5}")
 
     callbacks(initial_parameters)

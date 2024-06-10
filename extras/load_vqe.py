@@ -4,24 +4,24 @@ from pathlib import Path
 
 import numpy as np
 import qibo
-from qibo import set_backend, hamiltonians
+from qibo import hamiltonians, set_backend
 from qibo.models.dbi.double_bracket import (
     DoubleBracketGeneratorType,
     DoubleBracketIteration,
 )
 
 from boostvqe.ansatze import VQE, build_circuit
-from boostvqe.utils import apply_dbi_steps, rotate_h_with_vqe
 from boostvqe.training_utils import Ham
+from boostvqe.utils import apply_dbi_steps, rotate_h_with_vqe
 
 qibo.set_backend("numpy")
 
 # set the path string which define the results
-path = "../results/debugging_decay/sgd_5q_1l_42/"
+path = "../results/xyz/sgd_3q_1l_42/"
 paramspath = Path(path + "parameters_history.npy")
 
 # set the target epoch to which apply DBQA and the number of steps
-target_epoch = 21
+target_epoch = 19
 dbi_steps = 1
 
 # upload system configuration and parameters for all the training
