@@ -1,5 +1,5 @@
-import os
 import json
+import os
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -49,6 +49,7 @@ def plot_loss(
     title="",
     save=True,
     width=0.5,
+    error_bars=False,
 ):
     """
     Plot loss with confidence belt.
@@ -80,33 +81,37 @@ def plot_loss(
             lw=1.5,
             label="VQE",
         )
-        plt.plot(
-            np.arange(
-                len(loss_vqe[str(i)]) + start - 1,
-                len(dbi_energies[str(i)]) + len(loss_vqe[str(i)]) + start - 1,
-            ),
-            dbi_energies[str(i)],
-            color=RED,
-            lw=1.5,
-            label="DBI",
-        )
-        plt.fill_between(
-            np.arange(start, len(loss_vqe[str(i)]) + start),
-            loss_vqe[str(i)] - fluctuations_vqe[str(i)],
-            loss_vqe[str(i)] + fluctuations_vqe[str(i)],
-            color=BLUE,
-            alpha=0.4,
-        )
-        plt.fill_between(
-            np.arange(
-                len(loss_vqe[str(i)]) + start - 1,
-                len(dbi_energies[str(i)]) + len(loss_vqe[str(i)]) + start - 1,
-            ),
-            dbi_energies[str(i)] - dbi_fluctuations[str(i)],
-            dbi_energies[str(i)] + dbi_fluctuations[str(i)],
-            color=RED,
-            alpha=0.4,
-        )
+        if len(dbi_energies[str(i)]) > 0:
+            plt.plot(
+                np.arange(
+                    len(loss_vqe[str(i)]) + start - 1,
+                    len(dbi_energies[str(i)]) + len(loss_vqe[str(i)]) + start - 1,
+                ),
+                dbi_energies[str(i)],
+                color=RED,
+                lw=1.5,
+                label="DBI",
+            )
+            if error_bars:
+                plt.fill_between(
+                    np.arange(
+                        len(loss_vqe[str(i)]) + start - 1,
+                        len(dbi_energies[str(i)]) + len(loss_vqe[str(i)]) + start - 1,
+                    ),
+                    dbi_energies[str(i)] - dbi_fluctuations[str(i)],
+                    dbi_energies[str(i)] + dbi_fluctuations[str(i)],
+                    color=RED,
+                    alpha=0.4,
+                )
+
+        if error_bars:
+            plt.fill_between(
+                np.arange(start, len(loss_vqe[str(i)]) + start),
+                loss_vqe[str(i)] - fluctuations_vqe[str(i)],
+                loss_vqe[str(i)] + fluctuations_vqe[str(i)],
+                color=BLUE,
+                alpha=0.4,
+            )
 
     max_length = (
         sum(len(l) for l in list(dbi_energies.values()))
@@ -125,6 +130,9 @@ def plot_loss(
     )
     plt.xlabel("Iterations")
     plt.ylabel("Loss")
+    plt.title(
+        rf'$N_{{\rm qubits}}={config["nqubits"]}, \, N_{{\rm layers}}={config["nlayers"]}, \, \mathrm{{{config["hamiltonian"]}}}$'
+    )
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     plt.legend(by_label.values(), by_label.keys())
@@ -207,7 +215,7 @@ def plot_loss_nruns(
     for i, f in enumerate(os.listdir(path)):
         this_path = path + "/" + f + "/"
         if i == 0:
-            with open(this_path + OPTIMIZATION_FILE, 'r') as file:
+            with open(this_path + OPTIMIZATION_FILE) as file:
                 config = json.load(file)
             target_energy = config["true_ground_energy"]
         # accumulating dictionaries with results for each boost
@@ -216,7 +224,7 @@ def plot_loss_nruns(
             losses_dbi.append(dict(np.load(this_path + f"{DBI_ENERGIES + '.npz'}")))
 
     loss_vqe, dbi_energies, stds_vqe, stds_dbi = {}, {}, {}, {}
-    
+
     plt.figure(figsize=(10 * width, 10 * width * 6 / 8))
     plt.title(title)
 
@@ -225,7 +233,7 @@ def plot_loss_nruns(
         for d in range(len(loss_vqe)):
             this_vqe_losses.append(losses_vqe[d][str(i)])
             this_dbi_losses.append(losses_dbi[d][str(i)])
-        
+
         loss_vqe.update({str(i): np.mean(np.asarray(this_vqe_losses), axis=0)})
         dbi_energies.update({str(i): np.mean(np.asarray(this_dbi_losses), axis=0)})
         stds_vqe.update({str(i): np.std(np.asarray(this_vqe_losses), axis=0)})
@@ -249,6 +257,7 @@ def plot_loss_nruns(
             lw=1.5,
             label="VQE",
         )
+        print(i)
         plt.plot(
             np.arange(
                 len(loss_vqe[str(i)]) + start - 1,
@@ -299,5 +308,3 @@ def plot_loss_nruns(
     plt.legend(by_label.values(), by_label.keys())
     if save:
         plt.savefig(f"{path}/loss_{title}.pdf", bbox_inches="tight")
-
-
