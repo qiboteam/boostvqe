@@ -207,11 +207,11 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             query_list_backward = [ Circuit.invert(c) for c in query_list_forward[::-1]]
         elif gc_type is DoubleBracketRotationType.group_commutator_third_order_reduced:
             query_list_forward = [
-                eo1.circuit(-s_step * (np.sqrt(5) - 1) / 2),
-                eo2.circuit(s_step),
-                eo1.circuit(s_step * (np.sqrt(5) + 1) / 2),
-                eo2.circuit(-s_step * (3 - np.sqrt(5)) / 2),
-                eo1.circuit(-s_step)            
+                deepcopy(eo1).circuit(-s_step * (np.sqrt(5) - 1) / 2),
+                deepcopy(eo2).circuit(s_step),
+                deepcopy(eo1).circuit(s_step * (np.sqrt(5) + 1) / 2),
+                deepcopy(eo2).circuit(-s_step * (3 - np.sqrt(5)) / 2),
+                deepcopy(eo1).circuit(-s_step)            
             ]
             query_list_backward = [ Circuit.invert(c) for c in query_list_forward[::-1]]
         else:

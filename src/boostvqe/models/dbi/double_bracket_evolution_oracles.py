@@ -172,7 +172,7 @@ class FrameShiftedEvolutionOracle(EvolutionOracle):
             elif (
                 self.mode_evolution_oracle is EvolutionOracleType.hamiltonian_simulation
             ):
-                c = fseo.after_circuit + c 
+                c =  c +fseo.after_circuit 
             fseo = fseo.base_evolution_oracle
         return c
 
@@ -183,7 +183,10 @@ class XXZ_EvolutionOracle(EvolutionOracle):
         self,
         h_xxz,
         name = "XXZ",
-        mode_evolution_oracle: EvolutionOracleType = EvolutionOracleType.text_strings
+        mode_evolution_oracle: EvolutionOracleType = EvolutionOracleType.hamiltonian_simulation,
+        steps=None,
+        order=None
+        
     ):
         super().__init__(            
         h_xxz,
@@ -192,8 +195,14 @@ class XXZ_EvolutionOracle(EvolutionOracle):
         )
 
         self.delta = h_xxz.delta        
-        self.h.circuit = lambda t_duration: nqubit_XXZ_decomposition(
-            nqubits=self.h.nqubits,t=t_duration,delta=self.delta,steps=1)
+        if steps is None:
+            self.steps = 1
+        else:
+            self.steps = steps
+        if order is None:
+            self.order = 1
+        else:
+            self.order = order
         
         self.please_assess_how_many_steps_to_use = False
 
@@ -202,6 +211,13 @@ class XXZ_EvolutionOracle(EvolutionOracle):
             return super().discretized_evolution_circuit_binary_search(t_duration,eps=eps)
         else:
             return self.h.circuit(t_duration)
+    def circuit(self, t_duration,steps=None,order=None):
+        if steps is None:
+            steps = self.steps
+        if order is None:
+            order = self.order
+        return nqubit_XXZ_decomposition(
+            nqubits=self.h.nqubits,t=t_duration,delta=self.delta,steps=steps,order=order)
 
 
 
