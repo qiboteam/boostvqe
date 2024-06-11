@@ -257,7 +257,6 @@ def plot_loss_nruns(
             lw=1.5,
             label="VQE",
         )
-        print(i)
         plt.plot(
             np.arange(
                 len(loss_vqe[str(i)]) + start - 1,
