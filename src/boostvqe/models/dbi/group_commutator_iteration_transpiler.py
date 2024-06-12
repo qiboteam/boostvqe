@@ -40,6 +40,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         self,
         input_hamiltonian_evolution_oracle: EvolutionOracle,
         mode_double_bracket_rotation: DoubleBracketRotationType = DoubleBracketRotationType.group_commutator,
+    h_ref = None
     ):
         if mode_double_bracket_rotation is DoubleBracketRotationType.single_commutator:
             mode_double_bracket_rotation_old = (
@@ -52,7 +53,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         super().__init__(
             input_hamiltonian_evolution_oracle.h.dense, mode_double_bracket_rotation_old
         )
-
+        self.h_ref = h_ref
         self.input_hamiltonian_evolution_oracle = input_hamiltonian_evolution_oracle
 
         self.mode_double_bracket_rotation = mode_double_bracket_rotation
@@ -63,6 +64,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             self.input_hamiltonian_evolution_oracle
         )
         self.please_evaluate_matrices = False
+        self.h_ref = None
 
     def __call__(
         self,
@@ -239,3 +241,40 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             }
         else:
             raise_error(ValueError, "Your EvolutionOracleType is not recognized")
+
+    def loss(self, step: float, eo_d):
+        """
+        Compute loss function distance between `look_ahead` steps.
+
+        Args:
+            step (float): iteration step.
+            d (np.array): diagonal operator, use canonical by default.
+            look_ahead (int): number of iteration steps to compute the loss function;
+        """
+
+        circ = self.group_commutator(step, eo_d)["forwards"] + \
+            self.iterated_hamiltonian_evolution_oracle.get_composed_circuit()  
+        return self.h_ref.expectation(
+            circ().state()
+        )
+    
+    def choose_step( self,
+        step_min: float = 1e-3,
+        step_max: float = .03,
+        s_guess = 1e-5,
+        max_evals: int = 3,
+        space: callable = None,
+        optimizer: callable = None,
+        look_ahead: int = 1,
+        verbose: bool = False,
+        d = None):        
+ 
+        times = np.linspace(step_min,step_max,max_evals)
+
+        losses = []
+        circ_boost = self.iterated_hamiltonian_evolution_oracle.get_composed_circuit()
+        for s in times:
+            losses.append(self.loss(s,d))
+        if verbose:
+            print(losses)
+        return times[np.argmin(losses)], np.min(losses)

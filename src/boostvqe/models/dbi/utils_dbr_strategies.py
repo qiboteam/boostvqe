@@ -8,7 +8,7 @@ from boostvqe.models.dbi.utils import *
 def select_best_dbr_generator(
     dbi_object: DoubleBracketIteration,
     d_list: list,
-    step: Optional[float] = None,
+    step: float = None,
     compare_canonical: bool = True,
     scheduling: DoubleBracketScheduling = None,
     **kwargs,
@@ -109,6 +109,7 @@ def gradient_numerical(
     s: float = 1e-2,
     delta: float = 1e-3,
     backend=None,
+    loss_0 = None
     **kwargs,
 ):
     r"""
@@ -128,6 +129,8 @@ def gradient_numerical(
     d = params_to_diagonal_operator(
         d_params, nqubits, parameterization=parameterization, **kwargs
     )
+    if loss_0 is None:
+        loss_0 = dbi_object.loss(s, d)
     for i in range(len(d_params)):
         params_new = backend.cast(d_params, copy=True)
         params_new[i] += delta
@@ -135,7 +138,7 @@ def gradient_numerical(
             params_new, nqubits, parameterization=parameterization, **kwargs
         )
         # find the increment of a very small step
-        grad[i] = (dbi_object.loss(s, d_new) - dbi_object.loss(s, d)) / delta
+        grad[i] = (dbi_object.loss(s, d_new) - loss_0 ) / delta
     return grad
 
 
@@ -150,6 +153,7 @@ def gradient_descent_step(
     lr: float = 1e-2,
     num_check_points: int = 5,
     backend=None,
+    s_guess = 1e-5
 ):
     backend = _check_backend(backend)
     nqubits = dbi_object.nqubits

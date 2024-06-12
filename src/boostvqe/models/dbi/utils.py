@@ -7,7 +7,7 @@ import numpy as np
 from qibo import symbols
 from qibo.backends import _check_backend
 from qibo.hamiltonians import SymbolicHamiltonian
-
+from boostvqe.models.dbi.double_bracket_evolution_oracles import *
 
 def generate_Z_operators(nqubits: int, backend=None):
     """Generate a dictionary containing 1) all possible products of Pauli Z operators for L = n_qubits and 2) their respective names.
@@ -154,6 +154,7 @@ class ParameterizationTypes(Enum):
     """Uses Pauli-Z operators (magnetic field)."""
     computational = auto()
     """Uses computational basis."""
+    circuits = auto()
 
 
 def params_to_diagonal_operator(
@@ -180,6 +181,13 @@ def params_to_diagonal_operator(
         d = np.zeros((len(params), len(params)))
         for i in range(len(params)):
             d[i, i] = backend.to_numpy(params[i])
+    elif parameterization is ParameterizationTypes.circuits:
+        d = SymbolicHamiltonian( sum([b*symbols.Z(j) \
+            for j,b in zip(range(nqubits),params)]))
+        eo_d = EvolutionOracle(d,mode_evolution_oracle=EvolutionOracleType.hamiltonian_simulation,name = "D(linear)")
+        eo_d.please_use_prescribed_nmb_ts_steps = 1
+        return eo_d
+
 
     # TODO: write proper tests for normalize=True
     if normalize:  # pragma: no cover
