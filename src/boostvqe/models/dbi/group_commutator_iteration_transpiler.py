@@ -278,3 +278,30 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         if verbose:
             print(losses)
         return times[np.argmin(losses)], np.min(losses)
+    def get_composed_circuit(self):
+        return self.iterated_hamiltonian_evolution_oracle.get_composed_circuit()
+    
+    @staticmethod
+    def count_gates(self, circuit, gate_type):
+        t=0     
+        for g in circuit.queue:
+            if isinstance(g, gate_type):
+                t = t +1
+        return t
+    
+    def count_CNOTs(self,circuit = None):
+        if circuit is None:
+            circuit = self.get_composed_circuit( )
+        return self.count_gates( circuit, qibo.gates.gates.CNOT )
+        
+    def count_CZs(self):
+        if circuit is None:
+            circuit = self.get_composed_circuit( )
+        return self.count_gates( circuit, qibo.gates.gates.CZ )
+
+    def print_gate_count_report(self):
+        nmb_cz = self.count_cz()
+        nmb_cnot = self.count_cnot()
+        print(f"The boosting circuit used {nmb_cnot} CNOT gates coming from\
+               compiled XXZ evolution and {nmb_cz} CZ gates from VQE.\n\
+       For {nqubits} qubits this gives n_CNOT/n_qubits = {t/nqubits}")

@@ -109,7 +109,7 @@ def gradient_numerical(
     s: float = 1e-2,
     delta: float = 1e-3,
     backend=None,
-    loss_0 = None
+    loss_0 = None,
     **kwargs,
 ):
     r"""
