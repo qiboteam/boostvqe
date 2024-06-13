@@ -3,9 +3,10 @@ from enum import Enum, auto
 import hyperopt
 import numpy as np
 
-from qibo import Circuit
+from qibo import Circuit, symbols
 from qibo.config import raise_error
 from qibo.hamiltonians import AbstractHamiltonian, SymbolicHamiltonian
+
 
 from boostvqe.compiling_XXZ import *
 from copy import deepcopy
@@ -43,8 +44,15 @@ class EvolutionOracle:
                 NotImplementedError,
                 "You have to specify either a matrix and then work in the numerical mode, or SymbolicHamiltonian and work in hamiltonian_simulation mode or at least a name and work with text_strings to list DBI query lists",
             )
-
-        self.h = h_generator
+        
+        if (
+            mode_evolution_oracle is EvolutionOracleType.numerical
+            and type(h_generator) is SymbolicHamiltonian
+        ):
+            self.h = h_generator.dense
+        else:
+            self.h = h_generator
+        self.nqubits = self.h.nqubits
         self.name = name
         self.mode_evolution_oracle = mode_evolution_oracle
         self.mode_find_number_of_trottersuzuki_steps = True
@@ -139,7 +147,7 @@ class FrameShiftedEvolutionOracle(EvolutionOracle):
         self.mode_evolution_oracle = base_evolution_oracle.mode_evolution_oracle
         self.before_circuit = before_circuit
         self.after_circuit = after_circuit
-
+        self.nqubits = base_evolution_oracle.nqubits
     def circuit(self, t_duration: float = None):
 
         if self.mode_evolution_oracle is EvolutionOracleType.text_strings:
@@ -164,7 +172,7 @@ class FrameShiftedEvolutionOracle(EvolutionOracle):
             )
 
     def get_composed_circuit(self):
-        c = self.circuit(0)
+        c = Circuit(nqubits=self.nqubits)
         fseo = self
         while isinstance(fseo, FrameShiftedEvolutionOracle):
             if self.mode_evolution_oracle is EvolutionOracleType.numerical:
@@ -175,26 +183,60 @@ class FrameShiftedEvolutionOracle(EvolutionOracle):
                 c =  c +fseo.after_circuit 
             fseo = fseo.base_evolution_oracle
         return c
+    
+class VQERotatedEvolutionOracle(FrameShiftedEvolutionOracle):
+    def __init__(
+        self,
+        base_evolution_oracle: EvolutionOracle,        
+        vqe,
+        name = "VQE Rotated EO",
+    ):
+        super().__init__(base_evolution_oracle, before_circuit=vqe.circuit.invert(), 
+                                                        after_circuit=vqe.circuit,name="shifting by vqe")
 
+class MagneticFieldEvolutionOracle(EvolutionOracle):
+    def __init__(
+        self,
+        b_list,
+        name = "B Field",
+        mode_evolution_oracle: EvolutionOracleType = EvolutionOracleType.hamiltonian_simulation   
+    ):
+        self.nqubits = len(b_list)
+        d = SymbolicHamiltonian( sum([b*symbols.Z(j) for j,b in zip(range(self.nqubits),b_list)]))
+        super().__init__(            
+        d,
+        name,
+        mode_evolution_oracle
+        )      
+        self.b_list = b_list
+        self.please_assess_how_many_steps_to_use = False #otherwise methods which cast to dense will be used
+
+    def discretized_evolution_circuit_binary_search(self, t_duration, eps=None):
+        if self.mode_evolution_oracle is EvolutionOracleType.numerical:
+            return self.h.exp(t_duration)
+        
+        if self.please_assess_how_many_steps_to_use:
+            return super().discretized_evolution_circuit_binary_search(t_duration,eps=eps)
+        else:
+            return self.h.circuit(t_duration)
 
 
 class XXZ_EvolutionOracle(EvolutionOracle):
     def __init__(
         self,
-        h_xxz,
+        nqubits,
         name = "XXZ",
         mode_evolution_oracle: EvolutionOracleType = EvolutionOracleType.hamiltonian_simulation,
         steps=None,
-        order=None
-        
+        order=None,
+        delta = 0.5        
     ):
         super().__init__(            
-        h_xxz,
+        XXZ_EvolutionOracle.xxz_symbolic(nqubits, delta = delta),
         name,
         mode_evolution_oracle
         )
 
-        self.delta = h_xxz.delta        
         if steps is None:
             self.steps = 1
         else:
@@ -203,7 +245,8 @@ class XXZ_EvolutionOracle(EvolutionOracle):
             self.order = 1
         else:
             self.order = order
-        
+        self.nqubits = nqubits
+        self.delta = delta
         self.please_assess_how_many_steps_to_use = False
 
     def discretized_evolution_circuit_binary_search(self, t_duration, eps=None):
@@ -218,6 +261,14 @@ class XXZ_EvolutionOracle(EvolutionOracle):
             order = self.order
         return nqubit_XXZ_decomposition(
             nqubits=self.h.nqubits,t=t_duration,delta=self.delta,steps=steps,order=order)
+    
+    @staticmethod
+    def xxz_symbolic(nqubits, delta = 0.5):
+        return SymbolicHamiltonian(
+                            sum([ symbols.X(j)*symbols.X(j+1) + symbols.Y(j)*symbols.Y(j+1) +delta*symbols.Z(j)*symbols.Z(j+1) for j in range(nqubits-1)] 
+                                + [ symbols.X(nqubits-1)*symbols.X(0) + symbols.Y(nqubits-1)*symbols.Y(0) +delta*symbols.Z(nqubits-1)*symbols.Z(0)]),
+                                nqubits= nqubits
+                            )
 
 
 

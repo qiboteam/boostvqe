@@ -4,7 +4,7 @@ import hyperopt
 import numpy as np
 
 from qibo import *
-from qibo import symbols
+from qibo import symbols, gates
 from qibo.config import raise_error
 from qibo.hamiltonians import Hamiltonian, SymbolicHamiltonian
 from boostvqe.models.dbi import *
@@ -40,7 +40,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         self,
         input_hamiltonian_evolution_oracle: EvolutionOracle,
         mode_double_bracket_rotation: DoubleBracketRotationType = DoubleBracketRotationType.group_commutator,
-    h_ref = None
+        h_ref = None
     ):
         if mode_double_bracket_rotation is DoubleBracketRotationType.single_commutator:
             mode_double_bracket_rotation_old = (
@@ -51,11 +51,14 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
                 DoubleBracketGeneratorType.group_commutator
             )
         super().__init__(
-            input_hamiltonian_evolution_oracle.h.dense, mode_double_bracket_rotation_old
+            input_hamiltonian_evolution_oracle.h, mode_double_bracket_rotation_old
         )
-        self.h_ref = h_ref
+        if h_ref is not None:
+            self.h_ref = h_ref  
+        else:
+            self.h_ref = deepcopy(input_hamiltonian_evolution_oracle.h)
         self.input_hamiltonian_evolution_oracle = input_hamiltonian_evolution_oracle
-
+        
         self.mode_double_bracket_rotation = mode_double_bracket_rotation
 
         self.gci_unitary = []
@@ -64,7 +67,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             self.input_hamiltonian_evolution_oracle
         )
         self.please_evaluate_matrices = False
-        self.h_ref = None
+        
 
     def __call__(
         self,
@@ -242,7 +245,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         else:
             raise_error(ValueError, "Your EvolutionOracleType is not recognized")
 
-    def loss(self, step: float, eo_d):
+    def loss(self, step: float = None, eo_d = None):
         """
         Compute loss function distance between `look_ahead` steps.
 
@@ -251,9 +254,11 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             d (np.array): diagonal operator, use canonical by default.
             look_ahead (int): number of iteration steps to compute the loss function;
         """
-
-        circ = self.group_commutator(step, eo_d)["forwards"] + \
-            self.iterated_hamiltonian_evolution_oracle.get_composed_circuit()  
+        if step is None:
+            circ = self.get_composed_circuit()  
+        else:
+            circ = self.group_commutator(step, eo_d)["forwards"] + \
+            self.get_composed_circuit()  
         return self.h_ref.expectation(
             circ().state()
         )
@@ -282,7 +287,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         return self.iterated_hamiltonian_evolution_oracle.get_composed_circuit()
     
     @staticmethod
-    def count_gates(self, circuit, gate_type):
+    def count_gates(circuit, gate_type):
         t=0     
         for g in circuit.queue:
             if isinstance(g, gate_type):
@@ -292,16 +297,15 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
     def count_CNOTs(self,circuit = None):
         if circuit is None:
             circuit = self.get_composed_circuit( )
-        return self.count_gates( circuit, qibo.gates.gates.CNOT )
+        return self.count_gates( circuit, gates.gates.CNOT )
         
-    def count_CZs(self):
+    def count_CZs(self,circuit = None):
         if circuit is None:
             circuit = self.get_composed_circuit( )
-        return self.count_gates( circuit, qibo.gates.gates.CZ )
+        return self.count_gates( circuit, gates.gates.CZ )
 
     def print_gate_count_report(self):
-        nmb_cz = self.count_cz()
-        nmb_cnot = self.count_cnot()
-        print(f"The boosting circuit used {nmb_cnot} CNOT gates coming from\
-               compiled XXZ evolution and {nmb_cz} CZ gates from VQE.\n\
-       For {nqubits} qubits this gives n_CNOT/n_qubits = {t/nqubits}")
+        nmb_cz = self.count_CZs()
+        nmb_cnot = self.count_CNOTs()
+        print(f"The boosting circuit used {nmb_cnot} CNOT gates coming from compiled XXZ evolution and {nmb_cz} CZ gates from VQE.\n\
+For {self.nqubits} qubits this gives n_CNOT/n_qubits = {nmb_cnot/self.nqubits} and n_CZ/n_qubits = {nmb_cz/self.nqubits}")
