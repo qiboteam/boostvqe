@@ -268,13 +268,14 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         step_max: float = .03,
         s_guess = 1e-5,
         max_evals: int = 3,
-        space: callable = None,
+        times = None,
         optimizer: callable = None,
         look_ahead: int = 1,
         verbose: bool = False,
         d = None):        
- 
-        times = np.linspace(step_min,step_max,max_evals)
+
+        if times is None:
+            times = np.linspace(step_min,step_max,max_evals)
 
         losses = []
         circ_boost = self.iterated_hamiltonian_evolution_oracle.get_composed_circuit()
