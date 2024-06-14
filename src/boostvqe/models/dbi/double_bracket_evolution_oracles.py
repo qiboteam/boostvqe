@@ -220,7 +220,35 @@ class MagneticFieldEvolutionOracle(EvolutionOracle):
         else:
             return self.h.circuit(t_duration)
 
+class IsingNNEvolutionOracle(EvolutionOracle):
+    def __init__(
+        self,
+        b_list,
+        j_list,
+        name = "B Field",
+        mode_evolution_oracle: EvolutionOracleType = EvolutionOracleType.hamiltonian_simulation   
+    ):
+        self.nqubits = len(b_list)
+        d = SymbolicHamiltonian( 
+            sum([b*symbols.Z(j) for j,b in zip(range(self.nqubits),b_list)]+
+                [j_list[j] * symbols.Z(j)*symbols.Z((j+1) % self.nqubits) for j in range(self.nqubits)]
+                ))
+        super().__init__(            
+        d,
+        name,
+        mode_evolution_oracle
+        )      
+        self.b_list = b_list
+        self.please_assess_how_many_steps_to_use = False #otherwise methods which cast to dense will be used
 
+    def discretized_evolution_circuit_binary_search(self, t_duration, eps=None):
+        if self.mode_evolution_oracle is EvolutionOracleType.numerical:
+            return self.h.exp(t_duration)
+        
+        if self.please_assess_how_many_steps_to_use:
+            return super().discretized_evolution_circuit_binary_search(t_duration,eps=eps)
+        else:
+            return self.h.circuit(t_duration)
 class XXZ_EvolutionOracle(EvolutionOracle):
     def __init__(
         self,
