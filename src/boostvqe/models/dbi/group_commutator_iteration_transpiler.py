@@ -282,10 +282,16 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             losses.append(self.loss(s,d))
         if verbose:
             print(losses)
-        return times[np.argmin(losses)], np.min(losses)
-    def get_composed_circuit(self):
-        return self.iterated_hamiltonian_evolution_oracle.get_composed_circuit()
+        return times[np.argmin(losses)], np.min(losses), losses
+    def get_composed_circuit(self,s = None, eo_d = None):
+        if s is None or eo_d is None:
+            return self.iterated_hamiltonian_evolution_oracle.get_composed_circuit()    
+        else:
+            return self.recursion_step_circuit(s,eo_d)+self.iterated_hamiltonian_evolution_oracle.get_composed_circuit()
     
+    def recursion_step_circuit(self,s, eo_d ):
+        return self.group_commutator(s, eo_d)["forwards"]
+
     @staticmethod
     def count_gates(circuit, gate_type):
         t=0     
