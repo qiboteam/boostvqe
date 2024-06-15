@@ -154,3 +154,42 @@ def gradient_descent_circuits_lr(
     s = s_store[idx_min]
 
     return d_params_test, s, min_loss
+
+def evaluate_histogram_data(gci_object, input_field, nmb_shots=10, randomization_amp = 0.2):
+    #  this is quite simple - just pass a diagonal SymbolicHamiltonian 
+    # and because it will be commuting we can use the member function circuit for compiling
+    fields = []
+    losses = []
+    steps = []
+    for j in range(nmb_shots):
+        field = [a+b for a,b in zip(np.random.rand(len(input_field))*randomization_amp,input_field)]
+        eo_d = MagneticFieldEvolutionOracle(field,name = "D(linear)")
+        step,loss, _ = gci_object.choose_step(d = eo_d,max_evals=34,step_min = 0.0051,step_max = 0.03)
+        losses.append(loss)
+        fields.append(field)
+        steps.append(step)
+
+    plt.hist(losses)
+    print(np.min(losses))
+    f = fields[np.argmin(losses)]
+    s = steps[np.argmin(losses)]
+    return f,s, np.min(losses), fields, steps, losses
+
+def get_linspace_approximation_field():
+    return [-0.25024438, -0.12512219, -0.06256109, -0.03128055, -0.01564027, -0.00782014,
+ -0.00391007, -0.00195503, -0.00097752, -0.00048876]
+
+def get_mareks_favorite_field():
+    return [4-sin(x/3) for x in range(10)]
+
+def get_best_exhaustive_10q_7l():
+    return [1.0074343565408288,
+ 1.1483550802051337,
+ 1.1152574570741454,
+ 1.1207635311034556,
+ 1.0290334907280279,
+ 1.0582973691183888,
+ 1.0009000697562873,
+ 1.0467850494221564,
+ 1.0291778083015108,
+ 1.180909625995888]
