@@ -328,7 +328,6 @@ def select_recursion_step_circuit(gci, mode_dbr_list = [DoubleBracketRotationTyp
             plt.show()
 
     minimizer_dbr_id = np.argmin(minimal_losses)
-    print(minimizer_s,minimal_losses)
     return mode_dbr_list[minimizer_dbr_id], minimizer_s[minimizer_dbr_id], gci.eo_d
 
 def execute_selected_recursion_step( gci, mode_dbr, minimizer_s, eo_d, please_be_verbose = False ):
