@@ -192,3 +192,33 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
 
         logging.info(f"DBI energies: {energies}")
     return hamiltonians, energies, fluctuations, steps, d_matrix, operators
+
+def test_gc_step(dbi):
+    return None
+
+def apply_gci_circuits(dbi, nsteps, stepsize=0.01, optimize_step=False):
+    """Apply `nsteps` of `dbi` to `hamiltonian`."""
+    step = stepsize
+    energies, fluctuations, hamiltonians, steps, d_matrix = [], [], [], [], []
+    operators = []
+    for _ in range(nsteps):
+        if optimize_step:
+            # Change logging level to reduce verbosity
+            logging.getLogger().setLevel(logging.WARNING)
+            step = dbi.hyperopt_step(
+                step_min=1e-4, step_max=.01, max_evals=50, verbose=True
+            )
+            # Restore the original logging level
+            logging.getLogger().setLevel(logging.INFO)
+        operators.append(dbi(step=step, d=dbi.diagonal_h_matrix))
+        steps.append(step)
+        d_matrix.append(np.diag(dbi.diagonal_h_matrix))
+        zero_state = np.transpose([dbi.h.backend.zero_state(dbi.h.nqubits)])
+
+        energies.append(dbi.h.expectation(zero_state))
+        fluctuations.append(dbi.energy_fluctuation(zero_state))
+        hamiltonians.append(dbi.h.matrix)
+
+        logging.info(f"DBI energies: {energies}")
+    return hamiltonians, energies, fluctuations, steps, d_matrix, operators
+

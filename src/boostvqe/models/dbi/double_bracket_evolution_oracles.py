@@ -193,6 +193,7 @@ class VQERotatedEvolutionOracle(FrameShiftedEvolutionOracle):
     ):
         super().__init__(base_evolution_oracle, before_circuit=vqe.circuit.invert(), 
                                                         after_circuit=vqe.circuit,name="shifting by vqe")
+        self.vqe = vqe
 
 class MagneticFieldEvolutionOracle(EvolutionOracle):
     def __init__(

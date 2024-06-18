@@ -31,6 +31,8 @@ class DoubleBracketRotationType(Enum):
     group_commutator_third_order_reduced = auto()
     """Higher order approximation    """
 
+    group_commutator_twice = auto()
+
 
 class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
     """
@@ -67,6 +69,9 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             self.input_hamiltonian_evolution_oracle
         )
         self.please_evaluate_matrices = False
+        self.default_times = np.linspace(0.001,0.03, 10)
+        self.eo_d = MagneticFieldEvolutionOracle([1]*self.nqubits)
+
         
 
     def __call__(

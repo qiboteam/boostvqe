@@ -17,7 +17,7 @@ def diagonal_1_pauli_z(i,n):
     return np.array(block * (2**(i-1)))
 
 def diagonal_product_pauli_z(i_list,n):
-    """See Eq. 3 in https://arxiv.org/abs/1707.05181"""
+    """Diagonal matrices remain diagonal following matrix multiplication"""
 
     diagonals = []
     for i in i_list:
@@ -114,7 +114,7 @@ def gradient_descent_circuits(
         )
         d_params_test = [d_params_init[j] - grad[j] * lr for j in range(len(grad))]
         d = MagneticFieldEvolutionOracle(d_params_test)
-        step_guess, loss,_ = dbi_object.choose_step(d=d,step_min=0.014,step_max=0.025, max_evals=15,verbose=False)
+        step_guess, loss,_ = dbi_object.choose_step(d=d,times = times_choose_step,verbose=False)
         print(loss)
         d_params_store.append(d_params_test)
         s_store.append(step_guess)
@@ -222,7 +222,7 @@ def get_linspace_approximation_field():
  -0.00391007, -0.00195503, -0.00097752, -0.00048876]
 
 def get_mareks_favorite_field():
-    return [4-sin(x/3) for x in range(10)]
+    return [1+np.sin(x/3) for x in range(10)]
 
 def get_best_exhaustive_10q_7l():
     return [1.0074343565408288,
