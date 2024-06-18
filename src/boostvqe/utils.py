@@ -6,6 +6,34 @@ import numpy as np
 from qibo import get_backend
 
 from boostvqe.ansatze import VQE, compute_gradients
+import json
+import time
+from pathlib import Path
+
+import numpy as np
+import qibo
+from qibo import hamiltonians, set_backend
+qibo.set_backend("numpy")
+from boostvqe.models.dbi.double_bracket import (
+    DoubleBracketGeneratorType,
+    DoubleBracketIteration,
+    )
+
+from boostvqe.models.dbi.group_commutator_iteration_transpiler import *
+from boostvqe.models.dbi.double_bracket_evolution_oracles import *
+
+from boostvqe.ansatze import VQE, build_circuit
+
+from qibo import symbols, hamiltonians
+from copy import deepcopy
+from boostvqe.compiling_XXZ import *
+
+import matplotlib.pyplot as plt
+
+
+
+
+
 
 OPTIMIZATION_FILE = "optimization_results.json"
 PARAMS_FILE = "parameters_history.npy"
@@ -221,4 +249,96 @@ def apply_gci_circuits(dbi, nsteps, stepsize=0.01, optimize_step=False):
 
         logging.info(f"DBI energies: {energies}")
     return hamiltonians, energies, fluctuations, steps, d_matrix, operators
+
+
+def print_vqe_comparison_report(gci):
+    gci_loss = gci.loss()
+    print(f"VQE energy is {round(gci.vqe_energy,5)} and the DBQA yields {round(gci_loss,5)}. \n\
+The target energy is {round(gci.h.target_energy,5)} which means the difference is for VQE \
+    {round(gci.vqe_energy-gci.h.target_energy,5)} and of the DBQA {round(gci_loss-gci.h.target_energy,5)} which can be compared to the spectral gap {round(gci.h.gap,5)}.\n\
+The relative difference is for VQE {round(abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}% \
+    and for DBQA {round(abs(gci_loss-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}%.\
+The energetic fidelity witness for the ground state for the VQE is {round(1- abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.gap),5)} and DBQA {round(1- abs(gci_loss-gci.h.target_energy)/abs(gci.h.gap),5)}\
+")
+
+
+def initialize_gci_from_vqe( path = "../results/vqe_data/with_params/10q7l/sgd_10q_7l_42/",
+                            target_epoch = 2000,
+                            dbi_steps = 1,
+                            mode_dbr = DoubleBracketRotationType.group_commutator_third_order_reduced):
+
+    # upload system configuration and parameters for all the training
+    with open(path + "optimization_results.json") as file:
+        config = json.load(file)
+
+    losses = dict(np.load(path + "energies.npz"))["0"]
+    params = np.load(path + f"parameters/params_ite{target_epoch}.npy")
+
+    nqubits = config["nqubits"]
+    # build circuit, hamiltonian and VQE
+    circuit = build_circuit(nqubits, config["nlayers"], "numpy")       
+    hamiltonian = hamiltonians.XXZ(nqubits=nqubits, delta=0.5)
+
+    vqe = VQE(circuit, hamiltonian)
+    # set target parameters into the VQE
+    vqe.circuit.set_parameters(params)
+
+    eo_xxz = XXZ_EvolutionOracle(nqubits, steps = 1, order = 2)
+    # implement the rotate by VQE on the level of circuits
+    fsoe  = VQERotatedEvolutionOracle(eo_xxz, vqe)
+    # init gci with the vqe-rotated hamiltonian
+    gci  = GroupCommutatorIterationWithEvolutionOracles(input_hamiltonian_evolution_oracle=fsoe, 
+            mode_double_bracket_rotation=mode_dbr)
+    
+    eigenergies = hamiltonian.eigenvalues()
+    target_energy = np.min(eigenergies)
+    gci.h.target_energy = target_energy
+    eigenergies.sort()
+    gap = eigenergies[1] - target_energy
+    gci.h.gap = gap
+
+    gci.vqe_energy = hamiltonian.expectation(vqe.circuit().state())
+
+   
+    b_list = [1+np.sin(x/3)for x in range(10)]
+    gci.eo_d = MagneticFieldEvolutionOracle(b_list,name = "D(B = 1+sin(x/3))")
+    gci.default_times = np.linspace(0.003,0.004,10)
+    return gci
+
+
+def select_recursion_step_circuit(gci, mode_dbr_list = [DoubleBracketRotationType.group_commutator_third_order], times = np.linspace(1e-3,3e-2,10),please_be_visual = False):
+    """ Returns: circuit of the step, code of the strategy"""
+    mode_start = gci.mode_double_bracket_rotation
+    minimal_losses = []
+    all_losses = []
+    minimizer_s = []
+    for i,mode in enumerate(mode_dbr_list):       
+        
+        eo_d = gci.eo_d
+        gci.mode_double_bracket_rotation = mode
+        s, l, ls = gci.choose_step(d = eo_d,times = times)
+        #here optimize over gradient descent
+        minimal_losses.append(l)
+        minimizer_s.append(s)
+
+        if please_be_visual:
+            plt.plot(times,ls)
+            plt.yticks([ls[0],l, ls[-1]])
+            plt.xticks([times[0],s,times[-1]])
+            plt.show()
+
+    minimizer_dbr_id = np.argmin(minimal_losses)
+    print(minimizer_s,minimal_losses)
+    return mode_dbr_list[minimizer_dbr_id], minimizer_s[minimizer_dbr_id], gci.eo_d
+
+def execute_selected_recursion_step( gci, mode_dbr, minimizer_s, eo_d, please_be_verbose = False ):
+    gci.mode_double_bracket_rotation = mode_dbr
+    if please_be_verbose:
+        gci.print_gate_count_report()
+        print_vqe_comparison_report(gci)
+    gci(minimizer_s, eo_d)
+    if please_be_verbose:
+        gci.print_gate_count_report() 
+        print_vqe_comparison_report(gci)
+    return gci
 
