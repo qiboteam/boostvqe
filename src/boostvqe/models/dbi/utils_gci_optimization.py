@@ -4,6 +4,47 @@ from qibo.backends import _check_backend
 from boostvqe.models.dbi.double_bracket import *
 from boostvqe.models.dbi.utils import *
 
+def diagonal_1_pauli_z(i,n):
+    """See Eq. 3 in https://arxiv.org/abs/1707.05181"""
+    i += 1
+
+    block_size = 2**(n-i)
+
+    plus_block = [1]*block_size
+    minus_block = [-1]*block_size
+    block = plus_block + minus_block
+
+    return np.array(block * (2**(i-1)))
+
+def diagonal_product_pauli_z(i_list,n):
+    """See Eq. 3 in https://arxiv.org/abs/1707.05181"""
+
+    diagonals = []
+    for i in i_list:
+       diagonals.append(diagonal_1_pauli_z(i%n,n))
+    return np.prod(np.array(diagonals), axis = 0)    
+
+def dephasing_approximation(h_matrix: np.array, order = 1):
+    """finds the approximation long-range Ising decomposition of the diagonal of the hamiltonian `h_matrix`"""
+    nqubits = int(np.log2(h_matrix.shape[0]))
+
+    diagonal = np.diag(h_matrix)
+
+    order_1 = [ diagonal.T @ diagonal_1_pauli_z(i,nqubits) / 2**nqubits for i in range(nqubits)]
+    order_2 = [ diagonal.T @ diagonal_product_pauli_z([i,j],nqubits) / 2**nqubits for i,j in itertools.product(range(nqubits),range(nqubits))]
+    return {1: order_1, 2: order_2}
+
+def nn_dephasing_approximation(h_matrix: np.array, order = 1):
+    """finds the approximation nearest neighbor Ising decomposition of the diagonal of the hamiltonian `h_matrix`"""
+    nqubits = int(np.log2(h_matrix.shape[0]))
+
+    diagonal = np.diag(h_matrix)
+
+    order_1 = [ diagonal.T @ diagonal_1_pauli_z(i,nqubits) / 2**nqubits for i in range(nqubits)]
+    order_2 = [ diagonal.T @ diagonal_product_pauli_z([i,i+1],nqubits) / 2**nqubits for i in range(nqubits)]
+    return {1: order_1, 2: order_2}
+
+
 def gradient_numerical_circuits(
     dbi_object: DoubleBracketIteration,
     d_params: list,
@@ -45,6 +86,7 @@ def gradient_descent_circuits(
     dbi_object: DoubleBracketIteration,
     train_epochs: int,
     d_params_init: list,
+    times_choose_step: list,
     lr: float = 1e-2,
     step_guess = 0.01
 ):
@@ -57,7 +99,7 @@ def gradient_descent_circuits(
 
 
     eo_d = MagneticFieldEvolutionOracle(d_params_init)
-    step_guess,loss,_ = dbi_object.choose_step(d = eo_d,step_min=0.018,step_max=0.026, max_evals=11)
+    step_guess,loss,_ = dbi_object.choose_step(d = eo_d, times = times_choose_step)
     print(loss)
     d_params_test = d_params_init
     for i in range(train_epochs):

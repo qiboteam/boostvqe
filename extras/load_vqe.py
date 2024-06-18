@@ -19,7 +19,7 @@ qibo.set_backend("numpy")
 path = "../results/vqe_data/with_params/10q3l/sgd_10q_3l_42/"
 
 # set the target epoch to which apply DBQA and the number of steps
-target_epoch = 20
+target_epoch = 2000
 dbi_steps = 1
 
 # upload system configuration and parameters for all the training

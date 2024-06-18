@@ -177,7 +177,7 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
             # Change logging level to reduce verbosity
             logging.getLogger().setLevel(logging.WARNING)
             step = dbi.hyperopt_step(
-                step_min=1e-4, step_max=1, max_evals=50, verbose=True
+                step_min=1e-4, step_max=.01, max_evals=50, verbose=True
             )
             # Restore the original logging level
             logging.getLogger().setLevel(logging.INFO)
