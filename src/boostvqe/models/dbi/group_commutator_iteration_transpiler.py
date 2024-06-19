@@ -92,18 +92,19 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             )
 
         # This will run the appropriate group commutator step
-        double_bracket_rotation_step = self.group_commutator(
+        rs_circ = self.recursion_step_circuit(
             step_duration, diagonal_association, mode_dbr=mode_dbr
         )
-
-        before_circuit = double_bracket_rotation_step["backwards"]
-        after_circuit = double_bracket_rotation_step["forwards"]
-
+        if self.input_hamiltonian_evolution_oracle.mode_evolution_oracle\
+              is EvolutionOracleType.numerical:
+            rs_circ_inv = np.linalg.inv(rs_circ)
+        else:
+            rs_circ_inv = rs_circ.invert()
         self.iterated_hamiltonian_evolution_oracle = FrameShiftedEvolutionOracle(
             deepcopy(self.iterated_hamiltonian_evolution_oracle),
             str(step_duration),
-            before_circuit,
-            after_circuit,
+            rs_circ_inv,
+            rs_circ,
         )
 
         if self.please_evaluate_matrices:
@@ -111,7 +112,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
                 self.input_hamiltonian_evolution_oracle.mode_evolution_oracle
                 is EvolutionOracleType.numerical
             ):
-                self.h.matrix = before_circuit @ self.h.matrix @ after_circuit
+                self.h.matrix = rs_circ_inv_ @ self.h.matrix @ rs_circ
 
             elif (
                 self.input_hamiltonian_evolution_oracle.mode_evolution_oracle
@@ -119,7 +120,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             ):
 
                 self.h.matrix = (
-                    before_circuit.unitary() @ self.h.matrix @ after_circuit.unitary()
+                    rs_circ_inv.unitary() @ self.h.matrix @ rs_circ.unitary()
                 )
 
             elif (
@@ -295,7 +296,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             return self.iterated_hamiltonian_evolution_oracle.get_composed_circuit()    
         else:
             return (self.recursion_step_circuit(step_duration,eo_d)
-                +self.iterated_hamiltonian_evolution_oracle.get_composed_circuit())
+                + self.iterated_hamiltonian_evolution_oracle.get_composed_circuit())
     
     def recursion_step_circuit(self,step_duration, eo_d, mode_dbr = None):
         return self.group_commutator(step_duration = step_duration, 
