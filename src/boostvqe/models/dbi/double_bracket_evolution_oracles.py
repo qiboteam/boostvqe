@@ -6,12 +6,16 @@ import numpy as np
 from qibo import Circuit, symbols
 from qibo.config import raise_error
 from qibo.hamiltonians import AbstractHamiltonian, SymbolicHamiltonian
-
+import numpy as np
+from qibo import Circuit, gates
 
 from boostvqe.compiling_XXZ import *
 from copy import deepcopy
 
 from functools import reduce
+import matplotlib.pyplot as plt
+
+
 
 class EvolutionOracleType(Enum):
     text_strings = auto()
@@ -240,7 +244,9 @@ class IsingNNEvolutionOracle(EvolutionOracle):
         mode_evolution_oracle
         )      
         self.b_list = b_list
+        self.j_list = j_list
         self.please_assess_how_many_steps_to_use = False #otherwise methods which cast to dense will be used
+        self.please_use_coarse_compiling = False
 
     def discretized_evolution_circuit_binary_search(self, t_duration, eps=None):
         if self.mode_evolution_oracle is EvolutionOracleType.numerical:
@@ -250,6 +256,74 @@ class IsingNNEvolutionOracle(EvolutionOracle):
             return super().discretized_evolution_circuit_binary_search(t_duration,eps=eps)
         else:
             return self.h.circuit(t_duration)
+        
+
+
+    def circuit(self, t):
+        """
+        Constructs an XXZ model circuit for n qubits, given by:
+        .. math::
+            H = \\sum_{i=0}^{N-1} \\left( B_i Z_i+ J_i Z_i Z_{i+1} \\right)
+
+
+        Args:
+        nqubits (int): Number of qubits.
+        t (float): Total evolution time.
+
+        Returns:
+        Circuit: The final multi-layer circuit.
+
+        """
+        if self.please_use_coarse_compiling:
+            return super().circuit(t)
+        else:
+            circuit = Circuit(nqubits=self.nqubits)
+            # Create lists of even and odd qubit indices
+            list_q_i = [ num for num in range(self.nqubits) ]
+            list_q_ip1 = [ num+1 for num in range(self.nqubits-1) ]
+            list_q_ip1.append(0)
+
+            for q_i, q_ip1, j in zip(list_q_i, list_q_ip1, self.j_list):
+                circuit.add(gates.CNOT(q_i, q_ip1) )
+                circuit.add(gates.RZ(q_ip1, 2 *t *j ) )
+                circuit.add(gates.CNOT(q_i, q_ip1) )
+            circuit.add(gates.RZ(q_i, 2 *t * b ) for q_i,b in zip(range(self.nqubits),self.b_list))
+            return circuit
+
+
+        
+    def _test_gate_assigment():
+        l = []
+        for t in np.linspace(0,4,20):
+            c =Circuit(1)
+            c.add(gates.RZ(0,theta = t))
+            u = c.unitary()
+            d = SymbolicHamiltonian(symbols.Z(0),nqubits= 1)
+            l.append(np.linalg.norm(d.exp(t/2) -u))
+        plt.plot(l)
+
+        l = []
+        for t in np.linspace(0,4,20):
+            c =Circuit(2)
+            c.add(gates.CNOT(0,1))
+            c.add(gates.RZ(1,theta = t))
+            c.add(gates.CNOT(0,1))
+            u = c.unitary()
+            d = SymbolicHamiltonian(symbols.Z(0)*symbols.Z(1),nqubits=2)
+            l.append(np.linalg.norm(d.exp(t/2) -u))
+        plt.plot(l)
+
+
+        n=3
+        eo_d_Ising = IsingNNEvolutionOracle([0]*n,[1]*n)
+
+        l = []
+        for t in np.linspace(0,4,20):
+            u = circuit(eo_d_Ising,t).unitary()
+            l.append(np.linalg.norm(eo_d_Ising.h.exp(t) -u))
+        plt.plot(l)
+        print(circuit(eo_d_Ising,t).draw())
+    
 class XXZ_EvolutionOracle(EvolutionOracle):
     def __init__(
         self,
