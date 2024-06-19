@@ -31,7 +31,11 @@ class DoubleBracketRotationType(Enum):
     group_commutator_third_order_reduced = auto()
     """Higher order approximation    """
 
-    group_commutator_twice = auto()
+    group_commutator_mix_twice = auto()
+
+    group_commutator_reduced_twice = auto()
+
+    group_commutator_third_order_reduced_twice = auto()
 
 
 class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
@@ -171,49 +175,49 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
 
         if gc_type is DoubleBracketRotationType.group_commutator:
             query_list_forward = [
-                eo_2.circuit(-s_step),
-                eo_1.circuit(s_step),
-                eo_2.circuit(s_step),
-                eo_1.circuit(-s_step),
+                deepcopy(eo_2).circuit(s_step),
+                deepcopy(eo_1).circuit(s_step),
+                deepcopy(eo_2).circuit(-s_step),
+                deepcopy(eo_1).circuit(-s_step),
             ]          
             query_list_backward = [
-                eo_1.circuit(s_step),
-                eo_2.circuit(-s_step),
-                eo_1.circuit(-s_step),
-                eo_2.circuit(s_step),
+                deepcopy(eo_1).circuit(s_step),
+                deepcopy(eo_2).circuit(s_step),
+                deepcopy(eo_1).circuit(-s_step),
+                deepcopy(eo_2).circuit(-s_step),
             ]
         elif gc_type is DoubleBracketRotationType.group_commutator_reordered:
             query_list_forward = [
-                eo_1.circuit(s_step),
-                eo_2.circuit(-s_step),
-                eo_1.circuit(-s_step),
-                eo_2.circuit(s_step),
+                deepcopy(eo_1).circuit(s_step),
+                deepcopy(eo_2).circuit(-s_step),
+                deepcopy(eo_1).circuit(-s_step),
+                deepcopy(eo_2).circuit(s_step),
             ]
             query_list_backward = [
-                eo_2.circuit(-s_step),
-                eo_1.circuit(s_step),
-                eo_2.circuit(s_step),
-                eo_1.circuit(-s_step),
+                deepcopy(eo_2).circuit(-s_step),
+                deepcopy(eo_1).circuit(s_step),
+                deepcopy(eo_2).circuit(s_step),
+                deepcopy(eo_1).circuit(-s_step),
             ]
         elif gc_type is DoubleBracketRotationType.group_commutator_reduced:
             query_list_forward = [
-                eo_1.circuit(s_step),
-                eo_2.circuit(s_step),
-                eo_1.circuit(-s_step),
+                deepcopy(eo_1).circuit(s_step),
+                deepcopy(eo_2).circuit(-s_step),
+                deepcopy(eo_1).circuit(-s_step),
             ]
             query_list_backward = [
-                eo_1.circuit(s_step),
-                eo_2.circuit(-s_step),
-                eo_1.circuit(-s_step),
+                deepcopy(eo_1).circuit(s_step),
+                deepcopy(eo_2).circuit(s_step),
+                deepcopy(eo_1).circuit(-s_step),
             ]
         elif gc_type is DoubleBracketRotationType.group_commutator_third_order:
             query_list_forward = [
-                eo_2.circuit(-s_step * (np.sqrt(5) - 1) / 2),
-                eo_1.circuit(-s_step * (np.sqrt(5) - 1) / 2),
-                eo_2.circuit(s_step),
-                eo_1.circuit(s_step * (np.sqrt(5) + 1) / 2),
-                eo_2.circuit(-s_step * (3 - np.sqrt(5)) / 2),
-                eo_1.circuit(-s_step)            
+                deepcopy(eo_2).circuit(-s_step * (np.sqrt(5) - 1) / 2),
+                deepcopy(eo_1).circuit(-s_step * (np.sqrt(5) - 1) / 2),
+                deepcopy(eo_2).circuit(s_step),
+                deepcopy(eo_1).circuit(s_step * (np.sqrt(5) + 1) / 2),
+                deepcopy(eo_2).circuit(-s_step * (3 - np.sqrt(5)) / 2),
+                deepcopy(eo_1).circuit(-s_step)            
             ]
             query_list_backward = [ Circuit.invert(c) for c in query_list_forward[::-1]]
         elif gc_type is DoubleBracketRotationType.group_commutator_third_order_reduced:
@@ -225,6 +229,19 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
                 deepcopy(eo_1).circuit(-s_step)            
             ]
             query_list_backward = [ Circuit.invert(c) for c in query_list_forward[::-1]]
+        elif gc_type is DoubleBracketRotationType.group_commutator_mix_twice:
+            s_step = (step_duration/2)
+            c1 = self.group_commutator(s_step, eo_1,eo_2, mode_dbr=DoubleBracketRotationType.group_commutator)["forwards"]
+            c2 = self.group_commutator(s_step, eo_1,eo_2, mode_dbr=DoubleBracketRotationType.group_commutator_reduced)["forwards"]
+            return {"forwards": c2+c1, "backwards": (c2+c1).invert()}
+        elif gc_type is DoubleBracketRotationType.group_commutator_reduced_twice:
+            s_step = (step_duration/2)
+            c1 = self.group_commutator(s_step, eo_1,eo_2, mode_dbr=DoubleBracketRotationType.group_commutator_reduced)["forwards"]
+            return {"forwards": c1+c1, "backwards": (c1+c1).invert()}
+        elif gc_type is DoubleBracketRotationType.group_commutator_third_order_reduced_twice:
+            s_step = (step_duration/2)
+            c1 = self.group_commutator(s_step, eo_1,eo_2, mode_dbr=DoubleBracketRotationType.group_commutator_third_order_reduced)["forwards"]
+            return {"forwards": c1+c1, "backwards": (c1+c1).invert()}
         else:
             raise_error(
                 ValueError,

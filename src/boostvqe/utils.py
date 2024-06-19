@@ -255,10 +255,13 @@ def print_vqe_comparison_report(gci):
     gci_loss = gci.loss()
     print(f"VQE energy is {round(gci.vqe_energy,5)} and the DBQA yields {round(gci_loss,5)}. \n\
 The target energy is {round(gci.h.target_energy,5)} which means the difference is for VQE \
-    {round(gci.vqe_energy-gci.h.target_energy,5)} and of the DBQA {round(gci_loss-gci.h.target_energy,5)} which can be compared to the spectral gap {round(gci.h.gap,5)}.\n\
+    {round(gci.vqe_energy-gci.h.target_energy,5)} and of the DBQA {round(gci_loss-gci.h.target_energy,5)} \
+        which can be compared to the spectral gap {round(gci.h.gap,5)}.\n\
 The relative difference is for VQE {round(abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}% \
     and for DBQA {round(abs(gci_loss-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}%.\
-The energetic fidelity witness for the ground state for the VQE is {round(1- abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.gap),5)} and DBQA {round(1- abs(gci_loss-gci.h.target_energy)/abs(gci.h.gap),5)}\
+The energetic fidelity witness for the ground state for the\n\
+      VQE is {round(1- abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.gap),5)} \n\
+        and DBQA {round(1- abs(gci_loss-gci.h.target_energy)/abs(gci.h.gap),5)}\
 ")
 
 
@@ -307,7 +310,7 @@ def initialize_gci_from_vqe( path = "../results/vqe_data/with_params/10q7l/sgd_1
 
 
 def select_recursion_step_circuit(gci, 
-                    mode_dbr_list = [DoubleBracketRotationType.group_commutator_third_order], 
+                    mode_dbr_list = [DoubleBracketRotationType.group_commutator_third_order_reduced], 
                     eo_d = None,
                     step_grid = np.linspace(1e-3,3e-2,10),
                     please_be_visual = False):
@@ -331,7 +334,9 @@ def select_recursion_step_circuit(gci,
             plt.plot(step_grid,ls)
             plt.yticks([ls[0],l, ls[-1]])
             plt.xticks([step_grid[0],s,step_grid[-1]])
+            plt.title(mode.name)
             plt.show()
+            
 
     minimizer_dbr_id = np.argmin(minimal_losses)
     
