@@ -226,7 +226,7 @@ class IsingNNEvolutionOracle(EvolutionOracle):
         self,
         b_list,
         j_list,
-        name = "B Field",
+        name = "H_ClassicalIsing(B,J)",
         mode_evolution_oracle: EvolutionOracleType = EvolutionOracleType.hamiltonian_simulation   
     ):
         self.nqubits = len(b_list)
