@@ -302,33 +302,40 @@ def initialize_gci_from_vqe( path = "../results/vqe_data/with_params/10q7l/sgd_1
    
     b_list = [1+np.sin(x/3)for x in range(10)]
     gci.eo_d = MagneticFieldEvolutionOracle(b_list,name = "D(B = 1+sin(x/3))")
-    gci.default_times = np.linspace(0.003,0.004,10)
+    gci.default_step_grid = np.linspace(0.003,0.004,10)
     return gci
 
 
-def select_recursion_step_circuit(gci, mode_dbr_list = [DoubleBracketRotationType.group_commutator_third_order], times = np.linspace(1e-3,3e-2,10),please_be_visual = False):
+def select_recursion_step_circuit(gci, 
+                    mode_dbr_list = [DoubleBracketRotationType.group_commutator_third_order], 
+                    eo_d = None,
+                    step_grid = np.linspace(1e-3,3e-2,10),
+                    please_be_visual = False):
     """ Returns: circuit of the step, code of the strategy"""
-    mode_start = gci.mode_double_bracket_rotation
+
+    if eo_d is None:
+        eo_d = gci.eo_d    
+    
     minimal_losses = []
     all_losses = []
     minimizer_s = []
-    for i,mode in enumerate(mode_dbr_list):       
-        
-        eo_d = gci.eo_d
+    for i,mode in enumerate(mode_dbr_list):
+
         gci.mode_double_bracket_rotation = mode
-        s, l, ls = gci.choose_step(d = eo_d,times = times)
+        s, l, ls = gci.choose_step(d = eo_d,step_grid = step_grid, mode_dbr = mode)
         #here optimize over gradient descent
         minimal_losses.append(l)
         minimizer_s.append(s)
 
         if please_be_visual:
-            plt.plot(times,ls)
+            plt.plot(step_grid,ls)
             plt.yticks([ls[0],l, ls[-1]])
-            plt.xticks([times[0],s,times[-1]])
+            plt.xticks([step_grid[0],s,step_grid[-1]])
             plt.show()
 
     minimizer_dbr_id = np.argmin(minimal_losses)
-    return mode_dbr_list[minimizer_dbr_id], minimizer_s[minimizer_dbr_id], gci.eo_d
+    
+    return mode_dbr_list[minimizer_dbr_id], minimizer_s[minimizer_dbr_id], eo_d
 
 def execute_selected_recursion_step( gci, mode_dbr, minimizer_s, eo_d, please_be_verbose = False ):
     gci.mode_double_bracket_rotation = mode_dbr
