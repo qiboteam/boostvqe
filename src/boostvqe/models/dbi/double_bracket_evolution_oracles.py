@@ -233,6 +233,12 @@ class IsingNNEvolutionOracle(EvolutionOracle):
         name = "H_ClassicalIsing(B,J)",
         mode_evolution_oracle: EvolutionOracleType = EvolutionOracleType.hamiltonian_simulation   
     ):
+        """
+        Constructs the evolution oracle for the classical Ising model
+        .. math::
+            H = \\sum_{i=0}^{N-1} \\left( B_i Z_i+ J_i Z_i Z_{i+1} \\right)
+        """
+
         self.nqubits = len(b_list)
         d = SymbolicHamiltonian( 
             sum([b*symbols.Z(j) for j,b in zip(range(self.nqubits),b_list)]+
@@ -263,7 +269,7 @@ class IsingNNEvolutionOracle(EvolutionOracle):
         """
         Constructs an XXZ model circuit for n qubits, given by:
         .. math::
-            H = \\sum_{i=0}^{N-1} \\left( B_i Z_i+ J_i Z_i Z_{i+1} \\right)
+            H(B,J) = \\sum_{i=0}^{N-1} \\left( B_i Z_i+ J_i Z_i Z_{i+1} \\right)
 
 
         Args:
