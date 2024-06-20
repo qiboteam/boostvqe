@@ -255,13 +255,15 @@ def print_vqe_comparison_report(gci):
     gci_loss = gci.loss()
     print(f"VQE energy is {round(gci.vqe_energy,5)} and the DBQA yields {round(gci_loss,5)}. \n\
 The target energy is {round(gci.h.target_energy,5)} which means the difference is for VQE \
-    {round(gci.vqe_energy-gci.h.target_energy,5)} and of the DBQA {round(gci_loss-gci.h.target_energy,5)} \
-        which can be compared to the spectral gap {round(gci.h.gap,5)}.\n\
+{round(gci.vqe_energy-gci.h.target_energy,5)} and of the DBQA {round(gci_loss-gci.h.target_energy,5)} \
+which can be compared to the spectral gap {round(gci.h.gap,5)}.\n\
 The relative difference is for VQE {round(abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}% \
-    and for DBQA {round(abs(gci_loss-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}%.\
+and for DBQA {round(abs(gci_loss-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}%.\
 The energetic fidelity witness for the ground state for the\n\
-      VQE is {round(1- abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.gap),5)} \n\
-        and DBQA {round(1- abs(gci_loss-gci.h.target_energy)/abs(gci.h.gap),5)}\
+VQE is {round(1- abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.gap),5)} \n\
+and DBQA {round(1- abs(gci_loss-gci.h.target_energy)/abs(gci.h.gap),5)}\n\
+The true fidelity is {round(gnd_state_fidelity(gci),5)} \n\
+and DBQA {round(gnd_state_fidelity_witness(gci,gci_loss),5)}\
 ")
 
 
@@ -299,6 +301,7 @@ def initialize_gci_from_vqe( path = "../results/vqe_data/with_params/10q7l/sgd_1
     eigenergies.sort()
     gap = eigenergies[1] - target_energy
     gci.h.gap = gap
+    gci.h.ground_state = hamiltonian.eigenvectors()[0]
 
     gci.vqe_energy = hamiltonian.expectation(vqe.circuit().state())
 
@@ -307,7 +310,14 @@ def initialize_gci_from_vqe( path = "../results/vqe_data/with_params/10q7l/sgd_1
     gci.eo_d = MagneticFieldEvolutionOracle(b_list,name = "D(B = 1+sin(x/3))")
     gci.default_step_grid = np.linspace(0.003,0.004,10)
     return gci
+def gnd_state_fidelity_witness(gci,e_state = None):
+    if e_state is None:
+        e_state = gci.loss()
+    return 1 - (e_state-gci.h.target_energy) / gci.h.gap
 
+def gnd_state_fidelity(gci):
+    input_state = gci.get_composed_circuit()().state()
+    return abs( gci.h.ground_state.T.conj() @ input_state )**2
 
 def select_recursion_step_circuit(gci, 
                     mode_dbr_list = [DoubleBracketRotationType.group_commutator_third_order_reduced], 
