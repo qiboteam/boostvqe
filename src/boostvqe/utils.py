@@ -251,26 +251,18 @@ def apply_gci_circuits(dbi, nsteps, stepsize=0.01, optimize_step=False):
     return hamiltonians, energies, fluctuations, steps, d_matrix, operators
 
 
-def print_vqe_comparison_report(gci):
-    gci_loss = gci.loss()
-    print(f"VQE energy is {round(gci.vqe_energy,5)} and the DBQA yields {round(gci_loss,5)}. \n\
-The target energy is {round(gci.h.target_energy,5)} which means the difference is for VQE \
-{round(gci.vqe_energy-gci.h.target_energy,5)} and of the DBQA {round(gci_loss-gci.h.target_energy,5)} \
-which can be compared to the spectral gap {round(gci.h.gap,5)}.\n\
-The relative difference is for VQE {round(abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}% \
-and for DBQA {round(abs(gci_loss-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}%.\
-The energetic fidelity witness for the ground state for the\n\
-VQE is {round(1- abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.gap),5)} \n\
-and DBQA {round(1- abs(gci_loss-gci.h.target_energy)/abs(gci.h.gap),5)}\n\
-The true fidelity is {round(gnd_state_fidelity(gci),5)} \n\
-and DBQA {round(gnd_state_fidelity_witness(gci,gci_loss),5)}\
-")
 
 
-def initialize_gci_from_vqe( path = "../results/vqe_data/with_params/10q7l/sgd_10q_7l_42/",
+
+def initialize_gci_from_vqe( nqubits = 10,
+                            nlayers = 7,
+                            seed = 42,
                             target_epoch = 2000,
-                            dbi_steps = 1,
-                            mode_dbr = DoubleBracketRotationType.group_commutator_third_order_reduced):
+                            mode_dbr = DoubleBracketRotationType.group_commutator_third_order_reduced
+                            ):
+
+
+    path = f"../results/vqe_data/with_params/{nqubits}q{nlayers}l/sgd_{nqubits}q_{nlayers}l_{seed}/"
 
     # upload system configuration and parameters for all the training
     with open(path + "optimization_results.json") as file:
@@ -294,7 +286,9 @@ def initialize_gci_from_vqe( path = "../results/vqe_data/with_params/10q7l/sgd_1
     # init gci with the vqe-rotated hamiltonian
     gci  = GroupCommutatorIterationWithEvolutionOracles(input_hamiltonian_evolution_oracle=fsoe, 
             mode_double_bracket_rotation=mode_dbr)
-    
+            
+    gci.vqe = vqe
+
     eigenergies = hamiltonian.eigenvalues()
     target_energy = np.min(eigenergies)
     gci.h.target_energy = target_energy
@@ -304,27 +298,20 @@ def initialize_gci_from_vqe( path = "../results/vqe_data/with_params/10q7l/sgd_1
     gci.h.ground_state = hamiltonian.eigenvectors()[0]
 
     gci.vqe_energy = hamiltonian.expectation(vqe.circuit().state())
-
    
     b_list = [1+np.sin(x/3)for x in range(10)]
     gci.eo_d = MagneticFieldEvolutionOracle(b_list,name = "D(B = 1+sin(x/3))")
     gci.default_step_grid = np.linspace(0.003,0.004,10)
+
+    gci.path = path
     return gci
-
-def gnd_state_fidelity_witness(gci,e_state = None):
-    if e_state is None:
-        e_state = gci.loss()
-    return 1 - (e_state-gci.h.target_energy) / gci.h.gap
-
-def gnd_state_fidelity(gci):
-    input_state = gci.get_composed_circuit()().state()
-    return abs( gci.h.ground_state.T.conj() @ input_state )**2
 
 def select_recursion_step_circuit(gci, 
                     mode_dbr_list = [DoubleBracketRotationType.group_commutator_third_order_reduced], 
                     eo_d = None,
                     step_grid = np.linspace(1e-3,3e-2,10),
-                    please_be_visual = False):
+                    please_be_visual = False,
+                    save_path = None):
     """ Returns: circuit of the step, code of the strategy"""
 
     if eo_d is None:
@@ -346,21 +333,104 @@ def select_recursion_step_circuit(gci,
             plt.yticks([ls[0],l, ls[-1]])
             plt.xticks([step_grid[0],s,step_grid[-1]])
             plt.title(mode.name)
-            plt.show()
-            
+            if save_path is None:
+                save_path = f'../results/figs/gci_boost.pdf'
+            if gci.please_save_fig_to_pdf is True:
+                plt.savefig( save_path, format='pdf')
+            plt.show()      
 
     minimizer_dbr_id = np.argmin(minimal_losses)
     
     return mode_dbr_list[minimizer_dbr_id], minimizer_s[minimizer_dbr_id], eo_d
 
-def execute_selected_recursion_step( gci, mode_dbr, minimizer_s, eo_d, please_be_verbose = False ):
-    gci.mode_double_bracket_rotation = mode_dbr
+def execute_gci_boost(  nqubits=10,
+                        nlayers=7,
+                        seed = 42,
+                        target_epoch = 200,
+                        nmb_gci_steps = 1,
+                        nmb_gd_epochs = 1,
+                        eo_d = None,
+                        mode_dbr_list = [#DoubleBracketRotationType.group_commutator_reduced,
+                            #DoubleBracketRotationType.group_commutator_mix_twice,
+                            #DoubleBracketRotationType.group_commutator_reduced_twice,
+                            DoubleBracketRotationType.group_commutator_third_order_reduced,
+                            #DoubleBracketRotationType.group_commutator_third_order_reduced_twice
+                            ],
+                        please_be_verbose = False,
+                        please_be_visual = False
+                        ):        
+    if please_be_verbose:    
+        print("Initilizing gci:\n")    
+    gci = initialize_gci_from_vqe(
+                            nqubits=nqubits,
+                            nlayers=nlayers,
+                            seed = seed,
+                            target_epoch = target_epoch
+                            )
+    if eo_d is not None:  
+        gci.eo_d = eo_d
+
     if please_be_verbose:
-        gci.print_gate_count_report()
+        print(f"The gci mode is {gci.mode_double_bracket_rotation} rotation with {gci.eo_d.name} as the oracle.\n") 
         print_vqe_comparison_report(gci)
-    gci(minimizer_s, eo_d)
-    if please_be_verbose:
-        gci.print_gate_count_report() 
-        print_vqe_comparison_report(gci)
+
+    for gci_step_nmb in range(nmb_gci_steps):
+        mode_dbr, minimizer_s, eo_d = select_recursion_step_circuit(
+            gci, 
+            mode_dbr_list = mode_dbr_list,
+            step_grid = np.linspace(1e-5,2e-2,10),
+            please_be_visual = please_be_visual,
+            save_path = "gci_step"
+        )
+
+        
+        gci.mode_double_bracket_rotation = mode_dbr
+        gci.eo_d = eo_d
+        gci(minimizer_s)
+        
+        if please_be_verbose:    
+            print("Executing gci step:\n")
+            print(f"The selected data is {gci.mode_double_bracket_rotation} rotation with {gci.eo_d.name} for the duration s = {minimizer_s}.")    
+            print("--- the report after execution:\n")
+            print_vqe_comparison_report(gci)
+            print("==== the execution report ends here")
+
     return gci
 
+def get_eo_d_initializations( nqubits, eo_d_name = "B Field"):
+    if eo_d_name == "B Field":
+        return [
+            MagneticFieldEvolutionOracle([4-np.sin(x/3) for x in range(nqubits)]),
+            MagneticFieldEvolutionOracle([1+np.sin(x/3) for x in range(nqubits)]),
+            MagneticFieldEvolutionOracle([1]*nqubits),
+            MagneticFieldEvolutionOracle(np.linspace(0,2,nqubits)),
+            MagneticFieldEvolutionOracle(np.linspace(0,1,nqubits)),
+            ]
+    elif eo_d_name == "H_ClassicalIsing(B,J)":
+        return [  
+            IsingNNEvolutionOracle([0]*nqubits, [1]*nqubits)           
+            ]
+def gnd_state_fidelity_witness(gci,e_state = None):
+    if e_state is None:
+        e_state = gci.loss()
+    return 1 - (e_state-gci.h.target_energy) / gci.h.gap
+
+def gnd_state_fidelity(gci):
+    input_state = gci.get_composed_circuit()().state()
+    return abs( gci.h.ground_state.T.conj() @ input_state )**2
+
+def print_vqe_comparison_report(gci):
+    gci_loss = gci.loss()
+    print(f"VQE energy is {round(gci.vqe_energy,5)} and the DBQA yields {round(gci_loss,5)}. \n\
+The target energy is {round(gci.h.target_energy,5)} which means the difference is for VQE \
+{round(gci.vqe_energy-gci.h.target_energy,5)} and of the DBQA {round(gci_loss-gci.h.target_energy,5)} \
+which can be compared to the spectral gap {round(gci.h.gap,5)}.\n\
+The relative difference is for VQE {round(abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}% \
+and for DBQA {round(abs(gci_loss-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}%.\
+The energetic fidelity witness for the ground state for the\n\
+VQE is {round(1- abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.gap),5)} \n\
+and DBQA {round(1- abs(gci_loss-gci.h.target_energy)/abs(gci.h.gap),5)}\n\
+The true fidelity is {round(gnd_state_fidelity(gci),5)} (see boostvqe issue https://github.com/qiboteam/boostvqe/issues/51 why this value seems wrong)\n\
+and DBQA {round(gnd_state_fidelity_witness(gci,gci_loss),5)}\
+")
+    gci.print_gate_count_report()   

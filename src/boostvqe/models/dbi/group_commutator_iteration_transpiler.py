@@ -76,15 +76,16 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         self.default_step_grid = np.linspace(0.001,0.03, 10)
         self.eo_d = MagneticFieldEvolutionOracle([1]*self.nqubits)
 
-        
+        self.please_save_fig_to_pdf = False
 
     def __call__(
         self,
         step_duration: float,
-        diagonal_association: EvolutionOracle,
+        diagonal_association: EvolutionOracle = None,
         mode_dbr: DoubleBracketRotationType = None,
     ):
-
+        if diagonal_association is None:
+            diagonal_association = self.eo_d
         # Set rotation type
         if mode_dbr is None:
             mode_dbr = self.mode_double_bracket_rotation
