@@ -318,11 +318,11 @@ from boostvqe.models.dbi.utils_gci_optimization import *
 def select_recursion_step_gd_circuit(gci, 
                     mode_dbr_list = [DoubleBracketRotationType.group_commutator_third_order], 
                     eo_d = None,
-                    step_grid = np.linspace(1e-5,3e-2,10),
-                    lr_range = (1e-3, 1),
-                    use_gd = False,
+                    step_grid = np.linspace(1e-5,3e-2,30),
+                    lr_range = (1e-3, 1),                    
                     threshold = 1e-4,
                     max_eval_gd = 30,
+                    nmb_gd_epochs = 0,
                     please_be_visual = False,
                     please_be_verbose = True,
                     save_path = "gci_step"):
@@ -347,19 +347,19 @@ def select_recursion_step_gd_circuit(gci,
         gci.mode_double_bracket_rotation = mode
         # returns min_s, min_loss, loss_list
         s, l, ls = gci.choose_step(d = eo_d,step_grid = step_grid, mode_dbr = mode)
-        step_grid
-        if use_gd:
+
+        for epoch in range(nmb_gd_epochs):
             ls = []
             s_min, s_max = step_grid[0], step_grid[-1]
             lr_min, lr_max = lr_range[0], lr_range[-1]
-            eo_d, s, l, eval_dict = choose_gd_params(gci, n_local, params, l, s, s_min, s_max, lr_min, lr_max, threshold, max_eval_gd)
+            eo_d, s, l, eval_dict, params, best_lr = choose_gd_params(gci, n_local, params, l, s, s_min, s_max, lr_min, lr_max, threshold, max_eval_gd)
                 
         minimal_losses.append(l)
         minimizer_s.append(s)
         minimizer_eo_d.append(eo_d)
-        
+
         if please_be_visual:
-            if not use_gd:
+            if not nmb_gd_epochs:
                 plt.plot(step_grid, ls)
                 plt.yticks([ls[0],l, ls[-1]])
                 plt.xticks([step_grid[0],s,step_grid[-1]])
@@ -369,20 +369,20 @@ def select_recursion_step_gd_circuit(gci,
                 save_path = f'{gci.path}figs/gci_boost_{gci.mode_double_bracket_rotation}_s={s}.pdf'
             if gci.please_save_fig_to_pdf is True:
                 plt.savefig( save_path, format='pdf')
-                plt.show()
-        if please_be_verbose:
-            print(f"Just finished the selection: better loss for mode {mode_dbr_list[minimizer_dbr_id]},\
-                  with duration s={minimizer_s[minimizer_dbr_id]}, and eo_d name = {minimizer_eo_d[minimizer_dbr_id].name}")    
+            plt.show()
+          
     minimizer_dbr_id = np.argmin(minimal_losses)
-    
-    return mode_dbr_list[minimizer_dbr_id], minimizer_s[minimizer_dbr_id], minimizer_eo_d[minimizer_dbr_id]
+    if please_be_verbose:
+        print(f"Just finished the selection: better loss {minimal_losses[minimizer_dbr_id]} for mode {mode_dbr_list[minimizer_dbr_id]},\
+                  with duration s={minimizer_s[minimizer_dbr_id]}, and eo_d name = {minimizer_eo_d[minimizer_dbr_id].name}")  
+    return mode_dbr_list[minimizer_dbr_id], minimizer_s[minimizer_dbr_id], minimal_losses[minimizer_dbr_id], minimizer_eo_d[minimizer_dbr_id]
 
 def execute_gci_boost(  nqubits=10,
                         nlayers=7,
                         seed = 42,
                         target_epoch = 200,
                         nmb_gci_steps = 1,
-                        nmb_gd_epochs = 1,
+                        nmb_gd_epochs = 0,
                         eo_d = None,
                         mode_dbr_list = [#DoubleBracketRotationType.group_commutator_reduced,
                             #DoubleBracketRotationType.group_commutator_mix_twice,
@@ -394,7 +394,7 @@ def execute_gci_boost(  nqubits=10,
                         please_be_visual = False
                         ):        
     if please_be_verbose:    
-        print("Initilizing gci:\n")    
+        print(f"Initilizing gci:\n")    
     gci = initialize_gci_from_vqe(
                             nqubits=nqubits,
                             nlayers=nlayers,
@@ -409,12 +409,12 @@ def execute_gci_boost(  nqubits=10,
         print_vqe_comparison_report(gci)
 
     for gci_step_nmb in range(nmb_gci_steps):
-        mode_dbr, minimizer_s, eo_d = select_recursion_step_gd_circuit(
+        mode_dbr, minimizer_s, minimal_loss, eo_d = select_recursion_step_gd_circuit(
                                                         gci, 
                                                         mode_dbr_list = mode_dbr_list,
-                                                        step_grid = np.linspace(1e-5,2e-2,10),
+                                                        step_grid = np.linspace(1e-5,2e-2,30),
                                                         lr_range = (1e-3, 1),
-                                                        use_gd = True,
+                                                        nmb_gd_epochs = nmb_gd_epochs,
                                                         threshold = 1e-4,
                                                         max_eval_gd = 30,
                                                         please_be_visual = please_be_visual,
@@ -426,7 +426,7 @@ def execute_gci_boost(  nqubits=10,
         gci(minimizer_s)
         
         if please_be_verbose:    
-            print("Executing gci step:\n")
+            print(f"Executing gci step {gci_step_nmb}:\n")
             print(f"The selected data is {gci.mode_double_bracket_rotation} rotation with {gci.eo_d.name} for the duration s = {minimizer_s}.")    
             print("--- the report after execution:\n")
             print_vqe_comparison_report(gci)

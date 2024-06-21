@@ -100,7 +100,7 @@ def gradient_descent_circuits(
 
     eo_d = MagneticFieldEvolutionOracle(d_params_init)
     step_guess,loss,_ = dbi_object.choose_step(d = eo_d, times = times_choose_step)
-    print(loss)
+
     d_params_test = d_params_init
     for i in range(train_epochs):
         print(i)
@@ -238,7 +238,7 @@ def choose_gd_params(gci,
                      lr_min=1e-4,
                      lr_max=1,
                      threshold=1e-4,
-                     max_eval=10,
+                     max_eval=30,
                      please_be_adaptive = True,
                      please_be_verbose = False
                      ):
@@ -251,7 +251,7 @@ def choose_gd_params(gci,
         if len(filtered_entries) > 0:
             return min(filtered_entries.values())
         elif lr < 0:
-            return 0
+            return float("inf")
         else:
             params_eval = (1 - grad*lr) * deepcopy(params)
             eo_d = get_gd_evolution_oracle(n_local, params_eval)
@@ -272,12 +272,13 @@ def choose_gd_params(gci,
     best_lr, best_loss, _ ,exit_criterion = adaptive_binary_search(loss_func_lr, threshold, lr_min, lr_max, max_eval)
     if please_be_verbose:
         print(f"For lr = {lr} found optimal s = {best_s} yielding loss = {best_loss} after terminating with {exit_criterion}")
-    eo_d = get_gd_evolution_oracle(n_local, (1-grad*lr_min)*params)
+    best_params = (1-grad*best_lr)*deepcopy(params)
+    eo_d = get_gd_evolution_oracle(n_local, best_params)
     # find best_s
     for (lr, s), loss in evaluated_points.items():
         if lr == best_lr and loss == best_loss:
             best_s = s
-    return eo_d, best_s, best_loss, evaluated_points
+    return eo_d, best_s, best_loss, evaluated_points, best_params, best_lr
 
 
 
