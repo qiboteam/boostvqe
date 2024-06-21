@@ -310,6 +310,7 @@ def initialize_gci_from_vqe( path = "../results/vqe_data/with_params/10q7l/sgd_1
     gci.eo_d = MagneticFieldEvolutionOracle(b_list,name = "D(B = 1+sin(x/3))")
     gci.default_step_grid = np.linspace(0.003,0.004,10)
     return gci
+
 def gnd_state_fidelity_witness(gci,e_state = None):
     if e_state is None:
         e_state = gci.loss()
