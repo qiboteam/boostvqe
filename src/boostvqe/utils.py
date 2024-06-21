@@ -221,36 +221,6 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
         logging.info(f"DBI energies: {energies}")
     return hamiltonians, energies, fluctuations, steps, d_matrix, operators
 
-def test_gc_step(dbi):
-    return None
-
-def apply_gci_circuits(dbi, nsteps, stepsize=0.01, optimize_step=False):
-    """Apply `nsteps` of `dbi` to `hamiltonian`."""
-    step = stepsize
-    energies, fluctuations, hamiltonians, steps, d_matrix = [], [], [], [], []
-    operators = []
-    for _ in range(nsteps):
-        if optimize_step:
-            # Change logging level to reduce verbosity
-            logging.getLogger().setLevel(logging.WARNING)
-            step = dbi.hyperopt_step(
-                step_min=1e-4, step_max=.01, max_evals=50, verbose=True
-            )
-            # Restore the original logging level
-            logging.getLogger().setLevel(logging.INFO)
-        operators.append(dbi(step=step, d=dbi.diagonal_h_matrix))
-        steps.append(step)
-        d_matrix.append(np.diag(dbi.diagonal_h_matrix))
-        zero_state = np.transpose([dbi.h.backend.zero_state(dbi.h.nqubits)])
-
-        energies.append(dbi.h.expectation(zero_state))
-        fluctuations.append(dbi.energy_fluctuation(zero_state))
-        hamiltonians.append(dbi.h.matrix)
-
-        logging.info(f"DBI energies: {energies}")
-    return hamiltonians, energies, fluctuations, steps, d_matrix, operators
-
-
 
 
 
@@ -334,7 +304,7 @@ def select_recursion_step_circuit(gci,
             plt.xticks([step_grid[0],s,step_grid[-1]])
             plt.title(mode.name)
             if save_path is None:
-                save_path = f'../results/figs/gci_boost.pdf'
+                save_path = f'{gci.path}figs/gci_boost_{gci.mode_double_bracket_rotation}_s={s}.pdf'
             if gci.please_save_fig_to_pdf is True:
                 plt.savefig( save_path, format='pdf')
             plt.show()      
@@ -342,6 +312,70 @@ def select_recursion_step_circuit(gci,
     minimizer_dbr_id = np.argmin(minimal_losses)
     
     return mode_dbr_list[minimizer_dbr_id], minimizer_s[minimizer_dbr_id], eo_d
+
+
+from boostvqe.models.dbi.utils_gci_optimization import *
+def select_recursion_step_gd_circuit(gci, 
+                    mode_dbr_list = [DoubleBracketRotationType.group_commutator_third_order], 
+                    eo_d = None,
+                    step_grid = np.linspace(1e-5,3e-2,10),
+                    lr_range = (1e-3, 1),
+                    use_gd = False,
+                    threshold = 1e-4,
+                    max_eval_gd = 30,
+                    please_be_visual = False,
+                    please_be_verbose = True,
+                    save_path = "gci_step"):
+    """ Returns: circuit of the step, code of the strategy"""
+
+    if eo_d is None:
+        eo_d = gci.eo_d    
+    if eo_d.name == "B Field":
+        n_local = 1
+        params = eo_d.b_list
+    elif eo_d.name == "H_ClassicalIsing(B,J)":
+        n_local = 2
+        params = eo_d.b_list + eo_d.j_list
+    else:
+        raise_error(ValueError, "Evolution oracle type not supported.")
+        
+    minimal_losses = []
+    minimizer_s = []
+    minimizer_eo_d = []
+    for i,mode in enumerate(mode_dbr_list):
+
+        gci.mode_double_bracket_rotation = mode
+        # returns min_s, min_loss, loss_list
+        s, l, ls = gci.choose_step(d = eo_d,step_grid = step_grid, mode_dbr = mode)
+        step_grid
+        if use_gd:
+            ls = []
+            s_min, s_max = step_grid[0], step_grid[-1]
+            lr_min, lr_max = lr_range[0], lr_range[-1]
+            eo_d, s, l, eval_dict = choose_gd_params(gci, n_local, params, l, s, s_min, s_max, lr_min, lr_max, threshold, max_eval_gd)
+                
+        minimal_losses.append(l)
+        minimizer_s.append(s)
+        minimizer_eo_d.append(eo_d)
+        
+        if please_be_visual:
+            if not use_gd:
+                plt.plot(step_grid, ls)
+                plt.yticks([ls[0],l, ls[-1]])
+                plt.xticks([step_grid[0],s,step_grid[-1]])
+            else:
+                plot_lr_s_loss(eval_dict)
+            if save_path is None:
+                save_path = f'{gci.path}figs/gci_boost_{gci.mode_double_bracket_rotation}_s={s}.pdf'
+            if gci.please_save_fig_to_pdf is True:
+                plt.savefig( save_path, format='pdf')
+                plt.show()
+        if please_be_verbose:
+            print(f"Just finished the selection: better loss for mode {mode_dbr_list[minimizer_dbr_id]},\
+                  with duration s={minimizer_s[minimizer_dbr_id]}, and eo_d name = {minimizer_eo_d[minimizer_dbr_id].name}")    
+    minimizer_dbr_id = np.argmin(minimal_losses)
+    
+    return mode_dbr_list[minimizer_dbr_id], minimizer_s[minimizer_dbr_id], minimizer_eo_d[minimizer_dbr_id]
 
 def execute_gci_boost(  nqubits=10,
                         nlayers=7,
@@ -375,17 +409,20 @@ def execute_gci_boost(  nqubits=10,
         print_vqe_comparison_report(gci)
 
     for gci_step_nmb in range(nmb_gci_steps):
-        mode_dbr, minimizer_s, eo_d = select_recursion_step_circuit(
-            gci, 
-            mode_dbr_list = mode_dbr_list,
-            step_grid = np.linspace(1e-5,2e-2,10),
-            please_be_visual = please_be_visual,
-            save_path = "gci_step"
-        )
-
+        mode_dbr, minimizer_s, eo_d = select_recursion_step_gd_circuit(
+                                                        gci, 
+                                                        mode_dbr_list = mode_dbr_list,
+                                                        step_grid = np.linspace(1e-5,2e-2,10),
+                                                        lr_range = (1e-3, 1),
+                                                        use_gd = True,
+                                                        threshold = 1e-4,
+                                                        max_eval_gd = 30,
+                                                        please_be_visual = please_be_visual,
+                                                        save_path = "gci_step")
         
         gci.mode_double_bracket_rotation = mode_dbr
         gci.eo_d = eo_d
+        print(gci.loss(minimizer_s,eo_d))
         gci(minimizer_s)
         
         if please_be_verbose:    
@@ -410,6 +447,7 @@ def get_eo_d_initializations( nqubits, eo_d_name = "B Field"):
         return [  
             IsingNNEvolutionOracle([0]*nqubits, [1]*nqubits)           
             ]
+
 def gnd_state_fidelity_witness(gci,e_state = None):
     if e_state is None:
         e_state = gci.loss()
@@ -422,15 +460,39 @@ def gnd_state_fidelity(gci):
 def print_vqe_comparison_report(gci):
     gci_loss = gci.loss()
     print(f"VQE energy is {round(gci.vqe_energy,5)} and the DBQA yields {round(gci_loss,5)}. \n\
-The target energy is {round(gci.h.target_energy,5)} which means the difference is for VQE \
-{round(gci.vqe_energy-gci.h.target_energy,5)} and of the DBQA {round(gci_loss-gci.h.target_energy,5)} \
-which can be compared to the spectral gap {round(gci.h.gap,5)}.\n\
-The relative difference is for VQE {round(abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}% \
-and for DBQA {round(abs(gci_loss-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}%.\
-The energetic fidelity witness for the ground state for the\n\
-VQE is {round(1- abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.gap),5)} \n\
-and DBQA {round(1- abs(gci_loss-gci.h.target_energy)/abs(gci.h.gap),5)}\n\
-The true fidelity is {round(gnd_state_fidelity(gci),5)} (see boostvqe issue https://github.com/qiboteam/boostvqe/issues/51 why this value seems wrong)\n\
-and DBQA {round(gnd_state_fidelity_witness(gci,gci_loss),5)}\
+            The target energy is {round(gci.h.target_energy,5)} which means the difference is for VQE \
+            {round(gci.vqe_energy-gci.h.target_energy,5)} and of the DBQA {round(gci_loss-gci.h.target_energy,5)} \
+            which can be compared to the spectral gap {round(gci.h.gap,5)}.\n\
+            The relative difference is for VQE {round(abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}% \
+            and for DBQA {round(abs(gci_loss-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}%.\
+            The energetic fidelity witness for the ground state for the\n\
+            VQE is {round(1- abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.gap),5)} \n\
+            and DBQA {round(1- abs(gci_loss-gci.h.target_energy)/abs(gci.h.gap),5)}\n\
+            The true fidelity is {round(gnd_state_fidelity(gci),5)} (see boostvqe issue https://github.com/qiboteam/boostvqe/issues/51 why this value seems wrong)\n\
+            and DBQA {round(gnd_state_fidelity_witness(gci,gci_loss),5)}\
 ")
     gci.print_gate_count_report()   
+
+from mpl_toolkits.mplot3d import Axes3D
+def plot_lr_s_loss(eval_dict):
+    lr = [key[0] for key in eval_dict.keys()]
+    s = [key[1] for key in eval_dict.keys()]
+    loss = [value for value in eval_dict.values()]
+    min_loss_index = loss.index(min(loss))
+    min_lr = lr[min_loss_index]
+    min_s = s[min_loss_index]
+    min_loss = loss[min_loss_index]
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    sc = ax.scatter(lr, s, loss, c=loss, cmap='viridis')
+    ax.scatter([min_lr], [min_s], [min_loss], color='red', s=100, label='Minimum Loss')
+    ax.text(min_lr, min_s, min_loss, f'({np.round(min_lr,2)}, {np.round(min_s,2)}, {np.round(min_loss,4)})', color='red')
+    colorbar = plt.colorbar(sc)
+    colorbar.set_label('Loss')
+    ax.set_xlabel('Learning Rate (lr)')
+    ax.set_ylabel('Step (s)')
+    ax.set_zlabel('Loss')
+    ax.legend()
+    ax.set_title('3D Scatter Plot of (lr, s): loss')
+
+
