@@ -265,7 +265,7 @@ def initialize_gci_from_vqe( nqubits = 10,
     eigenergies.sort()
     gap = eigenergies[1] - target_energy
     gci.h.gap = gap
-    gci.h.ground_state = hamiltonian.eigenvectors()[0]
+    gci.h.ground_state = hamiltonian.eigenvectors()[:,0]
 
     gci.vqe_energy = hamiltonian.expectation(vqe.circuit().state())
    
@@ -453,8 +453,9 @@ def gnd_state_fidelity_witness(gci,e_state = None):
         e_state = gci.loss()
     return 1 - (e_state-gci.h.target_energy) / gci.h.gap
 
-def gnd_state_fidelity(gci):
-    input_state = gci.get_composed_circuit()().state()
+def gnd_state_fidelity(gci, input_state = None):
+    if input_state is None:
+        input_state = gci.get_composed_circuit()().state()
     return abs( gci.h.ground_state.T.conj() @ input_state )**2
 
 def print_vqe_comparison_report(gci):
