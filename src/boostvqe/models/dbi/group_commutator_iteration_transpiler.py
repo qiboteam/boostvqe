@@ -77,7 +77,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         self.eo_d = MagneticFieldEvolutionOracle([1]*self.nqubits)
 
         self.please_save_fig_to_pdf = False
-
+   
     def __call__(
         self,
         step_duration: float,
@@ -337,13 +337,73 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         if circuit is None:
             circuit = self.get_composed_circuit( )
         return self.count_gates( circuit, gates.gates.CZ )
-
-    def print_gate_count_report(self):
-        nmb_cz = self.count_CZs()
-        nmb_cnot = self.count_CNOTs()
-        print(f"The boosting circuit used {nmb_cnot} CNOT gates coming from compiled XXZ evolution and {nmb_cz} CZ gates from VQE.\n\
-For {self.nqubits} qubits this gives n_CNOT/n_qubits = {nmb_cnot/self.nqubits} and n_CZ/n_qubits = {nmb_cz/self.nqubits}")
+    
+    def get_gate_count_dict(self):
         return dict(nmb_cz = self.count_CZs(),
                     nmb_cnot = self.count_CNOTs(),
-                    nmb_cnot_relative = nmb_cnot/self.nqubits,
-                    nmb_cz_relative = nmb_cz/self.nqubits)
+                    nmb_cnot_relative = self.count_CZs()/self.nqubits,
+                    nmb_cz_relative = self.count_CNOTs()/self.nqubits)
+    
+    def print_gate_count_report(self):
+        counts = self.get_gate_count_dict()
+        print(f"The boosting circuit used {counts['nmb_cnot']} CNOT gates coming from compiled XXZ evolution and {counts['nmb_cz']} CZ gates from VQE.\n\
+For {self.nqubits} qubits this gives n_CNOT/n_qubits = {counts['nmb_cnot_relative']} and n_CZ/n_qubits = {counts['nmb_cz_relative']}")
+        
+    
+class VQEBoostingGroupCommutatorIteration(GroupCommutatorIterationWithEvolutionOracles): 
+    def __init__(
+        self,
+        input_hamiltonian_evolution_oracle: EvolutionOracle,
+        mode_double_bracket_rotation: DoubleBracketRotationType = DoubleBracketRotationType.group_commutator,
+        path = None,
+        h_ref = None
+    ):
+
+        super().__init__( input_hamiltonian_evolution_oracle,
+        mode_double_bracket_rotation,
+        h_ref = None ) 
+        hamiltonian = hamiltonians.XXZ(nqubits=self.nqubits, delta=0.5)
+        self.h_ref = hamiltonian
+        self.vqe =input_hamiltonian_evolution_oracle.vqe
+
+        eigenergies = hamiltonian.eigenvalues()
+        target_energy = np.min(eigenergies)
+        self.h.target_energy = target_energy
+        eigenergies.sort()
+        gap = eigenergies[1] - target_energy
+        self.h.gap = gap
+        self.h.ground_state = hamiltonian.eigenvectors()[:,0]
+
+        self.vqe_energy = hamiltonian.expectation(input_hamiltonian_evolution_oracle.vqe.circuit().state())
+    
+        b_list = [1+np.sin(x/3)for x in range(10)]
+        self.eo_d = MagneticFieldEvolutionOracle(b_list,name = "D(B = 1+sin(x/3))")
+        self.default_step_grid = np.linspace(0.003,0.004,10)
+
+        self.path = path
+        self.boosting_callback_data = [self.get_vqe_boosting_data()] 
+    def get_vqe_boosting_data(self, nmb_digits_rounding = 2):
+        gci_loss = self.loss()
+        return dict(
+        gci_loss = gci_loss,
+        vqe_energy = self.vqe_energy,
+        target_energy = self.h.target_energy,
+        diff_vqe_target = self.vqe_energy-self.h.target_energy,
+        diff_gci_target = gci_loss-self.h.target_energy,
+        gap = self.h.gap,
+        diff_vqe_target_perc = abs(self.vqe_energy-self.h.target_energy)/abs(self.h.target_energy)*100,
+        diff_gci_target_perc = abs(gci_loss-self.h.target_energy)/abs(self.h.target_energy)*100,
+        fidelity_witness_vqe = self.gnd_state_fidelity_witness(self.vqe_energy),
+        fidelity_witness_gci = self.gnd_state_fidelity_witness(self.vqe_energy),
+        fidelity_vqe = self.gnd_state_fidelity( input_state = self.vqe.circuit().state()),
+        fidelity_gci = self.gnd_state_fidelity(),
+    ) | self.get_gate_count_dict()
+    def gnd_state_fidelity_witness(self,e_state = None):
+        if e_state is None:
+            e_state = self.loss()
+        return 1 - (e_state-self.h.target_energy) / self.h.gap
+
+    def gnd_state_fidelity(self, input_state = None):
+        if input_state is None:
+            input_state = self.get_composed_circuit()().state()
+        return abs( self.h.ground_state.T.conj() @ input_state )**2

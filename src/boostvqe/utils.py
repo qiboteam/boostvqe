@@ -254,26 +254,10 @@ def initialize_gci_from_vqe( nqubits = 10,
     # implement the rotate by VQE on the level of circuits
     fsoe  = VQERotatedEvolutionOracle(eo_xxz, vqe)
     # init gci with the vqe-rotated hamiltonian
-    gci  = GroupCommutatorIterationWithEvolutionOracles(input_hamiltonian_evolution_oracle=fsoe, 
-            mode_double_bracket_rotation=mode_dbr)
+    gci  = VQEBoostingGroupCommutatorIteration(input_hamiltonian_evolution_oracle=fsoe, 
+            mode_double_bracket_rotation=mode_dbr, path = path)
             
-    gci.vqe = vqe
 
-    eigenergies = hamiltonian.eigenvalues()
-    target_energy = np.min(eigenergies)
-    gci.h.target_energy = target_energy
-    eigenergies.sort()
-    gap = eigenergies[1] - target_energy
-    gci.h.gap = gap
-    gci.h.ground_state = hamiltonian.eigenvectors()[:,0]
-
-    gci.vqe_energy = hamiltonian.expectation(vqe.circuit().state())
-   
-    b_list = [1+np.sin(x/3)for x in range(10)]
-    gci.eo_d = MagneticFieldEvolutionOracle(b_list,name = "D(B = 1+sin(x/3))")
-    gci.default_step_grid = np.linspace(0.003,0.004,10)
-
-    gci.path = path
     return gci
 
 def select_recursion_step_circuit(gci, 
@@ -407,7 +391,7 @@ def execute_gci_boost(  nqubits=10,
     if please_be_verbose:
         print(f"The gci mode is {gci.mode_double_bracket_rotation} rotation with {gci.eo_d.name} as the oracle.\n") 
         print_vqe_comparison_report(gci)
-
+    boosting_callback_data = {}
     for gci_step_nmb in range(nmb_gci_steps):
         mode_dbr, minimizer_s, minimal_loss, eo_d = select_recursion_step_gd_circuit(
                                                         gci, 
@@ -421,18 +405,18 @@ def execute_gci_boost(  nqubits=10,
                                                         save_path = "gci_step")
         
         gci.mode_double_bracket_rotation = mode_dbr
-        gci.eo_d = eo_d
-        print(gci.loss(minimizer_s,eo_d))
+        gci.eo_d = eo_d        
         gci(minimizer_s)
         
         if please_be_verbose:    
-            print(f"Executing gci step {gci_step_nmb}:\n")
+            print(f"Executing gci step {gci_step_nmb+1}:\n")
             print(f"The selected data is {gci.mode_double_bracket_rotation} rotation with {gci.eo_d.name} for the duration s = {minimizer_s}.")    
             print("--- the report after execution:\n")
             print_vqe_comparison_report(gci)
             print("==== the execution report ends here")
+        boosting_callback_data[gci_step_nmb] = gci.get_vqe_boosting_data()
 
-    return gci
+    return gci, boosting_callback_data
 
 def get_eo_d_initializations( nqubits, eo_d_name = "B Field"):
     if eo_d_name == "B Field":
@@ -448,35 +432,12 @@ def get_eo_d_initializations( nqubits, eo_d_name = "B Field"):
             IsingNNEvolutionOracle([0]*nqubits, [1]*nqubits)           
             ]
 
-def gnd_state_fidelity_witness(gci,e_state = None):
-    if e_state is None:
-        e_state = gci.loss()
-    return 1 - (e_state-gci.h.target_energy) / gci.h.gap
 
-def gnd_state_fidelity(gci, input_state = None):
-    if input_state is None:
-        input_state = gci.get_composed_circuit()().state()
-    return abs( gci.h.ground_state.T.conj() @ input_state )**2
 
 def print_vqe_comparison_report(gci, nmb_digits_rounding = 2):
-    gci_loss = gci.loss()
-    return_values = dict(
-    gci_loss = gci_loss,
-    vqe_energy = gci.vqe_energy,
-    target_energy = gci.h.target_energy,
-    diff_vqe_target = gci.vqe_energy-gci.h.target_energy,
-    diff_gci_target = gci_loss-gci.h.target_energy,
-    gap = gci.h.gap,
-    diff_vqe_target_perc = abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.target_energy)*100,
-    diff_gci_target_perc = abs(gci_loss-gci.h.target_energy)/abs(gci.h.target_energy)*100,
-    fidelity_witness_vqe = gnd_state_fidelity_witness(gci,gci.vqe_energy),
-    fidelity_witness_gci = gnd_state_fidelity_witness(gci,gci.vqe_energy),
-    fidelity_vqe = gnd_state_fidelity(gci, input_state = gci.vqe.circuit().state()),
-    fidelity_gci = gnd_state_fidelity(gci),
- )
-    rounded_values = deepcopy(return_values)
+    rounded_values = gci.get_vqe_boosting_data()
     for key in rounded_values:
-        rounded_values[key] = round( return_values[key],nmb_digits_rounding)
+        rounded_values[key] = round( rounded_values[key],nmb_digits_rounding)
     print(f"\
 The target energy is {rounded_values['target_energy']}\n\
 The VQE energy is {rounded_values['vqe_energy']} \n\
@@ -495,7 +456,7 @@ The true fidelity is \n\
     - for DBQA {rounded_values['fidelity_gci']}\n\
                 ")
     gate_count = gci.print_gate_count_report()   
-    return return_values | gate_count
+
 
 from mpl_toolkits.mplot3d import Axes3D
 def plot_lr_s_loss(eval_dict):
