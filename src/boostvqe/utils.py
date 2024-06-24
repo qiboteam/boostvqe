@@ -242,9 +242,7 @@ def initialize_gci_from_vqe(
     fsoe = VQERotatedEvolutionOracle(eo_xxz, vqe)
     # init gci with the vqe-rotated hamiltonian
     gci = VQEBoostingGroupCommutatorIteration(
-        input_hamiltonian_evolution_oracle=fsoe,
-        mode_double_bracket_rotation=mode_dbr,
-        path=path,
+        input_hamiltonian_evolution_oracle=fsoe, mode_double_bracket_rotation=mode_dbr
     )
 
     return gci
@@ -431,7 +429,7 @@ def execute_gci_boost(
             print("--- the report after execution:\n")
             print_vqe_comparison_report(gci)
             print("==== the execution report ends here")
-        boosting_callback_data[gci_step_nmb] = gci.get_vqe_boosting_data()
+        boosting_callback_data[gci_step_nmb] = get_vqe_boosting_data(gci)
 
     return gci, boosting_callback_data
 
@@ -452,7 +450,8 @@ def get_eo_d_initializations(nqubits, eo_d_name="B Field"):
 def print_vqe_comparison_report(gci, nmb_digits_rounding=2):
     rounded_values = gci.get_vqe_boosting_data()
     for key in rounded_values:
-        rounded_values[key] = round(rounded_values[key], nmb_digits_rounding)
+        if isinstance(rounded_values[key], float):
+            rounded_values[key] = round(rounded_values[key], nmb_digits_rounding)
     print(
         f"\
 The target energy is {rounded_values['target_energy']}\n\
