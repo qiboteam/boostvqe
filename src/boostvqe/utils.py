@@ -230,27 +230,10 @@ def initialize_gci_from_vqe(
     # implement the rotate by VQE on the level of circuits
     fsoe = VQERotatedEvolutionOracle(eo_xxz, vqe)
     # init gci with the vqe-rotated hamiltonian
-    gci = GroupCommutatorIterationWithEvolutionOracles(
+    gci = VQEBoostingGroupCommutatorIteration(
         input_hamiltonian_evolution_oracle=fsoe, mode_double_bracket_rotation=mode_dbr
     )
 
-    gci.vqe = vqe
-
-    eigenergies = hamiltonian.eigenvalues()
-    target_energy = np.min(eigenergies)
-    gci.h.target_energy = target_energy
-    eigenergies.sort()
-    gap = eigenergies[1] - target_energy
-    gci.h.gap = gap
-    gci.h.ground_state = hamiltonian.eigenvectors()[0]
-
-    gci.vqe_energy = hamiltonian.expectation(vqe.circuit().state())
-
-    b_list = [1 + np.sin(x / 3) for x in range(10)]
-    gci.eo_d = MagneticFieldEvolutionOracle(b_list, name="D(B = 1+sin(x/3))")
-    gci.default_step_grid = np.linspace(0.003, 0.004, 10)
-
-    gci.path = path
     return gci
 
 
@@ -420,7 +403,7 @@ def execute_gci_boost(
             f"The gci mode is {gci.mode_double_bracket_rotation} rotation with {gci.eo_d.name} as the oracle.\n"
         )
         print_vqe_comparison_report(gci)
-
+    boosting_callback_data = {}
     for gci_step_nmb in range(nmb_gci_steps):
         logging.info(
             f"Optimizing GCI step {gci_step_nmb+1} with optimizer {optimization_method}"
@@ -471,7 +454,9 @@ def execute_gci_boost(
             print_vqe_comparison_report(gci)
             print("==== the execution report ends here")
 
-    return gci
+        # boosting_callback_data[gci_step_nmb] = get_vqe_boosting_data(gci)
+
+    return gci  # , boosting_callback_data
 
 
 def get_eo_d_initializations(nqubits, eo_d_name="B Field"):
@@ -487,34 +472,31 @@ def get_eo_d_initializations(nqubits, eo_d_name="B Field"):
         return [IsingNNEvolutionOracle([0] * nqubits, [1] * nqubits)]
 
 
-def gnd_state_fidelity_witness(gci, e_state=None):
-    if e_state is None:
-        e_state = gci.loss()
-    return 1 - (e_state - gci.h.target_energy) / gci.h.gap
-
-
-def gnd_state_fidelity(gci):
-    input_state = gci.get_composed_circuit()().state()
-    return abs(gci.h.ground_state.T.conj() @ input_state) ** 2
-
-
-def print_vqe_comparison_report(gci):
-    gci_loss = gci.loss()
+def print_vqe_comparison_report(gci, nmb_digits_rounding=2):
+    rounded_values = gci.get_vqe_boosting_data()
+    for key in rounded_values:
+        if isinstance(rounded_values[key], float):
+            rounded_values[key] = round(rounded_values[key], nmb_digits_rounding)
     print(
-        f"VQE energy is {round(gci.vqe_energy,5)} and the DBQA yields {round(gci_loss,5)}. \n\
-            The target energy is {round(gci.h.target_energy,5)} which means the difference is for VQE \
-            {round(gci.vqe_energy-gci.h.target_energy,5)} and of the DBQA {round(gci_loss-gci.h.target_energy,5)} \
-            which can be compared to the spectral gap {round(gci.h.gap,5)}.\n\
-            The relative difference is for VQE {round(abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}% \
-            and for DBQA {round(abs(gci_loss-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}%.\
-            The energetic fidelity witness for the ground state for the\n\
-            VQE is {round(1- abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.gap),5)} \n\
-            and DBQA {round(1- abs(gci_loss-gci.h.target_energy)/abs(gci.h.gap),5)}\n\
-            The true fidelity is {round(gnd_state_fidelity(gci),5)} (see boostvqe issue https://github.com/qiboteam/boostvqe/issues/51 why this value seems wrong)\n\
-            and DBQA {round(gnd_state_fidelity_witness(gci,gci_loss),5)}\
-"
+        f"\
+The target energy is {rounded_values['target_energy']}\n\
+The VQE energy is {rounded_values['vqe_energy']} \n\
+The DBQA energy is {rounded_values['gci_loss']}. \n\
+The difference is for VQE is {rounded_values['diff_vqe_target']} \n\
+and for the DBQA {rounded_values['diff_gci_target']} \n\
+which can be compared to the spectral gap {rounded_values['gap']}.\n\
+The relative difference is \n\
+    - for VQE {rounded_values['diff_vqe_target_perc']}% \n\
+    - for DBQA {rounded_values['diff_gci_target_perc']}%.\n\
+The energetic fidelity witness of the ground state is: \n\
+    - for the VQE  {rounded_values['fidelity_witness_vqe']} \n\
+    - for DBQA {rounded_values['fidelity_witness_gci']}\n\
+The true fidelity is \n\
+    - for the VQE  {rounded_values['fidelity_vqe']}\n\
+    - for DBQA {rounded_values['fidelity_gci']}\n\
+                "
     )
-    gci.print_gate_count_report()
+    gate_count = gci.print_gate_count_report()
 
 
 from mpl_toolkits.mplot3d import Axes3D
