@@ -397,6 +397,8 @@ class VQEBoostingGroupCommutatorIteration(GroupCommutatorIterationWithEvolutionO
         fidelity_witness_gci = self.gnd_state_fidelity_witness(self.vqe_energy),
         fidelity_vqe = self.gnd_state_fidelity( input_state = self.vqe.circuit().state()),
         fidelity_gci = self.gnd_state_fidelity(),
+        eo_d = self.eo_d,
+        circuit_at_step = self.get_composed_circuit()
     ) | self.get_gate_count_dict()
     def gnd_state_fidelity_witness(self,e_state = None):
         if e_state is None:
