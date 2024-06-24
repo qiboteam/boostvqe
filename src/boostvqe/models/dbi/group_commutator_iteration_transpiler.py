@@ -343,3 +343,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         nmb_cnot = self.count_CNOTs()
         print(f"The boosting circuit used {nmb_cnot} CNOT gates coming from compiled XXZ evolution and {nmb_cz} CZ gates from VQE.\n\
 For {self.nqubits} qubits this gives n_CNOT/n_qubits = {nmb_cnot/self.nqubits} and n_CZ/n_qubits = {nmb_cz/self.nqubits}")
+        return dict(nmb_cz = self.count_CZs(),
+                    nmb_cnot = self.count_CNOTs(),
+                    nmb_cnot_relative = nmb_cnot/self.nqubits,
+                    nmb_cz_relative = nmb_cz/self.nqubits)

@@ -458,21 +458,44 @@ def gnd_state_fidelity(gci, input_state = None):
         input_state = gci.get_composed_circuit()().state()
     return abs( gci.h.ground_state.T.conj() @ input_state )**2
 
-def print_vqe_comparison_report(gci):
+def print_vqe_comparison_report(gci, nmb_digits_rounding = 2):
     gci_loss = gci.loss()
-    print(f"VQE energy is {round(gci.vqe_energy,5)} and the DBQA yields {round(gci_loss,5)}. \n\
-            The target energy is {round(gci.h.target_energy,5)} which means the difference is for VQE \
-            {round(gci.vqe_energy-gci.h.target_energy,5)} and of the DBQA {round(gci_loss-gci.h.target_energy,5)} \
-            which can be compared to the spectral gap {round(gci.h.gap,5)}.\n\
-            The relative difference is for VQE {round(abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}% \
-            and for DBQA {round(abs(gci_loss-gci.h.target_energy)/abs(gci.h.target_energy)*100,5)}%.\
-            The energetic fidelity witness for the ground state for the\n\
-            VQE is {round(1- abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.gap),5)} \n\
-            and DBQA {round(1- abs(gci_loss-gci.h.target_energy)/abs(gci.h.gap),5)}\n\
-            The true fidelity is {round(gnd_state_fidelity(gci),5)} (see boostvqe issue https://github.com/qiboteam/boostvqe/issues/51 why this value seems wrong)\n\
-            and DBQA {round(gnd_state_fidelity_witness(gci,gci_loss),5)}\
-")
-    gci.print_gate_count_report()   
+    return_values = dict(
+    gci_loss = gci_loss,
+    vqe_energy = gci.vqe_energy,
+    target_energy = gci.h.target_energy,
+    diff_vqe_target = gci.vqe_energy-gci.h.target_energy,
+    diff_gci_target = gci_loss-gci.h.target_energy,
+    gap = gci.h.gap,
+    diff_vqe_target_perc = abs(gci.vqe_energy-gci.h.target_energy)/abs(gci.h.target_energy)*100,
+    diff_gci_target_perc = abs(gci_loss-gci.h.target_energy)/abs(gci.h.target_energy)*100,
+    fidelity_witness_vqe = gnd_state_fidelity_witness(gci,gci.vqe_energy),
+    fidelity_witness_gci = gnd_state_fidelity_witness(gci,gci.vqe_energy),
+    fidelity_vqe = gnd_state_fidelity(gci, input_state = gci.vqe.circuit().state()),
+    fidelity_gci = gnd_state_fidelity(gci),
+ )
+    rounded_values = deepcopy(return_values)
+    for key in rounded_values:
+        rounded_values[key] = round( return_values[key],nmb_digits_rounding)
+    print(f"\
+The target energy is {rounded_values['target_energy']}\n\
+The VQE energy is {rounded_values['vqe_energy']} \n\
+The DBQA energy is {rounded_values['gci_loss']}. \n\
+The difference is for VQE is {rounded_values['diff_vqe_target']} \n\
+and for the DBQA {rounded_values['diff_gci_target']} \n\
+which can be compared to the spectral gap {rounded_values['gap']}.\n\
+The relative difference is \n\
+    - for VQE {rounded_values['diff_vqe_target_perc']}% \n\
+    - for DBQA {rounded_values['diff_gci_target_perc']}%.\n\
+The energetic fidelity witness of the ground state is: \n\
+    - for the VQE  {rounded_values['fidelity_witness_vqe']} \n\
+    - for DBQA {rounded_values['fidelity_witness_gci']}\n\
+The true fidelity is \n\
+    - for the VQE  {rounded_values['fidelity_vqe']}\n\
+    - for DBQA {rounded_values['fidelity_gci']}\n\
+                ")
+    gate_count = gci.print_gate_count_report()   
+    return return_values | gate_count
 
 from mpl_toolkits.mplot3d import Axes3D
 def plot_lr_s_loss(eval_dict):
