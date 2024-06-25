@@ -341,8 +341,8 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
     def get_gate_count_dict(self):
         return dict(nmb_cz = self.count_CZs(),
                     nmb_cnot = self.count_CNOTs(),
-                    nmb_cnot_relative = self.count_CZs()/self.nqubits,
-                    nmb_cz_relative = self.count_CNOTs()/self.nqubits)
+                    nmb_cz_relative = self.count_CZs()/self.nqubits,
+                    nmb_cnot_relative = self.count_CNOTs()/self.nqubits)
     
     def print_gate_count_report(self):
         counts = self.get_gate_count_dict()

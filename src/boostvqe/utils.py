@@ -429,7 +429,7 @@ def execute_gci_boost(
             print("--- the report after execution:\n")
             print_vqe_comparison_report(gci)
             print("==== the execution report ends here")
-        boosting_callback_data[gci_step_nmb] = get_vqe_boosting_data(gci)
+        boosting_callback_data[gci_step_nmb] = gci.get_vqe_boosting_data()
 
     return gci, boosting_callback_data
 
