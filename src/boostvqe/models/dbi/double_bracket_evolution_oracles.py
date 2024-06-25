@@ -24,84 +24,28 @@ class EvolutionOracleType(Enum):
 
 @dataclass
 class EvolutionOracle:
-    hamiltonian: AbstractHamiltonian
+    h: AbstractHamiltonian
     evolution_oracle_type: EvolutionOracleType
 
-    # self.mode_find_number_of_trottersuzuki_steps = True
-    # self.eps_trottersuzuki = 0.0001
-    # self.please_be_verbose = False
-    # self.please_use_prescribed_nmb_ts_steps = False
+    def __post_init__(self):
+        self.steps = 1
 
     def __call__(self, t_duration: float):
         """Returns either the name or the circuit"""
         return self.circuit(t_duration=t_duration)
 
-    def circuit(self, t_duration):
-        raise (NotImplementedError)
-
-    # def eval_unitary(self, t_duration):
-    #     """This wraps around `circuit` and always returns a unitary"""
-    #     if self.evolution_oracle_type is EvolutionOracleType.numerical:
-    #         return self.circuit(t_duration)
-    #     elif self.evolution_oracle_type is EvolutionOracleType.hamiltonian_simulation:
-    #         return self.circuit(t_duration).unitary()
-
-    def circuit(self, t_duration: float = None):
+    def circuit(self, t_duration: float):
         """This function returns depending on `EvolutionOracleType` string, ndarray or `Circuit`.
         In the hamiltonian_simulation mode we evaluate an appropriate Trotter-Suzuki discretization up to `self.eps_trottersuzuki` threshold.
         """
         if self.evolution_oracle_type is EvolutionOracleType.numerical:
             return self.h.exp(t_duration)
-        elif self.evolution_oracle_type is EvolutionOracleType.hamiltonian_simulation:
-            return self.discretized_evolution_circuit_binary_search(
-                t_duration, eps=0.0001
+        else:
+            dt = t_duration / self.steps
+            return reduce(
+                Circuit.__add__,
+                [deepcopy(self.h).circuit(dt)] * self.steps,
             )
-            # else:
-            #     dt = t_duration / self.please_use_prescribed_nmb_ts_steps
-            #     return reduce(
-            #         Circuit.__add__,
-            #         [deepcopy(self.h).circuit(dt)]
-            #         * self.please_use_prescribed_nmb_ts_steps,
-            #     )
-
-    def discretized_evolution_circuit_binary_search(self, t_duration, eps=None):
-        nmb_trottersuzuki_steps = 1  # this is the smallest size
-        nmb_trottersuzki_steps_right = 800  # this is the largest size for binary search
-        if eps is None:
-            eps = self.eps_trottersuzuki
-        target_unitary = self.hamiltonian.exp(t_duration)
-
-        def check_accuracy(n_steps):
-            proposed_circuit_unitary = np.linalg.matrix_power(
-                deepcopy(self.hamiltonian).circuit(t_duration / n_steps).unitary(),
-                n_steps,
-            )
-            norm_difference = np.linalg.norm(target_unitary - proposed_circuit_unitary)
-            return norm_difference < eps
-
-        nmb_trottersuzuki_steps_used = nmb_trottersuzki_steps_right
-        while nmb_trottersuzuki_steps <= nmb_trottersuzki_steps_right:
-            mid = (
-                nmb_trottersuzuki_steps
-                + (nmb_trottersuzki_steps_right - nmb_trottersuzuki_steps) // 2
-            )
-            if check_accuracy(mid):
-                nmb_trottersuzuki_steps_used = mid
-                nmb_trottersuzki_steps_right = mid - 1
-            else:
-                nmb_trottersuzuki_steps = mid + 1
-        nmb_trottersuzuki_steps = nmb_trottersuzuki_steps_used
-
-        circuit_1_step = deepcopy(
-            self.hamiltonian.circuit(t_duration / nmb_trottersuzuki_steps)
-        )
-        combined_circuit = reduce(
-            Circuit.__add__, [circuit_1_step] * nmb_trottersuzuki_steps
-        )
-        assert (
-            np.linalg.norm(combined_circuit.unitary() - target_unitary) < eps
-        ), f"{np.linalg.norm(combined_circuit.unitary() - target_unitary)},{eps}, {nmb_trottersuzuki_steps}"
-        return combined_circuit
 
 
 @dataclass
@@ -112,13 +56,16 @@ class FrameShiftedEvolutionOracle(EvolutionOracle):
 
     @classmethod
     def from_evolution_oracle(
-        cls, base_evolution_oracle: EvolutionOracle, before_circuit, after_circuit
+        cls,
+        base_evolution_oracle: EvolutionOracle,
+        before_circuit,
+        after_circuit,
     ):
         return cls(
             base_evolution_oracle=base_evolution_oracle,
             before_circuit=before_circuit,
             after_circuit=after_circuit,
-            hamiltonian=base_evolution_oracle.hamiltonian,
+            h=base_evolution_oracle.h,
             evolution_oracle_type=base_evolution_oracle.evolution_oracle_type,
         )
 
@@ -184,9 +131,7 @@ class MagneticFieldEvolutionOracle(EvolutionOracle):
         hamiltonian = SymbolicHamiltonian(
             sum([bi * symbols.Z(j) for j, bi in zip(range(nqubits), b)])
         )
-        return cls(
-            hamiltonian=hamiltonian, evolution_oracle_type=evolution_oracle_type, b=b
-        )
+        return cls(h=hamiltonian, evolution_oracle_type=evolution_oracle_type, b=b)
 
     # def discretized_evolution_circuit_binary_search(self, t_duration, eps=None):
     #     if self.evolution_oracle_type is EvolutionOracleType.numerical:
@@ -307,43 +252,10 @@ class XXZ_EvolutionOracle(EvolutionOracle):
             nqubits=nqubits,
         )
         return cls(
-            hamiltonian=hamiltonian,
+            h=hamiltonian,
             evolution_oracle_type=EvolutionOracleType.hamiltonian_simulation,
             **kwargs,
         )
-
-    # def __init__(
-    #     self,
-    #     nqubits,
-    #     evolution_oracle_type: EvolutionOracleType = EvolutionOracleType.hamiltonian_simulation,
-    #     steps=None,
-    #     order=None,
-    #     delta=0.5,
-    # ):
-    #     super().__init__(
-    #         XXZ_EvolutionOracle.xxz_symbolic(nqubits, delta=delta),
-    #         evolution_oracle_type,
-    #     )
-
-    #     if steps is None:
-    #         self.steps = 1
-    #     else:
-    #         self.steps = steps
-    #     if order is None:
-    #         self.order = 1
-    #     else:
-    #         self.order = order
-    #     self.nqubits = nqubits
-    #     self.delta = delta
-    #     self.please_assess_how_many_steps_to_use = False
-
-    # def discretized_evolution_circuit_binary_search(self, t_duration, eps=None):
-    #     if self.please_assess_how_many_steps_to_use:
-    #         return super().discretized_evolution_circuit_binary_search(
-    #             t_duration, eps=eps
-    #         )
-    #     else:
-    #         return self.h.circuit(t_duration)
 
     def circuit(self, t_duration, steps=None, order=None):
         if steps is None:
@@ -351,28 +263,9 @@ class XXZ_EvolutionOracle(EvolutionOracle):
         if order is None:
             order = self.order
         return nqubit_XXZ_decomposition(
-            nqubits=self.hamiltonian.nqubits,
+            nqubits=self.h.nqubits,
             t=t_duration,
             delta=self.delta,
             steps=steps,
             order=order,
         )
-
-    # @staticmethod
-    # def xxz_symbolic(nqubits, delta=0.5):
-    #     return SymbolicHamiltonian(
-    #         sum(
-    #             [
-    #                 symbols.X(j) * symbols.X(j + 1)
-    #                 + symbols.Y(j) * symbols.Y(j + 1)
-    #                 + delta * symbols.Z(j) * symbols.Z(j + 1)
-    #                 for j in range(nqubits - 1)
-    #             ]
-    #             + [
-    #                 symbols.X(nqubits - 1) * symbols.X(0)
-    #                 + symbols.Y(nqubits - 1) * symbols.Y(0)
-    #                 + delta * symbols.Z(nqubits - 1) * symbols.Z(0)
-    #             ]
-    #         ),
-    #         nqubits=nqubits,
-    #     )

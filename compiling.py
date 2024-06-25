@@ -21,7 +21,6 @@ from boostvqe.models.dbi.double_bracket_evolution_oracles import (
 from boostvqe.models.dbi.group_commutator_iteration_transpiler import (
     DoubleBracketRotationType,
     GroupCommutatorIterationWithEvolutionOracles,
-    VQEBoostingGroupCommutatorIteration,
 )
 from boostvqe.utils import (
     OPTIMIZATION_FILE,
@@ -75,7 +74,8 @@ def main(args):
     )
 
     gci = GroupCommutatorIterationWithEvolutionOracles(
-        oracle, args.db_rotation, hamiltonian=hamiltonian
+        oracle,
+        args.db_rotation,
     )
 
     # TODO: remove hardcoded magnetic field
@@ -125,7 +125,7 @@ def main(args):
 
         step_data = dict(
             best_s=best_s,
-            eo_d_name=eo_d.name,
+            eo_d_name=eo_d.__class__.__name__,
             eo_d_params=eo_d.params,
         )
         logging.info(f"Total optimization time required: {time.time() - it} seconds")
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     parser.add_argument("--order", default=2, type=int, help="Suzuki-Trotter order")
     parser.add_argument(
         "--db_rotation",
-        default=DoubleBracketRotationType.group_commutator_third_order_reduced,
+        default=DoubleBracketRotationType.group_commutator_reduced,
         type=DoubleBracketRotationType,
         help="DB rotation type.",
     )

@@ -352,7 +352,7 @@ def select_recursion_step_gd_circuit(
     if please_be_verbose:
         print(
             f"Just finished the selection: better loss {minimal_losses[minimizer_dbr_id]} for mode {mode_dbr_list[minimizer_dbr_id]},\
-                  with duration s={minimizer_s[minimizer_dbr_id]}, and eo_d name = {minimizer_eo_d[minimizer_dbr_id].name}"
+                  with duration s={minimizer_s[minimizer_dbr_id]}, and eo_d name = {minimizer_eo_d[minimizer_dbr_id].__class__.__name__}"
         )
     return (
         mode_dbr_list[minimizer_dbr_id],
