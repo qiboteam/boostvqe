@@ -394,7 +394,7 @@ class VQEBoostingGroupCommutatorIteration(GroupCommutatorIterationWithEvolutionO
         diff_vqe_target_perc = abs(self.vqe_energy-self.h.target_energy)/abs(self.h.target_energy)*100,
         diff_gci_target_perc = abs(gci_loss-self.h.target_energy)/abs(self.h.target_energy)*100,
         fidelity_witness_vqe = self.gnd_state_fidelity_witness(self.vqe_energy),
-        fidelity_witness_gci = self.gnd_state_fidelity_witness(self.vqe_energy),
+        fidelity_witness_gci = self.gnd_state_fidelity_witness(gci_loss),
         fidelity_vqe = self.gnd_state_fidelity( input_state = self.vqe.circuit().state()),
         fidelity_gci = self.gnd_state_fidelity(),
         eo_d = self.eo_d,
