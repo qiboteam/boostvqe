@@ -123,8 +123,13 @@ def main(args):
             best_b = optimized_params[1:]
             eo_d = MagneticFieldEvolutionOracle(best_b)
 
+        step_data = dict(
+            best_s=best_s,
+            eo_d_name=eo_d.name,
+            eo_d_params=eo_d.params,
+        )
         logging.info(f"Total optimization time required: {time.time() - it} seconds")
-        metadata[gci_step_nmb] = report(vqe, hamiltonian, gci)
+        metadata[gci_step_nmb] = report(vqe, hamiltonian, gci) | step_data
         gci.mode_double_bracket_rotation = args.db_rotation
         gci.eo_d = eo_d
         gci(best_s)
