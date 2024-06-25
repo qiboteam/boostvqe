@@ -2,11 +2,11 @@ from enum import Enum, auto
 
 import hyperopt
 import numpy as np
-
 from qibo import *
-from qibo import symbols, gates
+from qibo import gates, symbols
 from qibo.config import raise_error
 from qibo.hamiltonians import Hamiltonian, SymbolicHamiltonian
+
 from boostvqe.models.dbi import *
 from boostvqe.models.dbi.double_bracket import *
 from boostvqe.models.dbi.double_bracket_evolution_oracles import *
@@ -46,7 +46,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         self,
         input_hamiltonian_evolution_oracle: EvolutionOracle,
         mode_double_bracket_rotation: DoubleBracketRotationType = DoubleBracketRotationType.group_commutator,
-        h_ref = None
+        h_ref=None,
     ):
         if mode_double_bracket_rotation is DoubleBracketRotationType.single_commutator:
             mode_double_bracket_rotation_old = (
@@ -60,11 +60,11 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             input_hamiltonian_evolution_oracle.h, mode_double_bracket_rotation_old
         )
         if h_ref is not None:
-            self.h_ref = h_ref  
+            self.h_ref = h_ref
         else:
             self.h_ref = deepcopy(input_hamiltonian_evolution_oracle.h)
         self.input_hamiltonian_evolution_oracle = input_hamiltonian_evolution_oracle
-        
+
         self.mode_double_bracket_rotation = mode_double_bracket_rotation
 
         self.gci_unitary = []
@@ -73,11 +73,11 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             self.input_hamiltonian_evolution_oracle
         )
         self.please_evaluate_matrices = False
-        self.default_step_grid = np.linspace(0.001,0.03, 10)
-        self.eo_d = MagneticFieldEvolutionOracle([1]*self.nqubits)
+        self.default_step_grid = np.linspace(0.001, 0.03, 10)
+        self.eo_d = MagneticFieldEvolutionOracle([1] * self.nqubits)
 
         self.please_save_fig_to_pdf = False
-   
+
     def __call__(
         self,
         step_duration: float,
@@ -100,8 +100,10 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         rs_circ = self.recursion_step_circuit(
             step_duration, diagonal_association, mode_dbr=mode_dbr
         )
-        if self.input_hamiltonian_evolution_oracle.mode_evolution_oracle\
-              is EvolutionOracleType.numerical:
+        if (
+            self.input_hamiltonian_evolution_oracle.mode_evolution_oracle
+            is EvolutionOracleType.numerical
+        ):
             rs_circ_inv = np.linalg.inv(rs_circ)
         else:
             rs_circ_inv = rs_circ.invert()
@@ -123,7 +125,6 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
                 self.input_hamiltonian_evolution_oracle.mode_evolution_oracle
                 is EvolutionOracleType.hamiltonian_simulation
             ):
-
                 self.h.matrix = (
                     rs_circ_inv.unitary() @ self.h.matrix @ rs_circ.unitary()
                 )
@@ -180,7 +181,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
                 deepcopy(eo_1).circuit(s_step),
                 deepcopy(eo_2).circuit(-s_step),
                 deepcopy(eo_1).circuit(-s_step),
-            ]          
+            ]
             query_list_backward = [
                 deepcopy(eo_1).circuit(s_step),
                 deepcopy(eo_2).circuit(s_step),
@@ -218,31 +219,51 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
                 deepcopy(eo_2).circuit(s_step),
                 deepcopy(eo_1).circuit(s_step * (np.sqrt(5) + 1) / 2),
                 deepcopy(eo_2).circuit(-s_step * (3 - np.sqrt(5)) / 2),
-                deepcopy(eo_1).circuit(-s_step)            
+                deepcopy(eo_1).circuit(-s_step),
             ]
-            query_list_backward = [ Circuit.invert(c) for c in query_list_forward[::-1]]
+            query_list_backward = [Circuit.invert(c) for c in query_list_forward[::-1]]
         elif gc_type is DoubleBracketRotationType.group_commutator_third_order_reduced:
             query_list_forward = [
                 deepcopy(eo_1).circuit(-s_step * (np.sqrt(5) - 1) / 2),
                 deepcopy(eo_2).circuit(s_step),
                 deepcopy(eo_1).circuit(s_step * (np.sqrt(5) + 1) / 2),
                 deepcopy(eo_2).circuit(-s_step * (3 - np.sqrt(5)) / 2),
-                deepcopy(eo_1).circuit(-s_step)            
+                deepcopy(eo_1).circuit(-s_step),
             ]
-            query_list_backward = [ Circuit.invert(c) for c in query_list_forward[::-1]]
+            query_list_backward = [Circuit.invert(c) for c in query_list_forward[::-1]]
         elif gc_type is DoubleBracketRotationType.group_commutator_mix_twice:
-            s_step = (step_duration/2)
-            c1 = self.group_commutator(s_step, eo_1,eo_2, mode_dbr=DoubleBracketRotationType.group_commutator)["forwards"]
-            c2 = self.group_commutator(s_step, eo_1,eo_2, mode_dbr=DoubleBracketRotationType.group_commutator_reduced)["forwards"]
-            return {"forwards": c2+c1, "backwards": (c2+c1).invert()}
+            s_step = step_duration / 2
+            c1 = self.group_commutator(
+                s_step, eo_1, eo_2, mode_dbr=DoubleBracketRotationType.group_commutator
+            )["forwards"]
+            c2 = self.group_commutator(
+                s_step,
+                eo_1,
+                eo_2,
+                mode_dbr=DoubleBracketRotationType.group_commutator_reduced,
+            )["forwards"]
+            return {"forwards": c2 + c1, "backwards": (c2 + c1).invert()}
         elif gc_type is DoubleBracketRotationType.group_commutator_reduced_twice:
-            s_step = (step_duration/2)
-            c1 = self.group_commutator(s_step, eo_1,eo_2, mode_dbr=DoubleBracketRotationType.group_commutator_reduced)["forwards"]
-            return {"forwards": c1+c1, "backwards": (c1+c1).invert()}
-        elif gc_type is DoubleBracketRotationType.group_commutator_third_order_reduced_twice:
-            s_step = (step_duration/2)
-            c1 = self.group_commutator(s_step, eo_1,eo_2, mode_dbr=DoubleBracketRotationType.group_commutator_third_order_reduced)["forwards"]
-            return {"forwards": c1+c1, "backwards": (c1+c1).invert()}
+            s_step = step_duration / 2
+            c1 = self.group_commutator(
+                s_step,
+                eo_1,
+                eo_2,
+                mode_dbr=DoubleBracketRotationType.group_commutator_reduced,
+            )["forwards"]
+            return {"forwards": c1 + c1, "backwards": (c1 + c1).invert()}
+        elif (
+            gc_type
+            is DoubleBracketRotationType.group_commutator_third_order_reduced_twice
+        ):
+            s_step = step_duration / 2
+            c1 = self.group_commutator(
+                s_step,
+                eo_1,
+                eo_2,
+                mode_dbr=DoubleBracketRotationType.group_commutator_third_order_reduced,
+            )["forwards"]
+            return {"forwards": c1 + c1, "backwards": (c1 + c1).invert()}
         else:
             raise_error(
                 ValueError,
@@ -269,7 +290,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         else:
             raise_error(ValueError, "Your EvolutionOracleType is not recognized")
 
-    def loss(self, step_duration: float = None, eo_d = None, mode_dbr = None):
+    def loss(self, step_duration: float = None, eo_d=None, mode_dbr=None):
         """
         Compute loss function distance between `look_ahead` steps.
 
@@ -278,93 +299,99 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             d (np.array): diagonal operator, use canonical by default.
             look_ahead (int): number of iteration steps to compute the loss function;
         """
-        
-        circ = self.get_composed_circuit()  
+
+        circ = self.get_composed_circuit()
         if step_duration is not None:
             circ = self.recursion_step_circuit(step_duration, eo_d, mode_dbr) + circ
-        return self.h_ref.expectation( circ().state() )
-    
-    def choose_step( self,
-        step_grid = None,
+        return self.h_ref.expectation(circ().state())
+
+    def choose_step(
+        self,
+        step_grid=None,
         step_min: float = 1e-3,
-        step_max: float = .03,
-        s_guess = 1e-5,
-        max_evals: int = 3,        
+        step_max: float = 0.03,
+        s_guess=1e-5,
+        max_evals: int = 3,
         optimizer: callable = None,
         look_ahead: int = 1,
         please_be_verbose: bool = False,
-        d = None,
-        mode_dbr = None
-        ):        
-
+        d=None,
+        mode_dbr=None,
+    ):
         if step_grid is None:
-            step_grid = np.linspace(step_min,step_max,max_evals)
+            step_grid = np.linspace(step_min, step_max, max_evals)
 
         losses = []
         for s in step_grid:
-            losses.append(self.loss(s,d, mode_dbr))
+            losses.append(self.loss(s, d, mode_dbr))
         if please_be_verbose:
             print(losses)
         return step_grid[np.argmin(losses)], np.min(losses), losses
-    
-    def get_composed_circuit(self,step_duration = None, eo_d = None):
-        """ Get the ordered composition of all previous circuits regardless of previous mode_dbr 
-            settings."""
+
+    def get_composed_circuit(self, step_duration=None, eo_d=None):
+        """Get the ordered composition of all previous circuits regardless of previous mode_dbr
+        settings."""
         if step_duration is None or eo_d is None:
-            return self.iterated_hamiltonian_evolution_oracle.get_composed_circuit()    
+            return self.iterated_hamiltonian_evolution_oracle.get_composed_circuit()
         else:
-            return (self.recursion_step_circuit(step_duration,eo_d)
-                + self.iterated_hamiltonian_evolution_oracle.get_composed_circuit())
-    
-    def recursion_step_circuit(self,step_duration, eo_d, mode_dbr = None):
-        return self.group_commutator(step_duration = step_duration, 
-                                     eo_1 = eo_d, mode_dbr=mode_dbr)["forwards"]
+            return (
+                self.recursion_step_circuit(step_duration, eo_d)
+                + self.iterated_hamiltonian_evolution_oracle.get_composed_circuit()
+            )
+
+    def recursion_step_circuit(self, step_duration, eo_d, mode_dbr=None):
+        return self.group_commutator(
+            step_duration=step_duration, eo_1=eo_d, mode_dbr=mode_dbr
+        )["forwards"]
 
     @staticmethod
     def count_gates(circuit, gate_type):
-        t=0     
+        t = 0
         for g in circuit.queue:
             if isinstance(g, gate_type):
-                t = t +1
+                t = t + 1
         return t
-    
-    def count_CNOTs(self,circuit = None):
+
+    def count_CNOTs(self, circuit=None):
         if circuit is None:
-            circuit = self.get_composed_circuit( )
-        return self.count_gates( circuit, gates.gates.CNOT )
-        
-    def count_CZs(self,circuit = None):
+            circuit = self.get_composed_circuit()
+        return self.count_gates(circuit, gates.gates.CNOT)
+
+    def count_CZs(self, circuit=None):
         if circuit is None:
-            circuit = self.get_composed_circuit( )
-        return self.count_gates( circuit, gates.gates.CZ )
-    
+            circuit = self.get_composed_circuit()
+        return self.count_gates(circuit, gates.gates.CZ)
+
     def get_gate_count_dict(self):
-        return dict(nmb_cz = self.count_CZs(),
-                    nmb_cnot = self.count_CNOTs(),
-                    nmb_cz_relative = self.count_CZs()/self.nqubits,
-                    nmb_cnot_relative = self.count_CNOTs()/self.nqubits)
-    
+        return dict(
+            nmb_cz=self.count_CZs(),
+            nmb_cnot=self.count_CNOTs(),
+            nmb_cz_relative=self.count_CZs() / self.nqubits,
+            nmb_cnot_relative=self.count_CNOTs() / self.nqubits,
+        )
+
     def print_gate_count_report(self):
         counts = self.get_gate_count_dict()
-        print(f"The boosting circuit used {counts['nmb_cnot']} CNOT gates coming from compiled XXZ evolution and {counts['nmb_cz']} CZ gates from VQE.\n\
-For {self.nqubits} qubits this gives n_CNOT/n_qubits = {counts['nmb_cnot_relative']} and n_CZ/n_qubits = {counts['nmb_cz_relative']}")
-        
-    
-class VQEBoostingGroupCommutatorIteration(GroupCommutatorIterationWithEvolutionOracles): 
+        print(
+            f"The boosting circuit used {counts['nmb_cnot']} CNOT gates coming from compiled XXZ evolution and {counts['nmb_cz']} CZ gates from VQE.\n\
+For {self.nqubits} qubits this gives n_CNOT/n_qubits = {counts['nmb_cnot_relative']} and n_CZ/n_qubits = {counts['nmb_cz_relative']}"
+        )
+
+
+class VQEBoostingGroupCommutatorIteration(GroupCommutatorIterationWithEvolutionOracles):
     def __init__(
         self,
         input_hamiltonian_evolution_oracle: EvolutionOracle,
         mode_double_bracket_rotation: DoubleBracketRotationType = DoubleBracketRotationType.group_commutator,
-        path = None,
-        h_ref = None
+        path=None,
+        h_ref=None,
     ):
-
-        super().__init__( input_hamiltonian_evolution_oracle,
-        mode_double_bracket_rotation,
-        h_ref = None ) 
+        super().__init__(
+            input_hamiltonian_evolution_oracle, mode_double_bracket_rotation, h_ref=None
+        )
         hamiltonian = hamiltonians.XXZ(nqubits=self.nqubits, delta=0.5)
         self.h_ref = hamiltonian
-        self.vqe =input_hamiltonian_evolution_oracle.vqe
+        self.vqe = input_hamiltonian_evolution_oracle.vqe
 
         eigenergies = hamiltonian.eigenvalues()
         target_energy = np.min(eigenergies)
@@ -372,40 +399,54 @@ class VQEBoostingGroupCommutatorIteration(GroupCommutatorIterationWithEvolutionO
         eigenergies.sort()
         gap = eigenergies[1] - target_energy
         self.h.gap = gap
-        self.h.ground_state = hamiltonian.eigenvectors()[:,0]
+        self.h.ground_state = hamiltonian.eigenvectors()[:, 0]
 
-        self.vqe_energy = hamiltonian.expectation(input_hamiltonian_evolution_oracle.vqe.circuit().state())
-    
-        b_list = [1+np.sin(x/3)for x in range(10)]
-        self.eo_d = MagneticFieldEvolutionOracle(b_list,name = "D(B = 1+sin(x/3))")
-        self.default_step_grid = np.linspace(0.003,0.004,10)
+        self.vqe_energy = hamiltonian.expectation(
+            input_hamiltonian_evolution_oracle.vqe.circuit().state()
+        )
+
+        b_list = [1 + np.sin(x / 3) for x in range(10)]
+        self.eo_d = MagneticFieldEvolutionOracle(b_list, name="D(B = 1+sin(x/3))")
+        self.default_step_grid = np.linspace(0.003, 0.004, 10)
 
         self.path = path
-        self.boosting_callback_data = [self.get_vqe_boosting_data()] 
-    def get_vqe_boosting_data(self, nmb_digits_rounding = 2):
+        self.boosting_callback_data = [self.get_vqe_boosting_data()]
+
+    def get_vqe_boosting_data(self, nmb_digits_rounding=2):
         gci_loss = self.loss()
-        return dict(
-        gci_loss = gci_loss,
-        vqe_energy = self.vqe_energy,
-        target_energy = self.h.target_energy,
-        diff_vqe_target = self.vqe_energy-self.h.target_energy,
-        diff_gci_target = gci_loss-self.h.target_energy,
-        gap = self.h.gap,
-        diff_vqe_target_perc = abs(self.vqe_energy-self.h.target_energy)/abs(self.h.target_energy)*100,
-        diff_gci_target_perc = abs(gci_loss-self.h.target_energy)/abs(self.h.target_energy)*100,
-        fidelity_witness_vqe = self.gnd_state_fidelity_witness(self.vqe_energy),
-        fidelity_witness_gci = self.gnd_state_fidelity_witness(self.vqe_energy),
-        fidelity_vqe = self.gnd_state_fidelity( input_state = self.vqe.circuit().state()),
-        fidelity_gci = self.gnd_state_fidelity(),
-        eo_d = self.eo_d,
-        circuit_at_step = self.get_composed_circuit()
-    ) | self.get_gate_count_dict()
-    def gnd_state_fidelity_witness(self,e_state = None):
+        print(self.eo_d.b_list)
+        return (
+            dict(
+                gci_loss=gci_loss,
+                vqe_energy=self.vqe_energy,
+                target_energy=self.h.target_energy,
+                diff_vqe_target=self.vqe_energy - self.h.target_energy,
+                diff_gci_target=gci_loss - self.h.target_energy,
+                gap=self.h.gap,
+                diff_vqe_target_perc=abs(self.vqe_energy - self.h.target_energy)
+                / abs(self.h.target_energy)
+                * 100,
+                diff_gci_target_perc=abs(gci_loss - self.h.target_energy)
+                / abs(self.h.target_energy)
+                * 100,
+                fidelity_witness_vqe=self.gnd_state_fidelity_witness(self.vqe_energy),
+                fidelity_witness_gci=self.gnd_state_fidelity_witness(self.vqe_energy),
+                fidelity_vqe=self.gnd_state_fidelity(
+                    input_state=self.vqe.circuit().state()
+                ),
+                fidelity_gci=self.gnd_state_fidelity(),
+                # TODO: find a way to store circuit
+                # circuit_at_step = self.get_composed_circuit()
+            )
+            | self.get_gate_count_dict()
+        )
+
+    def gnd_state_fidelity_witness(self, e_state=None):
         if e_state is None:
             e_state = self.loss()
-        return 1 - (e_state-self.h.target_energy) / self.h.gap
+        return 1 - (e_state - self.h.target_energy) / self.h.gap
 
-    def gnd_state_fidelity(self, input_state = None):
+    def gnd_state_fidelity(self, input_state=None):
         if input_state is None:
             input_state = self.get_composed_circuit()().state()
-        return abs( self.h.ground_state.T.conj() @ input_state )**2
+        return abs(self.h.ground_state.T.conj() @ input_state) ** 2

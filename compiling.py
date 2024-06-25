@@ -92,6 +92,15 @@ def main(args):
         gci.mode_double_bracket_rotation = mode_dbr
         gci.eo_d = eo_d
         gci(minimizer_s)
+
+        # this suffices to recreate the step gci(minimizer_s, eo_d = get_gd_evolution_oracle(n_local, params))
+        step_data = dict(
+            mimizer_s=minimizer_s,
+            eo_d_name=eo_d.name,
+            eo_d_params=eo_d.params,
+        )
+
+        boosting_callback_data[gci_step_nmb] = gci.get_vqe_boosting_data() | step_data
         print(f"Executing gci step {gci_step_nmb+1}:\n")
         print(
             f"The selected data is {gci.mode_double_bracket_rotation} rotation with {gci.eo_d.name} for the duration s = {minimizer_s}."
@@ -99,9 +108,8 @@ def main(args):
         print("--- the report after execution:\n")
         print_vqe_comparison_report(gci)
         print("==== the execution report ends here")
-        boosting_callback_data[gci_step_nmb] = gci.get_vqe_boosting_data()
-    # TODO: store metadata
-    # (args.path / "boosting_data.json").write_text(json.dumps(boosting_callback_data))
+
+    (args.path / "boosting_data.json").write_text(json.dumps(boosting_callback_data))
 
 
 if __name__ == "__main__":
