@@ -319,7 +319,7 @@ def select_recursion_step_gd_circuit(
     minimal_losses = []
     minimizer_s = []
     minimizer_eo_d = []
-    for i, mode in enumerate(mode_dbr_list):
+    for mode in mode_dbr_list:
         gci.mode_double_bracket_rotation = mode
         # returns min_s, min_loss, loss_list
         s, l, ls = gci.choose_step(d=eo_d, step_grid=step_grid, mode_dbr=mode)
