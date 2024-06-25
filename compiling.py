@@ -99,7 +99,20 @@ def main(args):
         print("--- the report after execution:\n")
         print_vqe_comparison_report(gci)
         print("==== the execution report ends here")
-        boosting_callback_data[gci_step_nmb] = gci.get_vqe_boosting_data()
+        
+        if eo_d.name == "B Field":
+            n_local = 1            
+            params = eo_d.b_list
+        elif eo_d.name == "H_ClassicalIsing(B,J)":     
+            n_local = 2       
+            params = eo_d.b_list + eo_d.j_list
+
+        #this suffices to recreate the step gci(minimizer_s, eo_d = get_gd_evolution_oracle(n_local, params))
+        step_data = dict(mimizer_s = minimizer_s, 
+                        eo_d_name = eo_d.name,
+                        eo_d_params = params
+                        )
+        boosting_callback_data[gci_step_nmb] = gci.get_vqe_boosting_data() | step_data
     # TODO: store metadata
     # (args.path / "boosting_data.json").write_text(json.dumps(boosting_callback_data))
 
