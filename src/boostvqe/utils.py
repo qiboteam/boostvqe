@@ -297,12 +297,12 @@ def select_recursion_step_gd_circuit(
 
     if eo_d is None:
         eo_d = gci.eo_d
-    if eo_d.name == "B Field":
+    if isinstance(eo_d, MagneticFieldEvolutionOracle):
         n_local = 1
-        params = eo_d.b_list
-    elif eo_d.name == "H_ClassicalIsing(B,J)":
+        params = eo_d.params
+    elif isinstance(eo_d, IsingNNEvolutionOracle):
         n_local = 2
-        params = eo_d.b_list + eo_d.j_list
+        params = eo_d.params
     else:
         raise_error(ValueError, "Evolution oracle type not supported.")
 

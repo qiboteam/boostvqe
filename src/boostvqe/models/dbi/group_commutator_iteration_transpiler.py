@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import Enum, auto
 
 import hyperopt
@@ -38,45 +39,61 @@ class DoubleBracketRotationType(Enum):
     group_commutator_third_order_reduced_twice = auto()
 
 
+@dataclass
 class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
     """
     Class which will be later merged into the @super somehow"""
 
-    def __init__(
-        self,
-        input_hamiltonian_evolution_oracle: EvolutionOracle,
-        mode_double_bracket_rotation: DoubleBracketRotationType = DoubleBracketRotationType.group_commutator,
-        h_ref=None,
-    ):
-        if mode_double_bracket_rotation is DoubleBracketRotationType.single_commutator:
-            mode_double_bracket_rotation_old = (
-                DoubleBracketGeneratorType.single_commutator
-            )
-        else:
-            mode_double_bracket_rotation_old = (
-                DoubleBracketGeneratorType.group_commutator
-            )
-        super().__init__(
-            input_hamiltonian_evolution_oracle.h, mode_double_bracket_rotation_old
-        )
-        if h_ref is not None:
-            self.h_ref = h_ref
-        else:
-            self.h_ref = deepcopy(input_hamiltonian_evolution_oracle.h)
-        self.input_hamiltonian_evolution_oracle = input_hamiltonian_evolution_oracle
+    input_hamiltonian_evolution_oracle: EvolutionOracle
+    double_bracket_rotation_type: DoubleBracketRotationType = (
+        DoubleBracketRotationType.group_commutator
+    )
+    hamiltonian: str = None
 
-        self.mode_double_bracket_rotation = mode_double_bracket_rotation
-
-        self.gci_unitary = []
-        self.gci_unitary_dagger = []
+    def __post_init__(self):
         self.iterated_hamiltonian_evolution_oracle = deepcopy(
             self.input_hamiltonian_evolution_oracle
         )
-        self.please_evaluate_matrices = False
-        self.default_step_grid = np.linspace(0.001, 0.03, 10)
-        self.eo_d = MagneticFieldEvolutionOracle([1] * self.nqubits)
 
-        self.please_save_fig_to_pdf = False
+    @property
+    def nqubits(self):
+        return self.hamiltonian.nqubits
+
+    # def __init__(
+    #     self,
+    #     input_hamiltonian_evolution_oracle: EvolutionOracle,
+    #     mode_double_bracket_rotation: DoubleBracketRotationType = DoubleBracketRotationType.group_commutator,
+    #     h_ref=None,
+    # ):
+    #     if mode_double_bracket_rotation is DoubleBracketRotationType.single_commutator:
+    #         mode_double_bracket_rotation_old = (
+    #             DoubleBracketGeneratorType.single_commutator
+    #         )
+    #     else:
+    #         mode_double_bracket_rotation_old = (
+    #             DoubleBracketGeneratorType.group_commutator
+    #         )
+    #     super().__init__(
+    #         input_hamiltonian_evolution_oracle.h, mode_double_bracket_rotation_old
+    #     )
+    #     if h_ref is not None:
+    #         self.h_ref = h_ref
+    #     else:
+    #         self.h_ref = deepcopy(input_hamiltonian_evolution_oracle.h)
+    #     self.input_hamiltonian_evolution_oracle = input_hamiltonian_evolution_oracle
+
+    #     self.mode_double_bracket_rotation = mode_double_bracket_rotation
+
+    #     self.gci_unitary = []
+    #     self.gci_unitary_dagger = []
+    #     self.iterated_hamiltonian_evolution_oracle = deepcopy(
+    #         self.input_hamiltonian_evolution_oracle
+    #     )
+    #     self.please_evaluate_matrices = False
+    #     self.default_step_grid = np.linspace(0.001, 0.03, 10)
+    #     self.eo_d = MagneticFieldEvolutionOracle([1] * self.nqubits)
+
+    #     self.please_save_fig_to_pdf = False
 
     def __call__(
         self,
@@ -101,7 +118,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             step_duration, diagonal_association, mode_dbr=mode_dbr
         )
         if (
-            self.input_hamiltonian_evolution_oracle.mode_evolution_oracle
+            self.input_hamiltonian_evolution_oracle.evolution_oracle_type
             is EvolutionOracleType.numerical
         ):
             rs_circ_inv = np.linalg.inv(rs_circ)
@@ -116,13 +133,13 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
 
         if self.please_evaluate_matrices:
             if (
-                self.input_hamiltonian_evolution_oracle.mode_evolution_oracle
+                self.input_hamiltonian_evolution_oracle.evolution_oracle_type
                 is EvolutionOracleType.numerical
             ):
                 self.h.matrix = rs_circ_inv_ @ self.h.matrix @ rs_circ
 
             elif (
-                self.input_hamiltonian_evolution_oracle.mode_evolution_oracle
+                self.input_hamiltonian_evolution_oracle.evolution_oracle_type
                 is EvolutionOracleType.hamiltonian_simulation
             ):
                 self.h.matrix = (
@@ -130,7 +147,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
                 )
 
             elif (
-                self.input_hamiltonian_evolution_oracle.mode_evolution_oracle
+                self.input_hamiltonian_evolution_oracle.evolution_oracle_type
                 is EvolutionOracleType.text_strings
             ):
                 raise_error(NotImplementedError)
@@ -146,9 +163,9 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
     ):
         u = self.recursion_step_circuit(step_duration, eo_1, eo_2, mode_dbr=mode_dbr)
 
-        if eo_1.mode_evolution_oracle is EvolutionOracleType.hamiltonian_simulation:
+        if eo_1.evolution_oracle_type is EvolutionOracleType.hamiltonian_simulation:
             return u.unitary()
-        elif eo_1.mode_evolution_oracle is EvolutionOracleType.numerical:
+        elif eo_1.evolution_oracle_type is EvolutionOracleType.numerical:
             return u
 
     def group_commutator(
@@ -162,7 +179,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         if eo_2 is None:
             eo_2 = self.iterated_hamiltonian_evolution_oracle
 
-        assert eo_1.mode_evolution_oracle.value is eo_2.mode_evolution_oracle.value
+        assert eo_1.evolution_oracle_type.value is eo_2.evolution_oracle_type.value
 
         if mode_dbr is None:
             gc_type = self.mode_double_bracket_rotation
@@ -223,6 +240,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             ]
             query_list_backward = [Circuit.invert(c) for c in query_list_forward[::-1]]
         elif gc_type is DoubleBracketRotationType.group_commutator_third_order_reduced:
+            print(eo_1)
             query_list_forward = [
                 deepcopy(eo_1).circuit(-s_step * (np.sqrt(5) - 1) / 2),
                 deepcopy(eo_2).circuit(s_step),
@@ -270,14 +288,9 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
                 "You are in the group commutator query list but your dbr mode is not recognized",
             )
 
-        eo_mode = eo_1.mode_evolution_oracle
+        eo_mode = eo_1.evolution_oracle_type
 
-        if eo_mode is EvolutionOracleType.text_strings:
-            return {
-                "forwards": reduce(str.__add__, query_list_forward),
-                "backwards": reduce(str.__add__, query_list_backward),
-            }
-        elif eo_mode is EvolutionOracleType.hamiltonian_simulation:
+        if eo_mode is EvolutionOracleType.hamiltonian_simulation:
             return {
                 "forwards": reduce(Circuit.__add__, query_list_forward[::-1]),
                 "backwards": reduce(Circuit.__add__, query_list_backward[::-1]),
@@ -303,7 +316,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         circ = self.get_composed_circuit()
         if step_duration is not None:
             circ = self.recursion_step_circuit(step_duration, eo_d, mode_dbr) + circ
-        return self.h_ref.expectation(circ().state())
+        return self.hamiltonian.expectation(circ().state())
 
     def choose_step(
         self,

@@ -16,7 +16,6 @@ from boostvqe.ansatze import VQE, build_circuit
 from boostvqe.models.dbi.double_bracket_evolution_oracles import (
     FrameShiftedEvolutionOracle,
     MagneticFieldEvolutionOracle,
-    VQERotatedEvolutionOracle,
     XXZ_EvolutionOracle,
 )
 from boostvqe.models.dbi.group_commutator_iteration_transpiler import (
@@ -66,25 +65,26 @@ def main(args):
     )
     vqe.circuit.set_parameters(params)
 
-    base_oracle = XXZ_EvolutionOracle(
-        nqubits=nqubits, steps=args.steps, order=args.order
+    base_oracle = XXZ_EvolutionOracle.from_nqubits(
+        nqubits=nqubits, delta=0.5, steps=args.steps, order=args.order
     )
-    oracle = FrameShiftedEvolutionOracle(
-        base_oracle,
-        "my oracle",
+    oracle = FrameShiftedEvolutionOracle.from_evolution_oracle(
         before_circuit=vqe.circuit.invert(),
         after_circuit=vqe.circuit,
+        base_evolution_oracle=base_oracle,
     )
 
     gci = GroupCommutatorIterationWithEvolutionOracles(
-        oracle, args.db_rotation, h_ref=hamiltonian
+        oracle, args.db_rotation, hamiltonian=hamiltonian
     )
 
     # TODO: remove hardcoded magnetic field
-    eo_d = MagneticFieldEvolutionOracle([4 - np.sin(x / 3) for x in range(nqubits)])
+    eo_d = MagneticFieldEvolutionOracle.from_b(
+        [4 - np.sin(x / 3) for x in range(nqubits)]
+    )
     gci.eo_d = eo_d
     print(
-        f"The gci mode is {gci.mode_double_bracket_rotation} rotation with {gci.eo_d.name} as the oracle.\n"
+        f"The gci mode is {gci.double_bracket_rotation_type} rotation with {eo_d.__class__.__name__} as the oracle.\n"
     )
     metadata = {}
 
