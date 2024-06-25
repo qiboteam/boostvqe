@@ -213,10 +213,9 @@ def simulated_annealing_step(
 
 
 def adaptive_binary_search(loss_func, threshold=1e-4, a=0, b=2, max_eval=10):
-
     evaluated_points = {}
     eval_count = {}
-    delta_loss = float('inf')
+    delta_loss = float("inf")
 
     def eval_func_at_points(eval_points):
         for point in eval_points:
@@ -226,19 +225,19 @@ def adaptive_binary_search(loss_func, threshold=1e-4, a=0, b=2, max_eval=10):
                 val = loss_func(point)
                 evaluated_points[point] = val
         len(evaluated_points.values())
-    
-    grid = (b-a)/2
-    eval_points = [a, a+grid, b]
+
+    grid = (b - a) / 2
+    eval_points = [a, a + grid, b]
     eval_func_at_points(eval_points)
-    
+
     while True:
         eval_vals = list(evaluated_points.values())
         eval_grid = list(evaluated_points.keys())
         loss_0 = min(eval_vals)
-        ind_min_val =  np.argmin(eval_vals)
-        
+        ind_min_val = np.argmin(eval_vals)
+
         if eval_grid[ind_min_val] == min(eval_grid):
-            a = a - grid     
+            a = a - grid
             eval_func_at_points([a])
         elif eval_grid[ind_min_val] == max(eval_grid):
             b = b + grid
@@ -250,19 +249,20 @@ def adaptive_binary_search(loss_func, threshold=1e-4, a=0, b=2, max_eval=10):
         eval_vals = list(evaluated_points.values())
         eval_grid = list(evaluated_points.keys())
         loss_0 = min(eval_vals)
-        ind_min_val =  np.argmin(eval_vals)
+        ind_min_val = np.argmin(eval_vals)
 
-
-        delta_loss = min([abs(loss_0 - v) for i,v in enumerate(eval_vals) if i != ind_min_val])  
+        delta_loss = min(
+            [abs(loss_0 - v) for i, v in enumerate(eval_vals) if i != ind_min_val]
+        )
         if len(evaluated_points.values()) > max_eval:
             exit_criterion = "max_evals"
             break
-        if delta_loss < threshold: 
+        if delta_loss < threshold:
             exit_criterion = "tolerance achieved"
             break
-        
-        grid /=2
-        eval_points = [eval_grid[ind_min_val]-grid, eval_grid[ind_min_val]+grid]
+
+        grid /= 2
+        eval_points = [eval_grid[ind_min_val] - grid, eval_grid[ind_min_val] + grid]
         eval_func_at_points(eval_points)
 
     return eval_grid[ind_min_val], loss_0, evaluated_points, exit_criterion

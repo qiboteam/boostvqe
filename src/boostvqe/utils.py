@@ -3,24 +3,14 @@ import logging
 import time
 from pathlib import Path
 
-import numpy as np
-import qibo
-from qibo import get_backend, hamiltonians, set_backend
-
-from boostvqe.ansatze import VQE, compute_gradients
-
-qibo.set_backend("numpy")
-from copy import deepcopy
-
+import cma
 import matplotlib.pyplot as plt
-from qibo import hamiltonians, symbols
+import numpy as np
+from qibo import hamiltonians
+from scipy import optimize
 
-from boostvqe.ansatze import VQE, build_circuit
+from boostvqe.ansatze import VQE, build_circuit, compute_gradients
 from boostvqe.compiling_XXZ import *
-from boostvqe.models.dbi.double_bracket import (
-    DoubleBracketGeneratorType,
-    DoubleBracketIteration,
-)
 from boostvqe.models.dbi.double_bracket_evolution_oracles import *
 from boostvqe.models.dbi.group_commutator_iteration_transpiler import *
 
@@ -319,11 +309,10 @@ def select_recursion_step_gd_circuit(
     minimal_losses = []
     minimizer_s = []
     minimizer_eo_d = []
-    for mode in mode_dbr_list:
+    for i, mode in enumerate(mode_dbr_list):
         gci.mode_double_bracket_rotation = mode
         # returns min_s, min_loss, loss_list
         s, l, ls = gci.choose_step(d=eo_d, step_grid=step_grid, mode_dbr=mode)
-
         for epoch in range(nmb_gd_epochs):
             ls = []
             s_min, s_max = step_grid[0], step_grid[-1]
@@ -379,17 +368,28 @@ def execute_gci_boost(
     seed=42,
     target_epoch=200,
     nmb_gci_steps=1,
-    nmb_gd_epochs=0,
     eo_d=None,
-    mode_dbr_list=[  # DoubleBracketRotationType.group_commutator_reduced,
-        # DoubleBracketRotationType.group_commutator_mix_twice,
-        # DoubleBracketRotationType.group_commutator_reduced_twice,
-        DoubleBracketRotationType.group_commutator_third_order_reduced,
-        # DoubleBracketRotationType.group_commutator_third_order_reduced_twice
-    ],
+    optimization_method="cma",
+    optimization_config={"maxiter": 100},
+    mode_dbr=DoubleBracketRotationType.group_commutator_third_order_reduced,
     please_be_verbose=False,
     please_be_visual=False,
 ):
+    """
+    Execute GCI boost with variational optimization of the diagonalizing operator D.
+
+    Supported ``optimization_config`` in case of chosen method "sgd":
+
+            optimization_config={
+                "nmb_gd_epochs": 1,
+            }
+
+    Supported ``optimization_config`` in case of other chosen methods:
+
+            optimization_config={
+                "maxiter": 100,
+            }
+    """
     if please_be_verbose:
         print(f"Initilizing gci:\n")
     gci = initialize_gci_from_vqe(
@@ -405,33 +405,58 @@ def execute_gci_boost(
         print_vqe_comparison_report(gci)
     boosting_callback_data = {}
     for gci_step_nmb in range(nmb_gci_steps):
-        mode_dbr, minimizer_s, minimal_loss, eo_d = select_recursion_step_gd_circuit(
-            gci,
-            mode_dbr_list=mode_dbr_list,
-            step_grid=np.linspace(1e-5, 2e-2, 30),
-            lr_range=(1e-3, 1),
-            nmb_gd_epochs=nmb_gd_epochs,
-            threshold=1e-4,
-            max_eval_gd=30,
-            please_be_visual=please_be_visual,
-            save_path="gci_step",
+        logging.info(
+            f"Optimizing GCI step {gci_step_nmb+1} with optimizer {optimization_method}"
         )
+        it = time.time()
+        if optimization_method == "sgd":
+            _, best_s, _, eo_d = select_recursion_step_gd_circuit(
+                gci,
+                mode_dbr_list=[mode_dbr],
+                step_grid=np.linspace(1e-5, 2e-2, 30),
+                lr_range=(1e-3, 1),
+                nmb_gd_epochs=optimization_config["nmb_gd_epochs"],
+                threshold=1e-4,
+                max_eval_gd=30,
+                please_be_visual=please_be_visual,
+                save_path="gci_step",
+            )
+        else:
+            if gci_step_nmb == 0:
+                p0 = [0.01]
+                p0.extend([4 - np.sin(x / 3) for x in range(nqubits)])
+            else:
+                p0 = [best_s]
+                p0.extend(best_b)
+            optimized_params = optimize_D(
+                params=p0,
+                gci=gci,
+                method=optimization_method,
+                maxiter=optimization_config["maxiter"],
+            )
+            best_s = optimized_params[0]
+            best_b = optimized_params[1:]
+            eo_d = MagneticFieldEvolutionOracle(best_b)
+
+        logging.info(f"Total optimization time required: {time.time() - it} seconds")
 
         gci.mode_double_bracket_rotation = mode_dbr
         gci.eo_d = eo_d
-        gci(minimizer_s)
+        print(gci.loss(best_s, eo_d))
+        gci(best_s)
 
         if please_be_verbose:
-            print(f"Executing gci step {gci_step_nmb+1}:\n")
+            print(f"Executing gci step {gci_step_nmb}:\n")
             print(
-                f"The selected data is {gci.mode_double_bracket_rotation} rotation with {gci.eo_d.name} for the duration s = {minimizer_s}."
+                f"The selected data is {gci.mode_double_bracket_rotation} rotation with {gci.eo_d.name} for the duration s = {best_s}."
             )
             print("--- the report after execution:\n")
             print_vqe_comparison_report(gci)
             print("==== the execution report ends here")
-        boosting_callback_data[gci_step_nmb] = get_vqe_boosting_data(gci)
 
-    return gci, boosting_callback_data
+        # boosting_callback_data[gci_step_nmb] = get_vqe_boosting_data(gci)
+
+    return gci  # , boosting_callback_data
 
 
 def get_eo_d_initializations(nqubits, eo_d_name="B Field"):
@@ -503,3 +528,82 @@ def plot_lr_s_loss(eval_dict):
     ax.set_zlabel("Loss")
     ax.legend()
     ax.set_title("3D Scatter Plot of (lr, s): loss")
+
+
+def callback_D_optimization(params, gci, loss_history, params_history):
+    params_history.append(params)
+    eo_d = MagneticFieldEvolutionOracle(params[1:])
+    loss_history.append(gci.loss(params[0], eo_d))
+
+
+def loss_function_D(params, gci):
+    """``params`` has shape [s0, b_list_0]."""
+    eo = MagneticFieldEvolutionOracle(params[1:])
+    return gci.loss(params[0], eo)
+
+
+def optimize_D(
+    params, gci, method, s_bounds=(1e-4, 1e-1), b_bounds=(0.0, 9.0), maxiter=100
+):
+    """Optimize Ising GCI model using chosen optimization `method`."""
+
+    # evolutionary strategy
+    if method == "cma":
+        lower_bounds = s_bounds[0] + b_bounds[0] * (len(params) - 1)
+        upper_bounds = s_bounds[1] + b_bounds[1] * (len(params) - 1)
+        bounds = [lower_bounds, upper_bounds]
+        opt_results = cma.fmin(
+            loss_function_D,
+            sigma0=0.5,
+            x0=params,
+            args=(gci,),
+            options={"bounds": bounds, "maxiter": maxiter},
+        )
+        return opt_results[0]
+    # scipy optimizations
+    else:
+        bounds = [s_bounds]
+        for _ in range(len(params) - 1):
+            bounds.append(b_bounds)
+        # dual annealing algorithm
+        if method == "annealing":
+            opt_results = optimize.dual_annealing(
+                func=loss_function_D,
+                x0=params,
+                bounds=bounds,
+                args=(gci,),
+                maxiter=maxiter,
+            )
+        elif method == "differential_evolution":
+            opt_results = optimize.differential_evolution(
+                func=loss_function_D,
+                x0=params,
+                bounds=bounds,
+                args=(gci,),
+                maxiter=maxiter,
+            )
+        elif method == "DIRECT":
+            opt_results = optimize.direct(
+                func=loss_function_D,
+                bounds=bounds,
+                args=(gci,),
+                maxiter=maxiter,
+            )
+        elif method == "basinhopping":
+            opt_results = optimize.basinhopping(
+                func=loss_function_D,
+                x0=params,
+                niter=maxiter,
+                minimizer_kwargs={"method": "Powell", "args": (gci,)},
+            )
+        # scipy local minimizers
+        else:
+            opt_results = optimize.minimize(
+                fun=loss_function_D,
+                x0=params,
+                bounds=bounds,
+                args=(gci,),
+                method=method,
+                options={"disp": 1, "maxiter": maxiter},
+            )
+    return opt_results.x

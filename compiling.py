@@ -2,11 +2,15 @@ import argparse
 import json
 import logging
 import pathlib
+import time
 
 import numpy as np
 import qibo
+
+qibo.set_backend("numpy")
 from qibo import hamiltonians
 from qibo.backends import construct_backend
+from qibo.quantum_info.metrics import fidelity
 
 from boostvqe.ansatze import VQE, build_circuit
 from boostvqe.models.dbi.double_bracket_evolution_oracles import (
@@ -25,6 +29,7 @@ from boostvqe.utils import (
     PARAMS_FILE,
     build_circuit,
     get_eo_d_initializations,
+    optimize_D,
     print_vqe_comparison_report,
     select_recursion_step_gd_circuit,
 )
@@ -81,39 +86,120 @@ def main(args):
     print(
         f"The gci mode is {gci.mode_double_bracket_rotation} rotation with {gci.eo_d.name} as the oracle.\n"
     )
-    # print_vqe_comparison_report(gci)
-    boosting_callback_data = {}
-    for gci_step_nmb in range(args.steps):
-        mode_dbr, minimizer_s, minimal_loss, eo_d = select_recursion_step_gd_circuit(
-            gci,
-            mode_dbr_list=[args.db_rotation],
-            step_grid=np.linspace(1e-5, 2e-2, 30),
-            lr_range=(1e-3, 1),
-            nmb_gd_epochs=args.gd_steps,
-            threshold=1e-4,
-            max_eval_gd=30,
-            save_path=args.path.name,
-        )
+    metadata = {}
 
-        # gci.mode_double_bracket_rotation = mode_dbr
-        # gci.eo_d = eo_d
-        # gci(minimizer_s)
-        # print(f"Executing gci step {gci_step_nmb+1}:\n")
-        # print(
-        #     f"The selected data is {gci.mode_double_bracket_rotation} rotation with {gci.eo_d.name} for the duration s = {minimizer_s}."
-        # )
-        # print("--- the report after execution:\n")
-        # print_vqe_comparison_report(gci)
-        # print("==== the execution report ends here")
-        # boosting_callback_data[gci_step_nmb] = gci.get_vqe_boosting_data()
-    # TODO: store metadata
-    # (args.path / "boosting_data.json").write_text(json.dumps(boosting_callback_data))
+    print_report(report(vqe, hamiltonian, gci))
+    for gci_step_nmb in range(args.steps):
+        logging.info(
+            f"Optimizing GCI step {gci_step_nmb+1} with optimizer {args.optimization_method}"
+        )
+        it = time.time()
+        if args.optimization_method == "sgd":
+            _, best_s, _, eo_d = select_recursion_step_gd_circuit(
+                gci,
+                mode_dbr_list=[args.db_rotation],
+                step_grid=np.linspace(1e-5, 2e-2, 30),
+                lr_range=(1e-3, 1),
+                nmb_gd_epochs=args.gd_steps,
+                threshold=1e-4,
+                max_eval_gd=30,
+                please_be_visual=False,
+                save_path="gci_step",
+            )
+        else:
+            if gci_step_nmb == 0:
+                p0 = [0.01]
+                p0.extend([4 - np.sin(x / 3) for x in range(nqubits)])
+            else:
+                p0 = [best_s]
+                p0.extend(best_b)
+            optimized_params = optimize_D(
+                params=p0,
+                gci=gci,
+                method=args.optimization_method,
+                maxiter=20,
+            )
+            best_s = optimized_params[0]
+            best_b = optimized_params[1:]
+            eo_d = MagneticFieldEvolutionOracle(best_b)
+
+        logging.info(f"Total optimization time required: {time.time() - it} seconds")
+        metadata[gci_step_nmb] = report(vqe, hamiltonian, gci)
+        gci.mode_double_bracket_rotation = args.db_rotation
+        gci.eo_d = eo_d
+        gci(best_s)
+        print_report(report(vqe, hamiltonian, gci))
+    (args.path / "boosting_data.json").write_text(json.dumps(metadata))
+
+
+def report(vqe, hamiltonian, gci):
+    energies = hamiltonian.eigenvalues()
+    ground_state_energy = float(energies[0])
+    vqe_energy = float(hamiltonian.expectation(vqe.circuit().state()))
+    gci_loss = float(gci.loss())
+    gap = float(energies[1] - energies[0])
+
+    return (
+        dict(
+            nqubits=hamiltonian.nqubits,
+            gci_loss=float(gci_loss),
+            vqe_energy=float(vqe_energy),
+            target_energy=ground_state_energy,
+            diff_vqe_target=vqe_energy - ground_state_energy,
+            diff_gci_target=gci_loss - ground_state_energy,
+            gap=gap,
+            diff_vqe_target_perc=abs(vqe_energy - ground_state_energy)
+            / abs(ground_state_energy)
+            * 100,
+            diff_gci_target_perc=abs(gci_loss - ground_state_energy)
+            / abs(ground_state_energy)
+            * 100,
+            fidelity_witness_vqe=1 - (vqe_energy - ground_state_energy) / gap,
+            fidelity_witness_gci=1 - (gci_loss - ground_state_energy) / gap,
+            fidelity_vqe=fidelity(vqe.circuit().state(), hamiltonian.ground_state()),
+            fidelity_gci=fidelity(
+                gci.get_composed_circuit()().state(), hamiltonian.ground_state()
+            ),
+        )
+        | gci.get_gate_count_dict()
+    )
+
+
+def print_report(report: dict):
+    print(
+        f"\
+    The target energy is {report['target_energy']}\n\
+    The VQE energy is {report['vqe_energy']} \n\
+    The DBQA energy is {report['gci_loss']}. \n\
+    The difference is for VQE is {report['diff_vqe_target']} \n\
+    and for the DBQA {report['diff_gci_target']} \n\
+    which can be compared to the spectral gap {report['gap']}.\n\
+    The relative difference is \n\
+        - for VQE {report['diff_vqe_target_perc']}% \n\
+        - for DBQA {report['diff_gci_target_perc']}%.\n\
+    The energetic fidelity witness of the ground state is: \n\
+        - for the VQE  {report['fidelity_witness_vqe']} \n\
+        - for DBQA {report['fidelity_witness_gci']}\n\
+    The true fidelity is \n\
+        - for the VQE  {report['fidelity_vqe']}\n\
+        - for DBQA {report['fidelity_gci']}\n\
+                    "
+    )
+    print(
+        f"The boosting circuit used {report['nmb_cnot']} CNOT gates coming from compiled XXZ evolution and {report['nmb_cz']} CZ gates from VQE.\n\
+For {report['nqubits']} qubits this gives n_CNOT/n_qubits = {report['nmb_cnot_relative']} and n_CZ/n_qubits = {report['nmb_cz_relative']}"
+    )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Boosting VQE with DBI.")
     parser.add_argument("--backend", default="qibojit", type=str, help="Qibo backend")
-    parser.add_argument("--path", type=pathlib.Path, help="Output folder")
+    parser.add_argument(
+        "--path",
+        type=pathlib.Path,
+        default=pathlib.Path("XXZ_5seeds/moreonXXZ/sgd_10q_7l_42"),
+        help="Output folder",
+    )
     parser.add_argument(
         "--epoch", default=-1, type=int, help="VQE epoch where DBI will be applied."
     )
@@ -124,12 +210,15 @@ if __name__ == "__main__":
     parser.add_argument("--order", default=2, type=int, help="Suzuki-Trotter order")
     parser.add_argument(
         "--db_rotation",
-        default=DoubleBracketRotationType.group_commutator_reduced_twice,
+        default=DoubleBracketRotationType.group_commutator_third_order_reduced,
         type=DoubleBracketRotationType,
         help="DB rotation type.",
     )
     parser.add_argument(
         "--eo_d_name", default="B Field", type=str, help="D initialization"
+    )
+    parser.add_argument(
+        "--optimization_method", default="sgd", type=str, help="Optimization method"
     )
     args = parser.parse_args()
     main(args)
