@@ -211,7 +211,7 @@ def gradient_descent_circuits_lr(
 
 def get_gd_evolution_oracle(n_local, params):
     if n_local == 1:
-        return MagneticFieldEvolutionOracle(params)
+        return MagneticFieldEvolutionOracle.from_b(params)
     elif n_local == 2:
         return IsingNNEvolutionOracle(
             params[: int(len(params) / 2)], params[int(len(params) / 2) :]

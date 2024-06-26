@@ -3,6 +3,7 @@ import json
 import logging
 import pathlib
 import time
+from copy import deepcopy
 
 import numpy as np
 import qibo
@@ -16,40 +17,53 @@ from boostvqe.ansatze import VQE, build_circuit
 from boostvqe.models.dbi.double_bracket_evolution_oracles import (
     FrameShiftedEvolutionOracle,
     MagneticFieldEvolutionOracle,
-    VQERotatedEvolutionOracle,
     XXZ_EvolutionOracle,
 )
 from boostvqe.models.dbi.group_commutator_iteration_transpiler import (
     DoubleBracketRotationType,
     GroupCommutatorIterationWithEvolutionOracles,
-    VQEBoostingGroupCommutatorIteration,
 )
 from boostvqe.utils import (
     OPTIMIZATION_FILE,
     PARAMS_FILE,
     build_circuit,
-    get_eo_d_initializations,
     optimize_D,
-    print_vqe_comparison_report,
     select_recursion_step_gd_circuit,
 )
 
 logging.basicConfig(level=logging.INFO)
 
 
+def dump_config(config: dict, path):
+    config["path"] = config["path"]
+    config["db_rotation"] = config["db_rotation"].value
+    (path / "config.json").write_text(json.dumps(config, indent=4))
+
+
 def main(args):
     """VQE training."""
-    path = args.path
+    path = pathlib.Path(args.path)
+    dump_path = (
+        path
+        / f"{args.db_rotation.name}_{args.optimization_method}_{args.epoch}e_{args.steps}s"
+    )
+    dump_path.mkdir(parents=True, exist_ok=True)
 
     config = json.loads((path / OPTIMIZATION_FILE).read_text())
+    dump_config(deepcopy(vars(args)), path=dump_path)
 
-    # TODO: improve loading of params
+    if args.optimization_config is None:
+        opt_options = {}
+    else:
+        opt_options = json.loads(args.optimization_config)
+
     try:
         params = np.load(path / f"parameters/params_ite{args.epoch}.npy")
     except FileNotFoundError:
         params = np.array(
             np.load(path / PARAMS_FILE, allow_pickle=True).tolist()[0][args.epoch]
         )
+
     nqubits = config["nqubits"]
     nlayers = config["nlayers"]
     vqe_backend = construct_backend(backend=config["backend"])
@@ -66,32 +80,38 @@ def main(args):
     )
     vqe.circuit.set_parameters(params)
 
-    base_oracle = XXZ_EvolutionOracle(
-        nqubits=nqubits, steps=args.steps, order=args.order
+    base_oracle = XXZ_EvolutionOracle.from_nqubits(
+        nqubits=nqubits, delta=0.5, steps=args.steps, order=args.order
     )
-    oracle = FrameShiftedEvolutionOracle(
-        base_oracle,
-        "my oracle",
+    oracle = FrameShiftedEvolutionOracle.from_evolution_oracle(
         before_circuit=vqe.circuit.invert(),
         after_circuit=vqe.circuit,
+        base_evolution_oracle=base_oracle,
     )
 
     gci = GroupCommutatorIterationWithEvolutionOracles(
-        oracle, args.db_rotation, h_ref=hamiltonian
+        oracle,
+        args.db_rotation,
     )
 
     # TODO: remove hardcoded magnetic field
-    eo_d = MagneticFieldEvolutionOracle([4 - np.sin(x / 3) for x in range(nqubits)])
+    eo_d = MagneticFieldEvolutionOracle.from_b(
+        [4 - np.sin(x / 3) for x in range(nqubits)]
+    )
     gci.eo_d = eo_d
     print(
-        f"The gci mode is {gci.mode_double_bracket_rotation} rotation with {gci.eo_d.name} as the oracle.\n"
+        f"The gci mode is {gci.double_bracket_rotation_type} rotation with {eo_d.__class__.__name__} as the oracle.\n"
     )
     metadata = {}
 
-    print_report(report(vqe, hamiltonian, gci))
+    this_report = report(vqe, hamiltonian, gci)
+    metadata[0] = this_report
+
     for gci_step_nmb in range(args.steps):
         logging.info(
-            f"Optimizing GCI step {gci_step_nmb+1} with optimizer {args.optimization_method}"
+            "\n################################################################################\n"
+            + f"Optimizing GCI step {gci_step_nmb+1} with optimizer {args.optimization_method}"
+            + "\n################################################################################\n"
         )
         it = time.time()
         if args.optimization_method == "sgd":
@@ -100,12 +120,13 @@ def main(args):
                 mode_dbr_list=[args.db_rotation],
                 step_grid=np.linspace(1e-5, 2e-2, 30),
                 lr_range=(1e-3, 1),
-                nmb_gd_epochs=args.gd_steps,
+                nmb_gd_epochs=opt_options["gd_epochs"],
                 threshold=1e-4,
                 max_eval_gd=30,
                 please_be_visual=False,
                 save_path="gci_step",
             )
+
         else:
             if gci_step_nmb == 0:
                 p0 = [0.01]
@@ -117,24 +138,27 @@ def main(args):
                 params=p0,
                 gci=gci,
                 method=args.optimization_method,
-                maxiter=20,
+                **opt_options,
             )
             best_s = optimized_params[0]
             best_b = optimized_params[1:]
-            eo_d = MagneticFieldEvolutionOracle(best_b)
+            eo_d = MagneticFieldEvolutionOracle.from_b(best_b)
 
         step_data = dict(
             best_s=best_s,
-            eo_d_name=eo_d.name,
+            eo_d_name=eo_d.__class__.__name__,
             eo_d_params=eo_d.params,
         )
         logging.info(f"Total optimization time required: {time.time() - it} seconds")
-        metadata[gci_step_nmb] = report(vqe, hamiltonian, gci) | step_data
         gci.mode_double_bracket_rotation = args.db_rotation
         gci.eo_d = eo_d
         gci(best_s)
-        print_report(report(vqe, hamiltonian, gci))
-    (args.path / "boosting_data.json").write_text(json.dumps(metadata))
+
+        this_report = report(vqe, hamiltonian, gci)
+        print_report(this_report)
+        metadata[gci_step_nmb + 1] = this_report | step_data
+
+    (dump_path / "boosting_data.json").write_text(json.dumps(metadata, indent=4))
 
 
 def report(vqe, hamiltonian, gci):
@@ -199,31 +223,26 @@ For {report['nqubits']} qubits this gives n_CNOT/n_qubits = {report['nmb_cnot_re
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Boosting VQE with DBI.")
     parser.add_argument("--backend", default="qibojit", type=str, help="Qibo backend")
-    parser.add_argument(
-        "--path",
-        type=pathlib.Path,
-        default=pathlib.Path("XXZ_5seeds/moreonXXZ/sgd_10q_7l_42"),
-        help="Output folder",
-    )
+    parser.add_argument("--path", type=str, help="Output folder")
     parser.add_argument(
         "--epoch", default=-1, type=int, help="VQE epoch where DBI will be applied."
     )
     parser.add_argument("--steps", default=2, type=int, help="DBI steps")
-    parser.add_argument(
-        "--gd_steps", default=1, type=int, help="Gradient descent steps"
-    )
     parser.add_argument("--order", default=2, type=int, help="Suzuki-Trotter order")
     parser.add_argument(
         "--db_rotation",
-        default=DoubleBracketRotationType.group_commutator_third_order_reduced,
-        type=DoubleBracketRotationType,
+        type=lambda arg: DoubleBracketRotationType[arg],
+        choices=DoubleBracketRotationType,
+        default="group_commutator_reduced",
         help="DB rotation type.",
     )
     parser.add_argument(
-        "--eo_d_name", default="B Field", type=str, help="D initialization"
+        "--optimization_method", default="sgd", type=str, help="Optimization method"
     )
     parser.add_argument(
-        "--optimization_method", default="sgd", type=str, help="Optimization method"
+        "--optimization_config",
+        type=str,
+        help="Options to customize the optimizer training.",
     )
     args = parser.parse_args()
     main(args)
