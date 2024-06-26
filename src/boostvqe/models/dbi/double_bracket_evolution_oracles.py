@@ -133,17 +133,6 @@ class MagneticFieldEvolutionOracle(EvolutionOracle):
         )
         return cls(h=hamiltonian, evolution_oracle_type=evolution_oracle_type, b=b)
 
-    # def discretized_evolution_circuit_binary_search(self, t_duration, eps=None):
-    #     if self.evolution_oracle_type is EvolutionOracleType.numerical:
-    #         return self.h.exp(t_duration)
-
-    #     if self.please_assess_how_many_steps_to_use:
-    #         return super().discretized_evolution_circuit_binary_search(
-    #             t_duration, eps=eps
-    #         )
-    #     else:
-    #         return self.h.circuit(t_duration)
-
 
 class IsingNNEvolutionOracle(EvolutionOracle):
     def __init__(

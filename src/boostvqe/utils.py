@@ -532,13 +532,13 @@ def plot_lr_s_loss(eval_dict):
 
 def callback_D_optimization(params, gci, loss_history, params_history):
     params_history.append(params)
-    eo_d = MagneticFieldEvolutionOracle(params[1:])
+    eo_d = MagneticFieldEvolutionOracle.from_b(params[1:])
     loss_history.append(gci.loss(params[0], eo_d))
 
 
 def loss_function_D(params, gci):
     """``params`` has shape [s0, b_list_0]."""
-    eo = MagneticFieldEvolutionOracle(params[1:])
+    eo = MagneticFieldEvolutionOracle.from_b(params[1:])
     return gci.loss(params[0], eo)
 
 

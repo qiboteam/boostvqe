@@ -26,9 +26,7 @@ from boostvqe.utils import (
     OPTIMIZATION_FILE,
     PARAMS_FILE,
     build_circuit,
-    get_eo_d_initializations,
     optimize_D,
-    print_vqe_comparison_report,
     select_recursion_step_gd_circuit,
 )
 
@@ -121,7 +119,7 @@ def main(args):
             )
             best_s = optimized_params[0]
             best_b = optimized_params[1:]
-            eo_d = MagneticFieldEvolutionOracle(best_b)
+            eo_d = MagneticFieldEvolutionOracle.from_b(best_b)
 
         step_data = dict(
             best_s=best_s,
