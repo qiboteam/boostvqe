@@ -230,7 +230,7 @@ def initialize_gci_from_vqe(
 
     nqubits = config["nqubits"]
     # build circuit, hamiltonian and VQE
-    circuit = build_circuit(nqubits, config["nlayers"], "numpy")
+    circuit = build_circuit(nqubits, config["nlayers"])
     hamiltonian = hamiltonians.XXZ(nqubits=nqubits, delta=0.5)
 
     vqe = VQE(circuit, hamiltonian)
