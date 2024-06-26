@@ -6,10 +6,8 @@ from qibo.models import Circuit
 from boostvqe.training_utils import vqe_loss
 
 
-def build_circuit(nqubits, nlayers, backend):
+def build_circuit(nqubits, nlayers):
     """Build qibo's aavqe example circuit."""
-
-    qibo.set_backend(backend)
 
     circuit = Circuit(nqubits)
     for _ in range(nlayers):
@@ -52,7 +50,6 @@ class VQE:
 
     def __init__(self, circuit, hamiltonian):
         """Initialize circuit ansatz and hamiltonian."""
-        print("In the VQE", get_backend())
         self.circuit = circuit
         self.hamiltonian = hamiltonian
         self.backend = hamiltonian.backend

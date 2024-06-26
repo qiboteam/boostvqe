@@ -23,6 +23,7 @@ LOSS_FILE = "energies"
 GRADS_FILE = "gradients"
 HAMILTONIAN_FILE = "hamiltonian_matrix.npz"
 SEED = 42
+DELTA = 0.5
 TOL = 1e-10
 DBI_ENERGIES = "dbi_energies"
 DBI_FLUCTUATIONS = "dbi_fluctuations"
@@ -296,12 +297,12 @@ def select_recursion_step_gd_circuit(
 
     if eo_d is None:
         eo_d = gci.eo_d
-    if eo_d.name == "B Field":
+    if isinstance(eo_d, MagneticFieldEvolutionOracle):
         n_local = 1
-        params = eo_d.b_list
-    elif eo_d.name == "H_ClassicalIsing(B,J)":
+        params = eo_d.params
+    elif isinstance(eo_d, IsingNNEvolutionOracle):
         n_local = 2
-        params = eo_d.b_list + eo_d.j_list
+        params = eo_d.params
     else:
         raise_error(ValueError, "Evolution oracle type not supported.")
 
@@ -312,7 +313,6 @@ def select_recursion_step_gd_circuit(
         gci.mode_double_bracket_rotation = mode
         # returns min_s, min_loss, loss_list
         s, l, ls = gci.choose_step(d=eo_d, step_grid=step_grid, mode_dbr=mode)
-
         for epoch in range(nmb_gd_epochs):
             ls = []
             s_min, s_max = step_grid[0], step_grid[-1]
@@ -352,7 +352,7 @@ def select_recursion_step_gd_circuit(
     if please_be_verbose:
         print(
             f"Just finished the selection: better loss {minimal_losses[minimizer_dbr_id]} for mode {mode_dbr_list[minimizer_dbr_id]},\
-                  with duration s={minimizer_s[minimizer_dbr_id]}, and eo_d name = {minimizer_eo_d[minimizer_dbr_id].name}"
+                  with duration s={minimizer_s[minimizer_dbr_id]}, and eo_d name = {minimizer_eo_d[minimizer_dbr_id].__class__.__name__}"
         )
     return (
         mode_dbr_list[minimizer_dbr_id],
@@ -532,13 +532,13 @@ def plot_lr_s_loss(eval_dict):
 
 def callback_D_optimization(params, gci, loss_history, params_history):
     params_history.append(params)
-    eo_d = MagneticFieldEvolutionOracle(params[1:])
+    eo_d = MagneticFieldEvolutionOracle.from_b(params[1:])
     loss_history.append(gci.loss(params[0], eo_d))
 
 
 def loss_function_D(params, gci):
     """``params`` has shape [s0, b_list_0]."""
-    eo = MagneticFieldEvolutionOracle(params[1:])
+    eo = MagneticFieldEvolutionOracle.from_b(params[1:])
     return gci.loss(params[0], eo)
 
 

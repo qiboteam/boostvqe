@@ -24,6 +24,7 @@ from boostvqe.utils import (
     DBI_ENERGIES,
     DBI_FLUCTUATIONS,
     DBI_STEPS,
+    DELTA,
     FLUCTUATION_FILE,
     GRADS_FILE,
     HAMILTONIAN_FILE,
@@ -66,13 +67,14 @@ def main(args):
     ham = getattr(hamiltonians, args.hamiltonian)(nqubits=args.nqubits)
     target_energy = np.real(np.min(np.asarray(ham.eigenvalues())))
     circ0 = build_circuit(
-        nqubits=args.nqubits, nlayers=args.nlayers, backend=args.backend
+        nqubits=args.nqubits,
+        nlayers=args.nlayers,
     )
     circ = circ0.copy(deep=True)
     backend = ham.backend
     zero_state = backend.zero_state(args.nqubits)
 
-    loss = partial(vqe_loss, delta=0.5, nshots=args.nshots)
+    loss = partial(vqe_loss, delta=DELTA, nshots=args.nshots)
 
     # fix numpy seed to ensure replicability of the experiment
     np.random.seed(int(args.seed))
@@ -174,7 +176,7 @@ def main(args):
             circ.set_parameters(initial_parameters)
 
             # reduce the learning rate after DBI has been applied
-            if "learning_rate" in opt_options.keys():
+            if "learning_rate" in opt_options:
                 opt_options["learning_rate"] *= args.decay_rate_lr
 
     best_loss = min(np.min(array) for array in loss_history.values())
