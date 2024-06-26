@@ -3,6 +3,7 @@ import json
 import logging
 import pathlib
 import time
+from copy import deepcopy
 
 import numpy as np
 import qibo
@@ -33,17 +34,29 @@ from boostvqe.utils import (
 logging.basicConfig(level=logging.INFO)
 
 
+def dump_config(config: dict, path):
+    config["path"] = config["path"]
+    config["db_rotation"] = config["db_rotation"].value
+    (path / "config.json").write_text(json.dumps(config, indent=4))
+
+
 def main(args):
     """VQE training."""
     path = pathlib.Path(args.path)
+    dump_path = (
+        path
+        / f"{args.db_rotation.name}_{args.optimization_method}_{args.epoch}e_{args.steps}s"
+    )
+    dump_path.mkdir(parents=True, exist_ok=True)
+
     config = json.loads((path / OPTIMIZATION_FILE).read_text())
+    dump_config(deepcopy(vars(args)), path=dump_path)
 
     if args.optimization_config is None:
         opt_options = {}
     else:
         opt_options = json.loads(args.optimization_config)
 
-    # TODO: improve loading of params
     try:
         params = np.load(path / f"parameters/params_ite{args.epoch}.npy")
     except FileNotFoundError:
@@ -91,10 +104,15 @@ def main(args):
     )
     metadata = {}
 
-    print_report(report(vqe, hamiltonian, gci))
+    this_report = report(vqe, hamiltonian, gci)
+    print_report(this_report)
+    metadata[0] = this_report
+
     for gci_step_nmb in range(args.steps):
         logging.info(
-            f"Optimizing GCI step {gci_step_nmb+1} with optimizer {args.optimization_method}"
+            "\n################################################################################\n"
+            + f"Optimizing GCI step {gci_step_nmb+1} with optimizer {args.optimization_method}"
+            + "\n################################################################################\n"
         )
         it = time.time()
         if args.optimization_method == "sgd":
@@ -133,13 +151,15 @@ def main(args):
             eo_d_params=eo_d.params,
         )
         logging.info(f"Total optimization time required: {time.time() - it} seconds")
-        metadata[gci_step_nmb] = report(vqe, hamiltonian, gci) | step_data
         gci.mode_double_bracket_rotation = args.db_rotation
         gci.eo_d = eo_d
         gci(best_s)
-        print_report(report(vqe, hamiltonian, gci))
 
-    (path / "boosting_data.json").write_text(json.dumps(metadata, indent=4))
+        this_report = report(vqe, hamiltonian, gci)
+        print_report(this_report)
+        metadata[gci_step_nmb + 1] = this_report | step_data
+
+    (dump_path / "boosting_data.json").write_text(json.dumps(metadata, indent=4))
 
 
 def report(vqe, hamiltonian, gci):
@@ -216,9 +236,6 @@ if __name__ == "__main__":
         choices=DoubleBracketRotationType,
         default="group_commutator_reduced",
         help="DB rotation type.",
-    )
-    parser.add_argument(
-        "--eo_d_name", default="B Field", type=str, help="D initialization"
     )
     parser.add_argument(
         "--optimization_method", default="sgd", type=str, help="Optimization method"
