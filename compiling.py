@@ -35,9 +35,13 @@ logging.basicConfig(level=logging.INFO)
 
 def main(args):
     """VQE training."""
-    path = args.path
-
+    path = pathlib.Path(args.path)
     config = json.loads((path / OPTIMIZATION_FILE).read_text())
+
+    if args.optimization_config is None:
+        opt_options = {}
+    else:
+        opt_options = json.loads(args.optimization_config)
 
     # TODO: improve loading of params
     try:
@@ -46,6 +50,7 @@ def main(args):
         params = np.array(
             np.load(path / PARAMS_FILE, allow_pickle=True).tolist()[0][args.epoch]
         )
+
     nqubits = config["nqubits"]
     nlayers = config["nlayers"]
     vqe_backend = construct_backend(backend=config["backend"])
@@ -98,12 +103,13 @@ def main(args):
                 mode_dbr_list=[args.db_rotation],
                 step_grid=np.linspace(1e-5, 2e-2, 30),
                 lr_range=(1e-3, 1),
-                nmb_gd_epochs=args.gd_steps,
+                nmb_gd_epochs=opt_options["gd_epochs"],
                 threshold=1e-4,
                 max_eval_gd=30,
                 please_be_visual=False,
                 save_path="gci_step",
             )
+
         else:
             if gci_step_nmb == 0:
                 p0 = [0.01]
@@ -115,7 +121,7 @@ def main(args):
                 params=p0,
                 gci=gci,
                 method=args.optimization_method,
-                maxiter=20,
+                **opt_options,
             )
             best_s = optimized_params[0]
             best_b = optimized_params[1:]
@@ -132,7 +138,8 @@ def main(args):
         gci.eo_d = eo_d
         gci(best_s)
         print_report(report(vqe, hamiltonian, gci))
-    (args.path / "boosting_data.json").write_text(json.dumps(metadata))
+
+    (path / "boosting_data.json").write_text(json.dumps(metadata, indent=4))
 
 
 def report(vqe, hamiltonian, gci):
@@ -197,19 +204,11 @@ For {report['nqubits']} qubits this gives n_CNOT/n_qubits = {report['nmb_cnot_re
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Boosting VQE with DBI.")
     parser.add_argument("--backend", default="qibojit", type=str, help="Qibo backend")
-    parser.add_argument(
-        "--path",
-        type=pathlib.Path,
-        default=pathlib.Path("XXZ_5seeds/moreonXXZ/sgd_10q_7l_42"),
-        help="Output folder",
-    )
+    parser.add_argument("--path", type=str, help="Output folder")
     parser.add_argument(
         "--epoch", default=-1, type=int, help="VQE epoch where DBI will be applied."
     )
     parser.add_argument("--steps", default=2, type=int, help="DBI steps")
-    parser.add_argument(
-        "--gd_steps", default=1, type=int, help="Gradient descent steps"
-    )
     parser.add_argument("--order", default=2, type=int, help="Suzuki-Trotter order")
     parser.add_argument(
         "--db_rotation",
@@ -223,6 +222,11 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--optimization_method", default="sgd", type=str, help="Optimization method"
+    )
+    parser.add_argument(
+        "--optimization_config",
+        type=str,
+        help="Options to customize the optimizer training.",
     )
     args = parser.parse_args()
     main(args)
