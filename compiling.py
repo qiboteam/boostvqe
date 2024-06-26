@@ -105,7 +105,6 @@ def main(args):
     metadata = {}
 
     this_report = report(vqe, hamiltonian, gci)
-    print_report(this_report)
     metadata[0] = this_report
 
     for gci_step_nmb in range(args.steps):
