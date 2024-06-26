@@ -215,8 +215,9 @@ if __name__ == "__main__":
     parser.add_argument("--order", default=2, type=int, help="Suzuki-Trotter order")
     parser.add_argument(
         "--db_rotation",
-        default=DoubleBracketRotationType.group_commutator_reduced,
-        type=DoubleBracketRotationType,
+        type=lambda arg: DoubleBracketRotationType[arg],
+        choices=DoubleBracketRotationType,
+        default="group_commutator_reduced",
         help="DB rotation type.",
     )
     parser.add_argument(
