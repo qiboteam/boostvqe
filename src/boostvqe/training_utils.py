@@ -1,4 +1,5 @@
 import os
+import logging
 from enum import Enum
 
 from qibo.hamiltonians.models import HamiltonianTerm, multikron
@@ -28,9 +29,9 @@ class Ham(Enum):
     )
     XYZ = lambda nqubits: XYZ(nqubits=nqubits, delta=DEFAULT_DELTAS, dense=False)
     TFIM = lambda nqubits: hamiltonians.TFIM(
-        nqubits=nqubits, h=DEFAULT_DELTA, dense=False
+        nqubits=nqubits, h=nqubits, dense=False
     )
-    TLFIM = lambda nqubits: TLFIM(nqubits=nqubits, h=DEFAULT_DELTAS, dense=False)
+    TLFIM = lambda nqubits: TLFIM(nqubits=nqubits, h=[nqubits, nqubits], dense=False)
 
 
 def TLFIM(nqubits, h=[0.5, 0.5], dense=True, backend=None):
@@ -46,6 +47,7 @@ def TLFIM(nqubits, h=[0.5, 0.5], dense=True, backend=None):
             :class:`qibo.core.hamiltonians.Hamiltonian`, otherwise it creates
             a :class:`qibo.core.hamiltonians.SymbolicHamiltonian`.
     """
+    h = [nqubits, nqubits]
     if nqubits < 2:
         raise_error(ValueError, "Number of qubits must be larger than one.")
     if dense:
@@ -118,11 +120,11 @@ def vqe_loss(params, circuit, hamiltonian, ham_name, nshots=None, delta=0.5):
     circ = circuit.copy(deep=True)
     circ.set_parameters(params)
     if isinstance(hamiltonian.backend, TensorflowBackend) and nshots is not None:
-        expectation_value = _exp_with_tf(circ, hamiltonian, nshots)
+        expectation_value = _exp_with_tf(circuit=circ, hamiltonian=hamiltonian, ham_name=ham_name, nshots=nshots)
     elif nshots is None:
         expectation_value = _exact(circ, hamiltonian)
     else:
-        expectation_value = _with_shots(circ, hamiltonian, ham_name, nshots)
+        expectation_value = _with_shots(circ=circ, ham=hamiltonian, ham_name=ham_name, nshots=nshots)
     return expectation_value
 
 
@@ -149,7 +151,7 @@ def _with_shots(circ, ham, ham_name, nshots, exec_backend=None):
     expectation_value = 0
     nqubits = circ.nqubits
 
-    if (ham.matrix == Ham.TFIM(nqubits=nqubits).matrix).all():
+    if np.array_equal(np.array(ham.matrix), np.array(Ham.TFIM(nqubits=nqubits).matrix)):
         # Evaluate the ZZ terms
         circ1 = circ.copy(deep=True)
         circ1.add(gates.M(*range(circ1.nqubits)))
@@ -164,9 +166,9 @@ def _with_shots(circ, ham, ham_name, nshots, exec_backend=None):
         expval_contribution = exec_backend.execute_circuit(
             circuit=circ1, nshots=nshots
         ).expectation_from_samples(hamiltonian1)
-        expectation_value -= DEFAULT_DELTA * expval_contribution
+        expectation_value -= nqubits * expval_contribution
 
-    elif (ham.matrix == Ham.TLFIM(nqubits=nqubits).matrix).all():
+    elif np.array_equal(np.array(ham.matrix), np.array(Ham.TLFIM(nqubits=nqubits).matrix)):
         # Evaluate the ZZ terms
         circ1 = circ.copy(deep=True)
         circ1.add(gates.M(*range(circ1.nqubits)))
@@ -185,12 +187,12 @@ def _with_shots(circ, ham, ham_name, nshots, exec_backend=None):
             expval_contribution = exec_backend.execute_circuit(
                 circuit=circ1, nshots=nshots
             ).expectation_from_samples(hamiltonian1)
-            expectation_value -= DEFAULT_DELTAS[i] * expval_contribution
+            expectation_value -= nqubits * expval_contribution
 
     else:
-        if (ham.matrix == Ham.XXZ(nqubits=nqubits).matrix).all():
+        if np.array_equal(np.array(ham.matrix), np.array(Ham.XXZ(nqubits=nqubits).matrix)):
             coefficients = [1, 1, DEFAULT_DELTA]
-        elif (ham.matrix == Ham.XYZ(nqubits=nqubits).matrix).all():
+        elif np.array_equal(np.array(ham.matrix), np.array(Ham.XYZ(nqubits=nqubits).matrix)):
             coefficients = [1, *DEFAULT_DELTAS]
         else:
             raise NotImplemented("This option is not valid")
@@ -209,7 +211,7 @@ def _with_shots(circ, ham, ham_name, nshots, exec_backend=None):
     return expectation_value
 
 
-def _exp_with_tf(circuit, hamiltonian, nshots=None, delta=0.5):
+def _exp_with_tf(circuit, hamiltonian, ham_name, nshots=None):
     params = circuit.get_parameters()
     nparams = len(circuit.get_parameters())
 
@@ -225,7 +227,7 @@ def _exp_with_tf(circuit, hamiltonian, nshots=None, delta=0.5):
                         hamiltonian=hamiltonian,
                         parameter_index=p,
                         nshots=nshots,
-                        delta=delta,
+                        ham_name=ham_name,
                         exec_backend=NumpyBackend(),
                     )
                 )
@@ -234,7 +236,7 @@ def _exp_with_tf(circuit, hamiltonian, nshots=None, delta=0.5):
         if nshots is None:
             expectation_value = _exact(circuit, hamiltonian)
         else:
-            expectation_value = _with_shots(circuit, hamiltonian, nshots, delta)
+            expectation_value = _with_shots(circ=circuit, ham=hamiltonian, ham_name=ham_name, nshots=nshots)
         return expectation_value, grad
 
     return _expectation(params)
@@ -245,8 +247,8 @@ def parameter_shift(
     circuit,
     parameter_index,
     exec_backend,
+    ham_name,
     nshots=None,
-    delta=0.5,
 ):
     """Parameter Shift Rule."""
 
@@ -277,10 +279,10 @@ def parameter_shift(
         backward = _exact(circ=circuit, hamiltonian=hamiltonian)
 
     else:
-        forward = _with_shots(circuit, hamiltonian, nshots, delta, exec_backend)
+        forward = _with_shots(circuit, hamiltonian, ham_name, nshots, exec_backend)
         shifted[parameter_index] -= 2 * s
         circuit.set_parameters(shifted)
-        backward = _with_shots(circuit, hamiltonian, nshots, delta, exec_backend)
+        backward = _with_shots(circuit, hamiltonian, ham_name, nshots, exec_backend)
 
     circuit.set_parameters(original)
     return float(generator_eigenval * (forward - backward))
