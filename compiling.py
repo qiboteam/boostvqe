@@ -3,6 +3,7 @@ import json
 import logging
 import pathlib
 import time
+from copy import deepcopy
 
 import numpy as np
 import qibo
@@ -33,13 +34,22 @@ from boostvqe.utils import (
 logging.basicConfig(level=logging.INFO)
 
 
+def dump_config(config: dict, path):
+    config["path"] = config["path"].name
+    config["db_rotation"] = config["db_rotation"].value
+    (path / "config.json").write_text(json.dumps(config))
+
+
 def main(args):
     """VQE training."""
     path = args.path
-
+    dump_path = (
+        path
+        / f"{args.db_rotation.name}_{args.optimization_method}_{args.epoch}e_{args.steps}s_{args.gd_steps}gds"
+    )
+    dump_path.mkdir(parents=True, exist_ok=True)
     config = json.loads((path / OPTIMIZATION_FILE).read_text())
-
-    # TODO: improve loading of params
+    dump_config(deepcopy(vars(args)), path=dump_path)
     try:
         params = np.load(path / f"parameters/params_ite{args.epoch}.npy")
     except FileNotFoundError:
@@ -132,7 +142,7 @@ def main(args):
         gci.eo_d = eo_d
         gci(best_s)
         print_report(report(vqe, hamiltonian, gci))
-    (args.path / "boosting_data.json").write_text(json.dumps(metadata))
+    (dump_path / "boosting_data.json").write_text(json.dumps(metadata))
 
 
 def report(vqe, hamiltonian, gci):
@@ -217,9 +227,6 @@ if __name__ == "__main__":
         choices=DoubleBracketRotationType,
         default="group_commutator_reduced",
         help="DB rotation type.",
-    )
-    parser.add_argument(
-        "--eo_d_name", default="B Field", type=str, help="D initialization"
     )
     parser.add_argument(
         "--optimization_method", default="sgd", type=str, help="Optimization method"
