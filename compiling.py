@@ -38,7 +38,7 @@ logging.basicConfig(level=logging.INFO)
 
 def dump_config(config: dict, path):
     config["path"] = config["path"]
-    config["db_rotation"] = config["db_rotation"].value
+    config["db_rotation"] = config["db_rotation"].name
     (path / "config.json").write_text(json.dumps(config, indent=4))
 
 
