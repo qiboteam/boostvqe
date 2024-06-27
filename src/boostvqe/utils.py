@@ -366,7 +366,8 @@ def optimize_D(
             args=(gci, eo_d_type, mode),
             options={"bounds": bounds, "maxiter": maxiter},
         )
-        return opt_results[0]
+        result_dict = convert_numpy(opt_results[-2].result._asdict())
+        return opt_results[0], {f"{method}_extras": result_dict}
     # scipy optimizations
     else:
         bounds = [s_bounds]
@@ -413,4 +414,18 @@ def optimize_D(
                 method=method,
                 options={"disp": 1, "maxiter": maxiter},
             )
-    return opt_results.x
+    return opt_results.x, {f"{method}_extras": convert_numpy(dict(opt_results))}
+
+
+def convert_numpy(obj):
+    """Convert numpy objects into python types which can be dumped."""
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, np.generic):
+        return obj.item()
+    elif isinstance(obj, dict):
+        return {key: convert_numpy(val) for key, val in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy(item) for item in obj]
+    else:
+        return obj
