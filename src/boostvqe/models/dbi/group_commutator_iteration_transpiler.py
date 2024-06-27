@@ -58,15 +58,11 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         diagonal_association: EvolutionOracle = None,
         mode_dbr: DoubleBracketRotationType = None,
     ):
-        if diagonal_association is None:
-            diagonal_association = self.eo_d
-        # Set rotation type
-        if mode_dbr is None:
-            mode_dbr = self.double_bracket_rotation_type
-
         # This will run the appropriate group commutator step
         rs_circ = self.recursion_step_circuit(
-            step_duration, diagonal_association, mode_dbr=mode_dbr
+            step_duration,
+            diagonal_association,
+            mode_dbr,
         )
         if (
             self.input_hamiltonian_evolution_oracle.evolution_oracle_type
@@ -196,7 +192,6 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             )
 
         eo_mode = eo_1.evolution_oracle_type
-
         if eo_mode is EvolutionOracleType.hamiltonian_simulation:
             return {
                 "forwards": reduce(Circuit.__add__, query_list_forward[::-1]),
@@ -210,7 +205,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         else:
             raise_error(ValueError, "Your EvolutionOracleType is not recognized")
 
-    def loss(self, step_duration: float = None, eo_d=None, mode_dbr=None):
+    def loss(self, step_duration: float, eo_d, mode_dbr):
         """
         Compute loss function distance between `look_ahead` steps.
 
@@ -227,25 +222,13 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
 
     def choose_step(
         self,
+        d,
         step_grid=None,
-        step_min: float = 1e-3,
-        step_max: float = 0.03,
-        s_guess=1e-5,
-        max_evals: int = 3,
-        optimizer: callable = None,
-        look_ahead: int = 1,
-        please_be_verbose: bool = False,
-        d=None,
         mode_dbr=None,
     ):
-        if step_grid is None:
-            step_grid = np.linspace(step_min, step_max, max_evals)
-
         losses = []
         for s in step_grid:
             losses.append(self.loss(s, d, mode_dbr))
-        if please_be_verbose:
-            print(losses)
         return step_grid[np.argmin(losses)], np.min(losses), losses
 
     def get_composed_circuit(self, step_duration=None, eo_d=None):
@@ -260,6 +243,9 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
             )
 
     def recursion_step_circuit(self, step_duration, eo_d, mode_dbr=None):
+        # Set rotation type
+        if mode_dbr is None:
+            mode_dbr = self.double_bracket_rotation_type
         return self.group_commutator(
             step_duration=step_duration, eo_1=eo_d, mode_dbr=mode_dbr
         )["forwards"]
