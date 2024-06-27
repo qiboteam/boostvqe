@@ -127,6 +127,8 @@ def main(args):
                 save_path="gci_step",
             )
 
+            opt_dict = {"sgd_extras": "To be defined"}
+
         else:
             if gci_step_nmb == 0:
                 p0 = [0.01]
@@ -134,7 +136,7 @@ def main(args):
             else:
                 p0 = [best_s]
                 p0.extend(best_b)
-            optimized_params = optimize_D(
+            optimized_params, opt_dict = optimize_D(
                 params=p0,
                 gci=gci,
                 method=args.optimization_method,
@@ -156,7 +158,7 @@ def main(args):
 
         this_report = report(vqe, hamiltonian, gci)
         print_report(this_report)
-        metadata[gci_step_nmb + 1] = this_report | step_data
+        metadata[gci_step_nmb + 1] = this_report | step_data | opt_dict
 
     (dump_path / "boosting_data.json").write_text(json.dumps(metadata, indent=4))
 
