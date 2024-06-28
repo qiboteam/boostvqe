@@ -2,6 +2,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import reduce
+from typing import Union
 
 import hyperopt
 import matplotlib.pyplot as plt
@@ -113,73 +114,68 @@ class FrameShiftedEvolutionOracle(EvolutionOracle):
 
 @dataclass
 class MagneticFieldEvolutionOracle(EvolutionOracle):
-    b: list
+    _params: Union[list, np.ndarray]
 
     @property
     def params(self):
-        if isinstance(self.b, list):
-            return self.b
-        return self.b.tolist()
+        if isinstance(self._params, list):
+            return self._params
+        return self._params.tolist()
+
+    @params.setter
+    def params(self, params):
+        self._params = params
 
     @classmethod
-    def from_b(
+    def load(
         cls,
-        b: list,
+        params: list,
         evolution_oracle_type: EvolutionOracleType = EvolutionOracleType.hamiltonian_simulation,
     ):
-        nqubits = len(b)
+        nqubits = len(params)
         hamiltonian = SymbolicHamiltonian(
-            sum([bi * symbols.Z(j) for j, bi in zip(range(nqubits), b)])
+            sum([bi * symbols.Z(j) for j, bi in zip(range(nqubits), params)])
         )
-        return cls(h=hamiltonian, evolution_oracle_type=evolution_oracle_type, b=b)
+        return cls(
+            h=hamiltonian, evolution_oracle_type=evolution_oracle_type, _params=params
+        )
 
 
+@dataclass
 class IsingNNEvolutionOracle(EvolutionOracle):
-    def __init__(
-        self,
-        b_list,
-        j_list,
-        name="H_ClassicalIsing(B,J)",
+    _params: Union[list, np.ndarray]
+
+    @property
+    def params(self):
+        if isinstance(self._params, list):
+            return self._params
+        return self._params.tolist()
+
+    @params.setter
+    def params(self, params):
+        self._params = params
+
+    @classmethod
+    def load(
+        cls,
+        params: list,
         evolution_oracle_type: EvolutionOracleType = EvolutionOracleType.hamiltonian_simulation,
     ):
-        """
-        Constructs the evolution oracle for the classical Ising model
-        .. math::
-            H = \\sum_{i=0}^{N-1} \\left( B_i Z_i+ J_i Z_i Z_{i+1} \\right)
-        """
-
-        self.nqubits = len(b_list)
-        d = SymbolicHamiltonian(
+        nqubits = len(params) // 2
+        b = params[:nqubits]
+        j = params[nqubits:]
+        hamiltonian = SymbolicHamiltonian(
             sum(
-                [b * symbols.Z(j) for j, b in zip(range(self.nqubits), b_list)]
+                [bi * symbols.Z(l) for l, bi in zip(range(nqubits), b)]
                 + [
-                    j_list[j] * symbols.Z(j) * symbols.Z((j + 1) % self.nqubits)
-                    for j in range(self.nqubits)
+                    j[i] * symbols.Z(i) * symbols.Z((i + 1) % nqubits)
+                    for i in range(nqubits)
                 ]
             )
         )
-        super().__init__(d, name, evolution_oracle_type)
-        self.b_list = b_list
-        self.j_list = j_list
-        self.please_assess_how_many_steps_to_use = (
-            False  # otherwise methods which cast to dense will be used
+        return cls(
+            h=hamiltonian, evolution_oracle_type=evolution_oracle_type, _params=params
         )
-        self.please_use_coarse_compiling = False
-
-    @property
-    def params(self):
-        return self.b_list.tolist() + self.j_list.tolist()
-
-    def discretized_evolution_circuit_binary_search(self, t_duration, eps=None):
-        if self.evolution_oracle_type is EvolutionOracleType.numerical:
-            return self.h.exp(t_duration)
-
-        if self.please_assess_how_many_steps_to_use:
-            return super().discretized_evolution_circuit_binary_search(
-                t_duration, eps=eps
-            )
-        else:
-            return self.h.circuit(t_duration)
 
     def circuit(self, t):
         """
@@ -195,25 +191,23 @@ class IsingNNEvolutionOracle(EvolutionOracle):
         Returns:
         Circuit: The final multi-layer circuit.
 
-        """
-        if self.please_use_coarse_compiling:
-            return super().circuit(t)
-        else:
-            circuit = Circuit(nqubits=self.nqubits)
-            # Create lists of even and odd qubit indices
-            list_q_i = [num for num in range(self.nqubits)]
-            list_q_ip1 = [num + 1 for num in range(self.nqubits - 1)]
-            list_q_ip1.append(0)
+        #"""
+        nqubits = len(self.params) // 2
+        circuit = Circuit(nqubits=nqubits)
+        # Create lists of even and odd qubit indices
+        list_q_i = [num for num in range(nqubits)]
+        list_q_ip1 = [num + 1 for num in range(nqubits - 1)]
+        list_q_ip1.append(0)
 
-            for q_i, q_ip1, j in zip(list_q_i, list_q_ip1, self.j_list):
-                circuit.add(gates.CNOT(q_i, q_ip1))
-                circuit.add(gates.RZ(q_ip1, 2 * t * j))
-                circuit.add(gates.CNOT(q_i, q_ip1))
-            circuit.add(
-                gates.RZ(q_i, 2 * t * b)
-                for q_i, b in zip(range(self.nqubits), self.b_list)
-            )
-            return circuit
+        for q_i, q_ip1, j in zip(list_q_i, list_q_ip1, self.params[nqubits:]):
+            circuit.add(gates.CNOT(q_i, q_ip1))
+            circuit.add(gates.RZ(q_ip1, 2 * t * j))
+            circuit.add(gates.CNOT(q_i, q_ip1))
+        circuit.add(
+            gates.RZ(q_i, 2 * t * b)
+            for q_i, b in zip(range(nqubits), self.params[:nqubits])
+        )
+        return circuit
 
 
 @dataclass

@@ -282,268 +282,75 @@ from boostvqe.models.dbi.utils_gci_optimization import *
 
 def select_recursion_step_gd_circuit(
     gci,
-    mode_dbr_list=[DoubleBracketRotationType.group_commutator_third_order],
-    eo_d=None,
+    mode,
+    eo_d_type,
+    params,
     step_grid=np.linspace(1e-5, 3e-2, 30),
     lr_range=(1e-3, 1),
     threshold=1e-4,
     max_eval_gd=30,
     nmb_gd_epochs=0,
-    please_be_visual=False,
-    please_be_verbose=True,
-    save_path="gci_step",
 ):
     """Returns: circuit of the step, code of the strategy"""
 
-    if eo_d is None:
-        eo_d = gci.eo_d
-    if isinstance(eo_d, MagneticFieldEvolutionOracle):
-        n_local = 1
-        params = eo_d.params
-    elif isinstance(eo_d, IsingNNEvolutionOracle):
-        n_local = 2
-        params = eo_d.params
-    else:
-        raise_error(ValueError, "Evolution oracle type not supported.")
-
-    minimal_losses = []
-    minimizer_s = []
-    minimizer_eo_d = []
-    for i, mode in enumerate(mode_dbr_list):
-        gci.mode_double_bracket_rotation = mode
-        # returns min_s, min_loss, loss_list
-        s, l, ls = gci.choose_step(d=eo_d, step_grid=step_grid, mode_dbr=mode)
-        for epoch in range(nmb_gd_epochs):
-            ls = []
-            s_min, s_max = step_grid[0], step_grid[-1]
-            lr_min, lr_max = lr_range[0], lr_range[-1]
-            eo_d, s, l, eval_dict, params, best_lr = choose_gd_params(
-                gci,
-                n_local,
-                params,
-                l,
-                s,
-                s_min,
-                s_max,
-                lr_min,
-                lr_max,
-                threshold,
-                max_eval_gd,
-            )
-
-        minimal_losses.append(l)
-        minimizer_s.append(s)
-        minimizer_eo_d.append(eo_d)
-
-        if please_be_visual:
-            if not nmb_gd_epochs:
-                plt.plot(step_grid, ls)
-                plt.yticks([ls[0], l, ls[-1]])
-                plt.xticks([step_grid[0], s, step_grid[-1]])
-            else:
-                plot_lr_s_loss(eval_dict)
-            if save_path is None:
-                save_path = f"{gci.path}figs/gci_boost_{gci.mode_double_bracket_rotation}_s={s}.pdf"
-            if gci.please_save_fig_to_pdf is True:
-                plt.savefig(save_path, format="pdf")
-            plt.show()
-
-    minimizer_dbr_id = np.argmin(minimal_losses)
-    if please_be_verbose:
-        print(
-            f"Just finished the selection: better loss {minimal_losses[minimizer_dbr_id]} for mode {mode_dbr_list[minimizer_dbr_id]},\
-                  with duration s={minimizer_s[minimizer_dbr_id]}, and eo_d name = {minimizer_eo_d[minimizer_dbr_id].__class__.__name__}"
+    # minimal_losses = []
+    # minimizer_s = []
+    # minimizer_eo_d = []
+    eo_d = eo_d_type.load(params)
+    # returns min_s, min_loss, loss_list
+    s, l, ls = gci.choose_step(d=eo_d, step_grid=step_grid, mode_dbr=mode)
+    for epoch in range(nmb_gd_epochs):
+        ls = []
+        s_min, s_max = step_grid[0], step_grid[-1]
+        lr_min, lr_max = lr_range[0], lr_range[-1]
+        eo_d, s, l, eval_dict, params, best_lr = choose_gd_params(
+            gci=gci,
+            eo_d_type=eo_d_type,
+            params=params,
+            loss_0=l,
+            s_0=s,
+            s_min=s_min,
+            s_max=s_max,
+            lr_min=lr_min,
+            lr_max=lr_max,
+            threshold=threshold,
+            max_eval=max_eval_gd,
+            mode=mode,
         )
-    return (
-        mode_dbr_list[minimizer_dbr_id],
-        minimizer_s[minimizer_dbr_id],
-        minimal_losses[minimizer_dbr_id],
-        minimizer_eo_d[minimizer_dbr_id],
-    )
 
-
-def execute_gci_boost(
-    nqubits=10,
-    nlayers=7,
-    seed=42,
-    target_epoch=200,
-    nmb_gci_steps=1,
-    eo_d=None,
-    optimization_method="cma",
-    optimization_config={"maxiter": 100},
-    mode_dbr=DoubleBracketRotationType.group_commutator_third_order_reduced,
-    please_be_verbose=False,
-    please_be_visual=False,
-):
-    """
-    Execute GCI boost with variational optimization of the diagonalizing operator D.
-
-    Supported ``optimization_config`` in case of chosen method "sgd":
-
-            optimization_config={
-                "nmb_gd_epochs": 1,
-            }
-
-    Supported ``optimization_config`` in case of other chosen methods:
-
-            optimization_config={
-                "maxiter": 100,
-            }
-    """
-    if please_be_verbose:
-        print(f"Initilizing gci:\n")
-    gci = initialize_gci_from_vqe(
-        nqubits=nqubits, nlayers=nlayers, seed=seed, target_epoch=target_epoch
-    )
-    if eo_d is not None:
-        gci.eo_d = eo_d
-
-    if please_be_verbose:
-        print(
-            f"The gci mode is {gci.mode_double_bracket_rotation} rotation with {gci.eo_d.name} as the oracle.\n"
-        )
-        print_vqe_comparison_report(gci)
-    boosting_callback_data = {}
-    for gci_step_nmb in range(nmb_gci_steps):
-        logging.info(
-            f"Optimizing GCI step {gci_step_nmb+1} with optimizer {optimization_method}"
-        )
-        it = time.time()
-        if optimization_method == "sgd":
-            _, best_s, _, eo_d = select_recursion_step_gd_circuit(
-                gci,
-                mode_dbr_list=[mode_dbr],
-                step_grid=np.linspace(1e-5, 2e-2, 30),
-                lr_range=(1e-3, 1),
-                nmb_gd_epochs=optimization_config["nmb_gd_epochs"],
-                threshold=1e-4,
-                max_eval_gd=30,
-                please_be_visual=please_be_visual,
-                save_path="gci_step",
-            )
-        else:
-            if gci_step_nmb == 0:
-                p0 = [0.01]
-                p0.extend([4 - np.sin(x / 3) for x in range(nqubits)])
-            else:
-                p0 = [best_s]
-                p0.extend(best_b)
-            optimized_params = optimize_D(
-                params=p0,
-                gci=gci,
-                method=optimization_method,
-                maxiter=optimization_config["maxiter"],
-            )
-            best_s = optimized_params[0]
-            best_b = optimized_params[1:]
-            eo_d = MagneticFieldEvolutionOracle(best_b)
-
-        logging.info(f"Total optimization time required: {time.time() - it} seconds")
-
-        gci.mode_double_bracket_rotation = mode_dbr
-        gci.eo_d = eo_d
-        print(gci.loss(best_s, eo_d))
-        gci(best_s)
-
-        if please_be_verbose:
-            print(f"Executing gci step {gci_step_nmb}:\n")
-            print(
-                f"The selected data is {gci.mode_double_bracket_rotation} rotation with {gci.eo_d.name} for the duration s = {best_s}."
-            )
-            print("--- the report after execution:\n")
-            print_vqe_comparison_report(gci)
-            print("==== the execution report ends here")
-
-        # boosting_callback_data[gci_step_nmb] = get_vqe_boosting_data(gci)
-
-    return gci  # , boosting_callback_data
-
-
-def get_eo_d_initializations(nqubits, eo_d_name="B Field"):
-    if eo_d_name == "B Field":
-        return [
-            MagneticFieldEvolutionOracle([4 - np.sin(x / 3) for x in range(nqubits)]),
-            MagneticFieldEvolutionOracle([1 + np.sin(x / 3) for x in range(nqubits)]),
-            MagneticFieldEvolutionOracle([1] * nqubits),
-            MagneticFieldEvolutionOracle(np.linspace(0, 2, nqubits)),
-            MagneticFieldEvolutionOracle(np.linspace(0, 1, nqubits)),
-        ]
-    elif eo_d_name == "H_ClassicalIsing(B,J)":
-        return [IsingNNEvolutionOracle([0] * nqubits, [1] * nqubits)]
-
-
-def print_vqe_comparison_report(gci, nmb_digits_rounding=2):
-    rounded_values = gci.get_vqe_boosting_data()
-    for key in rounded_values:
-        if isinstance(rounded_values[key], float):
-            rounded_values[key] = round(rounded_values[key], nmb_digits_rounding)
     print(
-        f"\
-The target energy is {rounded_values['target_energy']}\n\
-The VQE energy is {rounded_values['vqe_energy']} \n\
-The DBQA energy is {rounded_values['gci_loss']}. \n\
-The difference is for VQE is {rounded_values['diff_vqe_target']} \n\
-and for the DBQA {rounded_values['diff_gci_target']} \n\
-which can be compared to the spectral gap {rounded_values['gap']}.\n\
-The relative difference is \n\
-    - for VQE {rounded_values['diff_vqe_target_perc']}% \n\
-    - for DBQA {rounded_values['diff_gci_target_perc']}%.\n\
-The energetic fidelity witness of the ground state is: \n\
-    - for the VQE  {rounded_values['fidelity_witness_vqe']} \n\
-    - for DBQA {rounded_values['fidelity_witness_gci']}\n\
-The true fidelity is \n\
-    - for the VQE  {rounded_values['fidelity_vqe']}\n\
-    - for DBQA {rounded_values['fidelity_gci']}\n\
-                "
+        f"Just finished the selection: better loss {l} for mode {mode},\
+                with duration s={s}, and eo_d name = {eo_d.__class__.__name__}"
     )
-    gate_count = gci.print_gate_count_report()
-
-
-from mpl_toolkits.mplot3d import Axes3D
-
-
-def plot_lr_s_loss(eval_dict):
-    lr = [key[0] for key in eval_dict.keys()]
-    s = [key[1] for key in eval_dict.keys()]
-    loss = [value for value in eval_dict.values()]
-    min_loss_index = loss.index(min(loss))
-    min_lr = lr[min_loss_index]
-    min_s = s[min_loss_index]
-    min_loss = loss[min_loss_index]
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection="3d")
-    sc = ax.scatter(lr, s, loss, c=loss, cmap="viridis")
-    ax.scatter([min_lr], [min_s], [min_loss], color="red", s=100, label="Minimum Loss")
-    ax.text(
-        min_lr,
-        min_s,
-        min_loss,
-        f"({np.round(min_lr,2)}, {np.round(min_s,2)}, {np.round(min_loss,4)})",
-        color="red",
+    return (
+        mode,
+        s,
+        l,
+        eo_d,
     )
-    colorbar = plt.colorbar(sc)
-    colorbar.set_label("Loss")
-    ax.set_xlabel("Learning Rate (lr)")
-    ax.set_ylabel("Step (s)")
-    ax.set_zlabel("Loss")
-    ax.legend()
-    ax.set_title("3D Scatter Plot of (lr, s): loss")
 
 
 def callback_D_optimization(params, gci, loss_history, params_history):
     params_history.append(params)
-    eo_d = MagneticFieldEvolutionOracle.from_b(params[1:])
-    loss_history.append(gci.loss(params[0], eo_d))
+    gci.eo_d.params = params[1:]
+    # eo_d = MagneticFieldEvolutionOracle.from_b(params[1:])
+    loss_history.append(gci.loss(params[0]))
 
 
-def loss_function_D(params, gci):
+def loss_function_D(gci_params, gci, eo_d_type, mode):
     """``params`` has shape [s0, b_list_0]."""
-    eo = MagneticFieldEvolutionOracle.from_b(params[1:])
-    return gci.loss(params[0], eo)
+    return gci.loss(gci_params[0], eo_d_type.load(gci_params[1:]), mode)
 
 
 def optimize_D(
-    params, gci, method, s_bounds=(1e-4, 1e-1), b_bounds=(0.0, 9.0), maxiter=100
+    params,
+    gci,
+    eo_d_type,
+    mode,
+    method,
+    s_bounds=(1e-4, 1e-1),
+    b_bounds=(0.0, 9.0),
+    maxiter=100,
 ):
     """Optimize Ising GCI model using chosen optimization `method`."""
 
@@ -556,7 +363,7 @@ def optimize_D(
             loss_function_D,
             sigma0=0.5,
             x0=params,
-            args=(gci,),
+            args=(gci, eo_d_type, mode),
             options={"bounds": bounds, "maxiter": maxiter},
         )
         result_dict = convert_numpy(opt_results[-2].result._asdict())
@@ -572,7 +379,7 @@ def optimize_D(
                 func=loss_function_D,
                 x0=params,
                 bounds=bounds,
-                args=(gci,),
+                args=(gci, eo_d_type, mode),
                 maxiter=maxiter,
             )
         elif method == "differential_evolution":
@@ -580,14 +387,14 @@ def optimize_D(
                 func=loss_function_D,
                 x0=params,
                 bounds=bounds,
-                args=(gci,),
+                args=(gci, eo_d_type, mode),
                 maxiter=maxiter,
             )
         elif method == "DIRECT":
             opt_results = optimize.direct(
                 func=loss_function_D,
                 bounds=bounds,
-                args=(gci,),
+                args=(gci, eo_d_type, mode),
                 maxiter=maxiter,
             )
         elif method == "basinhopping":
@@ -595,7 +402,7 @@ def optimize_D(
                 func=loss_function_D,
                 x0=params,
                 niter=maxiter,
-                minimizer_kwargs={"method": "Powell", "args": (gci,)},
+                minimizer_kwargs={"method": "Powell", "args": (gci, eo_d_type, mode)},
             )
         # scipy local minimizers
         else:
@@ -603,7 +410,7 @@ def optimize_D(
                 fun=loss_function_D,
                 x0=params,
                 bounds=bounds,
-                args=(gci,),
+                args=(gci, eo_d_type, mode),
                 method=method,
                 options={"disp": 1, "maxiter": maxiter},
             )
