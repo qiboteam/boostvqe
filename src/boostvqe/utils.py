@@ -379,7 +379,7 @@ def optimize_D(
                 func=loss_function_D,
                 x0=params,
                 bounds=bounds,
-                args=(gci,),
+                args=(gci, eo_d_type, mode),
                 maxiter=maxiter,
             )
         elif method == "differential_evolution":
@@ -387,14 +387,14 @@ def optimize_D(
                 func=loss_function_D,
                 x0=params,
                 bounds=bounds,
-                args=(gci,),
+                args=(gci, eo_d_type, mode),
                 maxiter=maxiter,
             )
         elif method == "DIRECT":
             opt_results = optimize.direct(
                 func=loss_function_D,
                 bounds=bounds,
-                args=(gci,),
+                args=(gci, eo_d_type, mode),
                 maxiter=maxiter,
             )
         elif method == "basinhopping":
@@ -402,7 +402,7 @@ def optimize_D(
                 func=loss_function_D,
                 x0=params,
                 niter=maxiter,
-                minimizer_kwargs={"method": "Powell", "args": (gci,)},
+                minimizer_kwargs={"method": "Powell", "args": (gci, eo_d_type, mode)},
             )
         # scipy local minimizers
         else:
@@ -410,7 +410,7 @@ def optimize_D(
                 fun=loss_function_D,
                 x0=params,
                 bounds=bounds,
-                args=(gci,),
+                args=(gci, eo_d_type, mode),
                 method=method,
                 options={"disp": 1, "maxiter": maxiter},
             )
