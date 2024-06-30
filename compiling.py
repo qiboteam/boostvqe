@@ -47,7 +47,7 @@ def main(args):
     path = pathlib.Path(args.path)
     dump_path = (
         path
-        / f"{args.db_rotation.name}_{args.optimization_method}_{args.epoch}e_{args.steps}s"
+        / f"{args.eo_d}_{args.db_rotation.name}_{args.optimization_method}_{args.epoch}e_{args.steps}s"
     )
     dump_path.mkdir(parents=True, exist_ok=True)
 
