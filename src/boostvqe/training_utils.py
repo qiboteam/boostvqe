@@ -82,11 +82,6 @@ def XYZ(nqubits, deltas=[0.5, 0.5], dense=True, backend=None):
             :class:`qibo.core.hamiltonians.Hamiltonian`, otherwise it creates
             a :class:`qibo.core.hamiltonians.SymbolicHamiltonian`.
 
-    Example:
-        .. testcode::
-
-            from qibo.hamiltonians import XXZ
-            h = XXZ(3) # initialized XXZ model with 3 qubits
     """
     if nqubits < 2:
         raise_error(ValueError, "Number of qubits must be larger than one.")
@@ -110,9 +105,7 @@ def XYZ(nqubits, deltas=[0.5, 0.5], dense=True, backend=None):
 
 
 def vqe_loss(params, circuit, hamiltonian, nshots=None):
-    """Evaluate the hamiltonian expectation values of the circuit final state.
-
-    """
+    """Evaluate the hamiltonian expectation values of the circuit final state."""
     circ = circuit.copy(deep=True)
     circ.set_parameters(params)
     if isinstance(hamiltonian.backend, TensorflowBackend) and nshots is not None:
