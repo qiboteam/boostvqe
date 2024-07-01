@@ -33,7 +33,7 @@ class Model(Enum):
 
 
 def TLFIM(nqubits, h=[0.5, 0.5], dense=True, backend=None):
-    """Transverse field Ising model with periodic boundary conditions.
+    """Transverse and longitudinal field Ising model with periodic boundary conditions.
 
     .. math::
         H = - \\sum _{i=0}^N \\left ( Z_i Z_{i + 1} + h_0 X_i + h_1 Z_i \\right ).
@@ -70,7 +70,7 @@ def TLFIM(nqubits, h=[0.5, 0.5], dense=True, backend=None):
 
 
 def XYZ(nqubits, deltas=[0.5, 0.5], dense=True, backend=None):
-    """Heisenberg XXZ model with periodic boundary conditions.
+    """XYZ model with periodic boundary conditions.
 
     .. math::
         H = \\sum _{i=0}^N \\left ( X_iX_{i + 1} + \\delta_0 Y_iY_{i + 1} + \\delta_1 Z_iZ_{i + 1} \\right ).
@@ -112,8 +112,6 @@ def XYZ(nqubits, deltas=[0.5, 0.5], dense=True, backend=None):
 def vqe_loss(params, circuit, hamiltonian, nshots=None):
     """Evaluate the hamiltonian expectation values of the circuit final state.
 
-    TODO: fix the following statement.
-    IMPORTANT: this works only for Heisemberg hamiltonians XXZ.
     """
     circ = circuit.copy(deep=True)
     circ.set_parameters(params)
