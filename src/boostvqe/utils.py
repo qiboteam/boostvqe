@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 from pathlib import Path
@@ -117,7 +118,7 @@ def train_vqe(
         loss_fluctuation.append(
             callback_energy_fluctuations(params, vqe.circuit, vqe.hamiltonian)
         )
-        params_history.append(params)
+        params_history.append(copy.deepcopy(params))
         grads_history.append(
             compute_gradients(
                 parameters=params, circuit=circ.copy(deep=True), hamiltonian=ham
@@ -128,7 +129,6 @@ def train_vqe(
 
         if niterations is not None and iteration_count % nmessage == 0:
             logging.info(f"Optimization iteration {iteration_count}/{niterations}")
-            print(energy)
             logging.info(f"Loss {energy:.5}")
 
     callbacks(initial_parameters)
@@ -160,9 +160,9 @@ def rotate_h_with_vqe(hamiltonian, vqe):
     circuit = vqe.circuit
     # create circuit matrix and compute the rotation
     matrix_circ = np.matrix(backend.to_numpy(circuit.unitary()))
-    matrix_circ_dagger = backend.cast(matrix_circ.getH())
+    matrix_circ_dagger = backend.cast(np.array(matrix_circ.getH()))
     matrix_circ = backend.cast(matrix_circ)
-    new_hamiltonian = matrix_circ_dagger @ hamiltonian.matrix @ matrix_circ
+    new_hamiltonian = matrix_circ_dagger @ hamiltonian.matrix @ np.array(matrix_circ)
     return new_hamiltonian
 
 

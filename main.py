@@ -24,7 +24,6 @@ from boostvqe.utils import (
     DBI_ENERGIES,
     DBI_FLUCTUATIONS,
     DBI_STEPS,
-    DELTA,
     FLUCTUATION_FILE,
     GRADS_FILE,
     HAMILTONIAN_FILE,
@@ -38,8 +37,6 @@ from boostvqe.utils import (
     rotate_h_with_vqe,
     train_vqe,
 )
-
-logging.basicConfig(level=logging.INFO)
 
 
 def main(args):
