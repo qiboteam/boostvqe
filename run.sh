@@ -14,12 +14,12 @@ SEED=42
 
 OPTIMIZER="sgd"
 BACKEND="tensorflow"
-OPTIMIZER_OPTIONS="{ \"optimizer\": \"Adam\", \"learning_rate\": 0.01, \"nmessage\": 1, \"nepochs\": $BOOST_FREQUENCY }"
-DECAY_RATE_LR=0.05
+OPTIMIZER_OPTIONS="{ \"optimizer\": \"Adam\", \"learning_rate\": 0.005, \"nmessage\": 1, \"nepochs\": $BOOST_FREQUENCY }"
+DECAY_RATE_LR=1.
 
-python main.py  --nqubits $NQUBITS --nlayers $NLAYERS --optimizer $OPTIMIZER \
-                --output_folder results/tlfim_shots --backend $BACKEND \
+python3 main.py  --nqubits $NQUBITS --nlayers $NLAYERS --optimizer $OPTIMIZER \
+                --output_folder results/big_architectures_small_lr --backend $BACKEND \
                 --dbi_step $DBI_STEPS --seed $SEED \
                 --boost_frequency $BOOST_FREQUENCY --nboost $NBOOST \
                 --optimizer_options "$OPTIMIZER_OPTIONS" \
-                --hamiltonian "TLFIM" --nshots $NSHOTS 
+                --hamiltonian "TLFIM" --nshots $NSHOTS

@@ -1,12 +1,19 @@
 import copy
 import json
 import logging
+import time
 from pathlib import Path
 
+import cma
+import matplotlib.pyplot as plt
 import numpy as np
-from qibo import get_backend
+from qibo import hamiltonians
+from scipy import optimize
 
-from boostvqe.ansatze import VQE, compute_gradients
+from boostvqe.ansatze import VQE, build_circuit, compute_gradients
+from boostvqe.compiling_XXZ import *
+from boostvqe.models.dbi.double_bracket_evolution_oracles import *
+from boostvqe.models.dbi.group_commutator_iteration_transpiler import *
 
 OPTIMIZATION_FILE = "optimization_results.json"
 PARAMS_FILE = "parameters_history.npy"
@@ -177,7 +184,7 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
             # Change logging level to reduce verbosity
             logging.getLogger().setLevel(logging.WARNING)
             step = dbi.hyperopt_step(
-                step_min=1e-4, step_max=1, max_evals=50, verbose=True
+                step_min=1e-4, step_max=0.01, max_evals=50, verbose=True
             )
             # Restore the original logging level
             logging.getLogger().setLevel(logging.INFO)
@@ -192,3 +199,232 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
 
         logging.info(f"DBI energies: {energies}")
     return hamiltonians, energies, fluctuations, steps, d_matrix, operators
+
+
+def initialize_gci_from_vqe(
+    nqubits=10,
+    nlayers=7,
+    seed=42,
+    target_epoch=2000,
+    mode_dbr=DoubleBracketRotationType.group_commutator_third_order_reduced,
+):
+    path = f"../results/vqe_data/with_params/{nqubits}q{nlayers}l/sgd_{nqubits}q_{nlayers}l_{seed}/"
+
+    # upload system configuration and parameters for all the training
+    with open(path + "optimization_results.json") as file:
+        config = json.load(file)
+
+    losses = dict(np.load(path + "energies.npz"))["0"]
+    params = np.load(path + f"parameters/params_ite{target_epoch}.npy")
+
+    nqubits = config["nqubits"]
+    # build circuit, hamiltonian and VQE
+    circuit = build_circuit(nqubits, config["nlayers"], "numpy")
+    hamiltonian = hamiltonians.XXZ(nqubits=nqubits, delta=0.5)
+
+    vqe = VQE(circuit, hamiltonian)
+    # set target parameters into the VQE
+    vqe.circuit.set_parameters(params)
+
+    eo_xxz = XXZ_EvolutionOracle(nqubits, steps=1, order=2)
+    # implement the rotate by VQE on the level of circuits
+    fsoe = VQERotatedEvolutionOracle(eo_xxz, vqe)
+    # init gci with the vqe-rotated hamiltonian
+    gci = VQEBoostingGroupCommutatorIteration(
+        input_hamiltonian_evolution_oracle=fsoe, mode_double_bracket_rotation=mode_dbr
+    )
+
+    return gci
+
+
+def select_recursion_step_circuit(
+    gci,
+    mode_dbr_list=[DoubleBracketRotationType.group_commutator_third_order_reduced],
+    eo_d=None,
+    step_grid=np.linspace(1e-3, 3e-2, 10),
+    please_be_visual=False,
+    save_path=None,
+):
+    """Returns: circuit of the step, code of the strategy"""
+
+    if eo_d is None:
+        eo_d = gci.eo_d
+
+    minimal_losses = []
+    all_losses = []
+    minimizer_s = []
+    for i, mode in enumerate(mode_dbr_list):
+        gci.mode_double_bracket_rotation = mode
+        s, l, ls = gci.choose_step(d=eo_d, step_grid=step_grid, mode_dbr=mode)
+        # here optimize over gradient descent
+        minimal_losses.append(l)
+        minimizer_s.append(s)
+
+        if please_be_visual:
+            plt.plot(step_grid, ls)
+            plt.yticks([ls[0], l, ls[-1]])
+            plt.xticks([step_grid[0], s, step_grid[-1]])
+            plt.title(mode.name)
+            if save_path is None:
+                save_path = f"{gci.path}figs/gci_boost_{gci.mode_double_bracket_rotation}_s={s}.pdf"
+            if gci.please_save_fig_to_pdf is True:
+                plt.savefig(save_path, format="pdf")
+            plt.show()
+
+    minimizer_dbr_id = np.argmin(minimal_losses)
+
+    return mode_dbr_list[minimizer_dbr_id], minimizer_s[minimizer_dbr_id], eo_d
+
+
+from boostvqe.models.dbi.utils_gci_optimization import *
+
+
+def select_recursion_step_gd_circuit(
+    gci,
+    mode,
+    eo_d_type,
+    params,
+    step_grid=np.linspace(1e-5, 3e-2, 30),
+    lr_range=(1e-3, 1),
+    threshold=1e-4,
+    max_eval_gd=30,
+    nmb_gd_epochs=0,
+):
+    """Returns: circuit of the step, code of the strategy"""
+
+    # minimal_losses = []
+    # minimizer_s = []
+    # minimizer_eo_d = []
+    eo_d = eo_d_type.load(params)
+    # returns min_s, min_loss, loss_list
+    s, l, ls = gci.choose_step(d=eo_d, step_grid=step_grid, mode_dbr=mode)
+    for epoch in range(nmb_gd_epochs):
+        ls = []
+        s_min, s_max = step_grid[0], step_grid[-1]
+        lr_min, lr_max = lr_range[0], lr_range[-1]
+        eo_d, s, l, eval_dict, params, best_lr = choose_gd_params(
+            gci=gci,
+            eo_d_type=eo_d_type,
+            params=params,
+            loss_0=l,
+            s_0=s,
+            s_min=s_min,
+            s_max=s_max,
+            lr_min=lr_min,
+            lr_max=lr_max,
+            threshold=threshold,
+            max_eval=max_eval_gd,
+            mode=mode,
+        )
+
+    print(
+        f"Just finished the selection: better loss {l} for mode {mode},\
+                with duration s={s}, and eo_d name = {eo_d.__class__.__name__}"
+    )
+    return (
+        mode,
+        s,
+        l,
+        eo_d,
+    )
+
+
+def callback_D_optimization(params, gci, loss_history, params_history):
+    params_history.append(params)
+    gci.eo_d.params = params[1:]
+    # eo_d = MagneticFieldEvolutionOracle.from_b(params[1:])
+    loss_history.append(gci.loss(params[0]))
+
+
+def loss_function_D(gci_params, gci, eo_d_type, mode):
+    """``params`` has shape [s0, b_list_0]."""
+    return gci.loss(gci_params[0], eo_d_type.load(gci_params[1:]), mode)
+
+
+def optimize_D(
+    params,
+    gci,
+    eo_d_type,
+    mode,
+    method,
+    s_bounds=(1e-4, 1e-1),
+    b_bounds=(0.0, 9.0),
+    maxiter=100,
+):
+    """Optimize Ising GCI model using chosen optimization `method`."""
+
+    # evolutionary strategy
+    if method == "cma":
+        lower_bounds = s_bounds[0] + b_bounds[0] * (len(params) - 1)
+        upper_bounds = s_bounds[1] + b_bounds[1] * (len(params) - 1)
+        bounds = [lower_bounds, upper_bounds]
+        opt_results = cma.fmin(
+            loss_function_D,
+            sigma0=0.5,
+            x0=params,
+            args=(gci, eo_d_type, mode),
+            options={"bounds": bounds, "maxiter": maxiter},
+        )
+        result_dict = convert_numpy(opt_results[-2].result._asdict())
+        return opt_results[0], {f"{method}_extras": result_dict}
+    # scipy optimizations
+    else:
+        bounds = [s_bounds]
+        for _ in range(len(params) - 1):
+            bounds.append(b_bounds)
+        # dual annealing algorithm
+        if method == "annealing":
+            opt_results = optimize.dual_annealing(
+                func=loss_function_D,
+                x0=params,
+                bounds=bounds,
+                args=(gci, eo_d_type, mode),
+                maxiter=maxiter,
+            )
+        elif method == "differential_evolution":
+            opt_results = optimize.differential_evolution(
+                func=loss_function_D,
+                x0=params,
+                bounds=bounds,
+                args=(gci, eo_d_type, mode),
+                maxiter=maxiter,
+            )
+        elif method == "DIRECT":
+            opt_results = optimize.direct(
+                func=loss_function_D,
+                bounds=bounds,
+                args=(gci, eo_d_type, mode),
+                maxiter=maxiter,
+            )
+        elif method == "basinhopping":
+            opt_results = optimize.basinhopping(
+                func=loss_function_D,
+                x0=params,
+                niter=maxiter,
+                minimizer_kwargs={"method": "Powell", "args": (gci, eo_d_type, mode)},
+            )
+        # scipy local minimizers
+        else:
+            opt_results = optimize.minimize(
+                fun=loss_function_D,
+                x0=params,
+                bounds=bounds,
+                args=(gci, eo_d_type, mode),
+                method=method,
+                options={"disp": 1, "maxiter": maxiter},
+            )
+    return opt_results.x, {f"{method}_extras": convert_numpy(dict(opt_results))}
+
+
+def convert_numpy(obj):
+    """Convert numpy objects into python types which can be dumped."""
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, np.generic):
+        return obj.item()
+    elif isinstance(obj, dict):
+        return {key: convert_numpy(val) for key, val in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy(item) for item in obj]
+    else:
+        return obj
