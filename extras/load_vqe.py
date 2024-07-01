@@ -11,7 +11,7 @@ from qibo.models.dbi.double_bracket import (
 )
 
 from boostvqe.ansatze import VQE, build_circuit
-from boostvqe.training_utils import Ham
+from boostvqe.training_utils import Model
 from boostvqe.utils import apply_dbi_steps, rotate_h_with_vqe
 
 qibo.set_backend("numpy")
@@ -31,7 +31,7 @@ params = np.load(paramspath, allow_pickle=True).tolist()[0]
 
 
 # build circuit, hamiltonian and VQE
-hamiltonian = getattr(Ham, config["hamiltonian"])(config["nqubits"])
+hamiltonian = getattr(Model, config["hamiltonian"])(config["nqubits"])
 circuit = build_circuit(config["nqubits"], config["nlayers"])
 vqe = VQE(circuit, hamiltonian, config["hamiltonian"])
 zero_state = hamiltonian.backend.zero_state(config["nqubits"])

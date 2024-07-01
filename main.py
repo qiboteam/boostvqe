@@ -18,7 +18,7 @@ from qibo.models.dbi.double_bracket import (
 # boostvqe's
 from boostvqe.ansatze import build_circuit
 from boostvqe.plotscripts import plot_gradients, plot_loss
-from boostvqe.training_utils import Ham, vqe_loss
+from boostvqe.training_utils import Model, vqe_loss
 from boostvqe.utils import (
     DBI_D_MATRIX,
     DBI_ENERGIES,
@@ -57,7 +57,7 @@ def main(args):
     # setup the results folder
     logging.info("Set VQE")
     path = pathlib.Path(create_folder(generate_path(args)))
-    ham = getattr(Ham, args.hamiltonian)(args.nqubits)
+    ham = getattr(Model, args.hamiltonian)(args.nqubits)
     target_energy = np.real(np.min(np.asarray(ham.eigenvalues())))
     circ0 = build_circuit(
         nqubits=args.nqubits,

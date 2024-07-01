@@ -23,7 +23,7 @@ DEFAULT_DELTA = 0.5
 DEFAULT_DELTAS = [0.5, 0.5]
 
 
-class Ham(Enum):
+class Model(Enum):
     XXZ = lambda nqubits: hamiltonians.XXZ(
         nqubits=nqubits, delta=DEFAULT_DELTA, dense=False
     )
@@ -153,7 +153,9 @@ def _with_shots(circ, ham, nshots, exec_backend=None):
     expectation_value = 0
     nqubits = circ.nqubits
 
-    if np.array_equal(np.array(ham.matrix), np.array(Ham.TFIM(nqubits=nqubits).matrix)):
+    if np.array_equal(
+        np.array(ham.matrix), np.array(Model.TFIM(nqubits=nqubits).matrix)
+    ):
         # Evaluate the ZZ terms
         circ1 = circ.copy(deep=True)
         circ1.add(gates.M(*range(circ1.nqubits)))
@@ -171,7 +173,7 @@ def _with_shots(circ, ham, nshots, exec_backend=None):
         expectation_value -= nqubits * expval_contribution
 
     elif np.array_equal(
-        np.array(ham.matrix), np.array(Ham.TLFIM(nqubits=nqubits).matrix)
+        np.array(ham.matrix), np.array(Model.TLFIM(nqubits=nqubits).matrix)
     ):
         # Evaluate the ZZ terms
         circ1 = circ.copy(deep=True)
@@ -195,11 +197,11 @@ def _with_shots(circ, ham, nshots, exec_backend=None):
 
     else:
         if np.array_equal(
-            np.array(ham.matrix), np.array(Ham.XXZ(nqubits=nqubits).matrix)
+            np.array(ham.matrix), np.array(Model.XXZ(nqubits=nqubits).matrix)
         ):
             coefficients = [1, 1, DEFAULT_DELTA]
         elif np.array_equal(
-            np.array(ham.matrix), np.array(Ham.XYZ(nqubits=nqubits).matrix)
+            np.array(ham.matrix), np.array(Model.XYZ(nqubits=nqubits).matrix)
         ):
             coefficients = [1, *DEFAULT_DELTAS]
         else:
