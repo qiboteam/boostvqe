@@ -12,6 +12,21 @@ def calculate_vqe_gates(nqubits, nlayers):
     ncz = len(c.gates_of_type("cz"))
     return ncz
 
+def load_nfval_given_opt(boostpath, gci_steps, optimizer):
+    """Load the number of function evaluations given optimizer and results."""
+    filepath = f"{boostpath}/boosting_data.json"
+    nfvals = []    
+    with open(filepath, 'r') as file:
+        res_dict = json.load(file)  
+    for s in range(gci_steps):
+        if optimizer == "sgd":
+            raise ValueError("nfvals calculation not supported for SGD")
+        elif optimizer == "cma":
+            nfvals.append(res_dict[str(s+1)]["cma_extras"]["evaluations"])
+        else:
+            nfvals.append(res_dict[str(s+1)][f"{optimizer}_extras"]["nfev"])
+    return nfvals
+
 def load_all_results_given_path(path):
     """Load all dictionaries given path to a collection of VQE trainings."""
     # we collect results here
@@ -41,16 +56,17 @@ def load_jumps_given_boosting(boostpath, gci_steps=3):
         energies.append(results[str(s+1)]["gci_loss"])
     return energies
 
-def load_cgates_given_boosting(boostpath, gci_steps=3):
+def load_cgates_given_boosting(boostpath, optimizer, gci_steps=3):
     """Load the two qubit gates required to perform up to `gci_steps` rotations."""
     filepath = f"{boostpath}/boosting_data.json"
-    cgates, accuracies = [], []    
+    cgates, accuracies, nfvals = [], [], []    
     with open(filepath, 'r') as file:
         results = json.load(file)  
     for s in range(gci_steps):
         cgates.append(results[str(s+1)]["nmb_cz"] + results[str(s+1)]["nmb_cnot"])
         accuracies.append(abs(results[str(s+1)]["gci_loss"] - results[str(s+1)]["target_energy"]))
-    return cgates, accuracies
+        nfvals.append(load_nfval_given_opt(boostpath, gci_steps, optimizer))
+    return np.array(cgates), np.array(accuracies), np.array(nfvals)
 
 
 def plot_jumps(path, nqubits, nlayers, seed, rotation_type, optimizer, epochs, title):
@@ -94,6 +110,7 @@ def plot_jumps(path, nqubits, nlayers, seed, rotation_type, optimizer, epochs, t
     plt.savefig(f"{title}.png", dpi=600)
 
 
+
 def scatterplot_acc_vs_gates(path, nqubits, nlayers, seed, rotation_type, optimizer, epochs, title):
     vqepath = f"{path}sgd_{nqubits}q_{nlayers}l_{seed}"
     # load losses
@@ -101,23 +118,127 @@ def scatterplot_acc_vs_gates(path, nqubits, nlayers, seed, rotation_type, optimi
     losses_1Lmore = dict(np.load(f"{path}sgd_{nqubits}q_{nlayers+1}l_{seed}/energies.npz"))["0"]
     losses_2Lmore = dict(np.load(f"{path}sgd_{nqubits}q_{nlayers+2}l_{seed}/energies.npz"))["0"]
     # load boosts executed at given epochs
-    cgates, accuracies = []
-    for e in epochs:
-        cg, acc = load_jumps_given_boosting(
-                f"{vqepath}/{rotation_type}_{optimizer}_{e}e_3s"
-            )
-        cgates.append(cg)
-        accuracies.append(acc)
+    cgates, accuracies, gci_nfvals = [], [], []
 
+    plt.figure(figsize=(6, 6 * 6/8))
+
+    for j, e in enumerate(epochs):
+        gci_cg, accuracies, gci_nfval = load_cgates_given_boosting(
+            f"{vqepath}/{rotation_type}_{optimizer}_{e}e_3s",
+            optimizer,
+            3,
+            )
+
+        nparams = len(build_circuit(nqubits, nlayers).get_parameters())
+        nparams_1Lmore = len(build_circuit(nqubits, nlayers+1).get_parameters())
+        nparams_2Lmore = len(build_circuit(nqubits, nlayers+2).get_parameters())
+
+        vqe_cg = 2 * nparams * e * calculate_vqe_gates(nqubits, nlayers)
+        vqe_cg_1Lmore = 2 * nparams_1Lmore * e * calculate_vqe_gates(nqubits, nlayers+1)
+        vqe_cg_2Lmore = 2 * nparams_2Lmore * e * calculate_vqe_gates(nqubits, nlayers+2)
+        gci_cg = gci_cg * gci_nfval + vqe_cg
+        gci_cg = gci_cg[0]
+
+        cg_list = [vqe_cg, vqe_cg_1Lmore, vqe_cg_2Lmore, gci_cg[-1]]
+
+        max_cg = max(cg_list)
+
+        size = 50
+
+        for i, gates in enumerate(gci_cg):
+            if j == 0:
+                if i == 0:
+                    plt.scatter(
+                        abs(losses[e] - true_ground_energy), 
+                        vqe_cg, 
+                        color="royalblue", 
+                        marker=epoch_shapes[j],
+                        label="VQE",
+                        s=size,
+                    )
+                    plt.scatter(
+                        abs(losses_1Lmore[e] - true_ground_energy), 
+                        vqe_cg_1Lmore, 
+                        color="#51B4F0",
+                        marker=epoch_shapes[j],
+                        label="VQE +1 layer",
+                        s=size,
+                    )
+                    plt.scatter(
+                        abs(losses_2Lmore[e] - true_ground_energy), 
+                        vqe_cg_2Lmore, 
+                        color="#51F0DF",
+                        marker=epoch_shapes[j],
+                        label="VQE +2 layers",
+                        s=size,
+                    )
+                    plt.scatter(
+                        accuracies[i], 
+                        gates, 
+                        color=steps_colors[i], 
+                        marker=epoch_shapes[j], 
+                        label=f"{i+1} GCI steps",
+                        s=size,
+                    )
+                else:
+                    plt.scatter(
+                        accuracies[i], 
+                        gates, 
+                        color=steps_colors[i], 
+                        marker=epoch_shapes[j], 
+                        label=f"{i+1} GCI steps",
+                        s=size,
+                    )
+                    
+            else:
+                plt.scatter(
+                    accuracies[i], 
+                    gates, 
+                    color=steps_colors[i], 
+                    marker=epoch_shapes[j],
+                    s=size,
+                )
+                plt.scatter(
+                    abs(losses[e] - true_ground_energy), 
+                    vqe_cg, 
+                    color="royalblue", 
+                    marker=epoch_shapes[j],
+                    s=size,
+                )
+                plt.scatter(
+                    abs(losses_1Lmore[e] - true_ground_energy), 
+                    vqe_cg_1Lmore, 
+                    color="#51B4F0",
+                    alpha=0.8, 
+                    marker=epoch_shapes[j],
+                    s=size,
+                )
+                plt.scatter(
+                    abs(losses_2Lmore[e] - true_ground_energy), 
+                    vqe_cg_2Lmore, 
+                    color="#51F0DF",
+                    alpha=0.6, 
+                    marker=epoch_shapes[j],
+                    s=size,
+                )
+        plt.hlines(max_cg, 0, 0.7, color="black", ls="-", lw=0.7)
+    plt.title(f"{nqubits} qubits, {nlayers} layers, XXZ")
+    plt.legend(ncols=2)
+    plt.xlabel("Absolute error")
+    plt.ylabel("# 2q gates")
+    plt.savefig(f"{title}.png")
+    plt.show()
+        
 
 
 path = "../results/moreonXXZ/compile_targets_light/"
 true_ground_energy = -15.276131122065937
 studied_epochs = [1000, 2000, 3000, 4000, 5000]
 steps_colors = ["#f99f1e", "#f05426", "#8c1734"]
+epoch_shapes = ["o", "s", "P", "d", "v"] 
 dbi_steps = 3
 nq = 10
-nl = 4
+nl = 7
 opt = "Powell"
 seed = 13
 
@@ -131,7 +252,18 @@ plot_jumps(
     rotation_type="group_commutator_third_order_reduced",
     optimizer=opt,
     epochs=studied_epochs,
-    title=f"{nq}Q{nl}L{seed}S_{opt}"
+    title=f"{nq}Q{nl}L{seed}S_{opt}_jumps"
+)
+
+scatterplot_acc_vs_gates(
+    path=path, 
+    nqubits=nq,
+    nlayers=nl,
+    seed=seed,
+    rotation_type="group_commutator_third_order_reduced",
+    optimizer=opt,
+    epochs=studied_epochs,
+    title=f"{nq}Q{nl}L{seed}S_{opt}_scatter"    
 )
 
 
