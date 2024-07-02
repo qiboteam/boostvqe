@@ -129,7 +129,6 @@ def _exact(circ, hamiltonian):
 
 def _with_shots(circ, ham, nshots, exec_backend=None):
     """Helper function to compute XXZ expectation value from frequencies."""
-    # import pdb; pdb.set_trace()
     # we may prefer run this on a different backend (e.g. with TF and PSR)
     if exec_backend is None:
         exec_backend = ham.backend
