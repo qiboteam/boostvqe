@@ -2,11 +2,13 @@ import json
 import time
 import argparse
 import logging
-from pathlib import Path
+import pathlib
 
 import numpy as np
 import qibo
 from qibo import hamiltonians, set_backend
+from qibo.backends import construct_backend
+
 from qibo.models.dbi.double_bracket import (
     DoubleBracketGeneratorType,
     DoubleBracketIteration,
@@ -28,12 +30,12 @@ def main(args):
     path = pathlib.Path(args.path)
     dump_path = (
         path
-        / f"single_commutator_{args.optimization_method}_{args.epoch}e_{args.steps}s"
+        / f"single_commutator_hyperopt_{args.epoch}e_{args.steps}s"
     )
     dump_path.mkdir(parents=True, exist_ok=True)
 
     config = json.loads((path / OPTIMIZATION_FILE).read_text())
-    dump_config(deepcopy(vars(args)), path=dump_path)
+    # dump_config(deepcopy(vars(args)), path=dump_path)
 
     try:
         params = np.load(path / f"parameters/params_ite{args.epoch}.npy")
@@ -59,13 +61,19 @@ def main(args):
     vqe.circuit.set_parameters(params)
 
     zero_state = hamiltonian.backend.zero_state(config["nqubits"])
-    target_energy = np.min(hamiltonian.eigenvalues())
+    target_energy = np.min(np.array(hamiltonian.eigenvalues()))
 
     # set target parameters into the VQE
     vqe.circuit.set_parameters(params)
     vqe_state = vqe.circuit().state()
 
     ene1 = hamiltonian.expectation(vqe_state)
+
+    print("Rotating with VQE")
+    new_hamiltonian_matrix = rotate_h_with_vqe(hamiltonian=hamiltonian, vqe=vqe)
+    new_hamiltonian = hamiltonians.Hamiltonian(
+        nqubits, matrix=new_hamiltonian_matrix
+    )
 
     dbi = DoubleBracketIteration(
         hamiltonian=new_hamiltonian,
@@ -77,7 +85,18 @@ def main(args):
     fluctuations_h0 = float(dbi.h.energy_fluctuation(zero_state_t))
 
 
+    dbi_results = apply_dbi_steps(
+        dbi=dbi,
+        nsteps=args.steps,
+        optimize_step=True,
+    )
 
+    dbi_energies = dbi_results[1]
+    dict_results = {
+        "dbi_energies": dbi_energies
+    }
+    
+    (dump_path / "boosting_data.json").write_text(json.dumps(dict_results, indent=4))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Boosting VQE with DBI.")

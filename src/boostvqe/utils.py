@@ -7,12 +7,15 @@ import cma
 import matplotlib.pyplot as plt
 import numpy as np
 from qibo import hamiltonians
+from qibo.models.dbi.utils_scheduling import hyperopt_step
+
 from scipy import optimize
 
 from boostvqe.ansatze import VQE, build_circuit, compute_gradients
 from boostvqe.compiling_XXZ import *
 from boostvqe.models.dbi.double_bracket_evolution_oracles import *
 from boostvqe.models.dbi.group_commutator_iteration_transpiler import *
+
 
 OPTIMIZATION_FILE = "optimization_results.json"
 PARAMS_FILE = "parameters_history.npy"
@@ -184,8 +187,8 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
         if optimize_step:
             # Change logging level to reduce verbosity
             logging.getLogger().setLevel(logging.WARNING)
-            step = dbi.hyperopt_step(
-                step_min=1e-4, step_max=0.01, max_evals=50, verbose=True
+            step = dbi.choose_step(
+                scheduling=hyperopt_step, step_min=1e-4, step_max=0.01, max_evals=50,
             )
             # Restore the original logging level
             logging.getLogger().setLevel(logging.INFO)

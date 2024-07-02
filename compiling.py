@@ -8,7 +8,6 @@ from copy import deepcopy
 import numpy as np
 import qibo
 
-qibo.set_backend("numpy")
 from qibo import hamiltonians
 from qibo.backends import construct_backend
 from qibo.quantum_info.metrics import fidelity
@@ -34,6 +33,7 @@ from boostvqe.utils import (
 )
 
 logging.basicConfig(level=logging.INFO)
+qibo.set_backend("numpy")
 
 
 def dump_config(config: dict, path):
@@ -70,6 +70,7 @@ def main(args):
     nlayers = config["nlayers"]
     vqe_backend = construct_backend(backend=config["backend"])
     # TODO: remove delta hardcoded
+    print
     hamiltonian = getattr(hamiltonians, config["hamiltonian"])(
         nqubits=nqubits, delta=0.5, backend=vqe_backend
     )
