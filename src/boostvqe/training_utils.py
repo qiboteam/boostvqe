@@ -110,14 +110,12 @@ def vqe_loss(params, circuit, hamiltonian, nshots=None):
     circ.set_parameters(params)
     if isinstance(hamiltonian.backend, TensorflowBackend) and nshots is not None:
         expectation_value = _exp_with_tf(
-            circuit=circ, hamiltonian=hamiltonian, ham_name=ham_name, nshots=nshots
+            circuit=circ, hamiltonian=hamiltonian, nshots=nshots
         )
     elif nshots is None:
         expectation_value = _exact(circ, hamiltonian)
     else:
-        expectation_value = _with_shots(
-            circ=circ, ham=hamiltonian, ham_name=ham_name, nshots=nshots
-        )
+        expectation_value = _with_shots(circ=circ, ham=hamiltonian, nshots=nshots)
     return expectation_value
 
 
@@ -212,7 +210,7 @@ def _with_shots(circ, ham, nshots, exec_backend=None):
     return expectation_value
 
 
-def _exp_with_tf(circuit, hamiltonian, ham_name, nshots=None):
+def _exp_with_tf(circuit, hamiltonian, nshots=None):
     params = circuit.get_parameters()
     nparams = len(circuit.get_parameters())
 
@@ -228,7 +226,6 @@ def _exp_with_tf(circuit, hamiltonian, ham_name, nshots=None):
                         hamiltonian=hamiltonian,
                         parameter_index=p,
                         nshots=nshots,
-                        ham_name=ham_name,
                         exec_backend=NumpyBackend(),
                     )
                 )
@@ -238,7 +235,7 @@ def _exp_with_tf(circuit, hamiltonian, ham_name, nshots=None):
             expectation_value = _exact(circuit, hamiltonian)
         else:
             expectation_value = _with_shots(
-                circ=circuit, ham=hamiltonian, ham_name=ham_name, nshots=nshots
+                circ=circuit, ham=hamiltonian, nshots=nshots
             )
         return expectation_value, grad
 
@@ -250,7 +247,6 @@ def parameter_shift(
     circuit,
     parameter_index,
     exec_backend,
-    ham_name,
     nshots=None,
 ):
     """Parameter Shift Rule."""
@@ -282,10 +278,10 @@ def parameter_shift(
         backward = _exact(circ=circuit, hamiltonian=hamiltonian)
 
     else:
-        forward = _with_shots(circuit, hamiltonian, ham_name, nshots, exec_backend)
+        forward = _with_shots(circuit, hamiltonian, nshots, exec_backend)
         shifted[parameter_index] -= 2 * s
         circuit.set_parameters(shifted)
-        backward = _with_shots(circuit, hamiltonian, ham_name, nshots, exec_backend)
+        backward = _with_shots(circuit, hamiltonian, nshots, exec_backend)
 
     circuit.set_parameters(original)
     return float(generator_eigenval * (forward - backward))
