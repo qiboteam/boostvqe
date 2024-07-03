@@ -177,6 +177,8 @@ def scatterplot_acc_vs_gates(
 
     colors = ["royalblue"]
     colors.extend(list(sns.color_palette("Reds", n_colors=3).as_hex()))
+    facecols = [False, True, True, True]
+    markers = ["o", "s", "s", "s"]
 
     labels = ["VQE training", "1 GCI step", "2 GCI steps", "3 GCI steps"]
     size = 6
@@ -220,16 +222,15 @@ def scatterplot_acc_vs_gates(
 
     # looping over algorithms (dim = 4)
     for j in range(np.array(cgates).shape[1]):
-        plt.plot(
-            np.array(cgates).T[j],
-            np.array(accuracies).T[j],
-            color=colors[j],
-            lw=1,
-            alpha=0.5,
-            label=labels[j],
-        )
-        # looping over epochs
         for i in range(np.array(cgates).shape[0]):
+            if j == 0:
+                if i != np.array(cgates).shape[0] - 1:
+                    plt.annotate(
+                        "",
+                        xy=(cgates[i][j], accuracies[i][j]),
+                        xytext=(cgates[i + 1][j], accuracies[i + 1][j]),
+                        arrowprops=dict(arrowstyle="<-", color=colors[0]),
+                    )
             if j != np.array(cgates).shape[1] - 1:
                 plt.annotate(
                     "",
@@ -241,6 +242,8 @@ def scatterplot_acc_vs_gates(
                 cgates[i][j],
                 accuracies[i][j],
                 color=colors[j],
+                marker=markers[j],
+                facecolors=facecols[j],
                 s=40,
             )
 
@@ -254,64 +257,16 @@ def scatterplot_acc_vs_gates(
     plt.savefig(f"{title}.pdf")
     plt.show()
 
-    plt.figure(figsize=(6, 6 * 6 / 8))
 
-    for i in range(3):
-        cg = np.array(cgates).T[i]
-        accs = np.array(accuracies).T[i]
-
-        plt.plot(epochs, accs, color=colors[i], label=f"{i+1} GCI steps")
-        for k, a in enumerate(accs):
-            plt.scatter(
-                epochs[k],
-                a,
-                color=colors[i],
-                s=20 * cg[k] / (min_cg / 2),
-            )
-    # plt.plot(
-    #     vqe_cg,
-    #     abs(losses[epochs] - true_ground_energy),
-    #     color=colors[3],
-    #     marker="o",
-    #     markersize=size,
-    #     label=f"VQE"
-    # )
-    # plt.plot(
-    #     vqe_cg_1Lmore,
-    #     abs(losses_1Lmore[epochs] - true_ground_energy),
-    #     color=colors[4],
-    #     marker="o",
-    #     markersize=size,
-    #     label=f"VQE +1L"
-    # )
-    # plt.plot(
-    #     vqe_cg_2Lmore,
-    #     abs(losses_2Lmore[epochs] - true_ground_energy),
-    #     color=colors[5],
-    #     marker="o",
-    #     markersize=size,
-    #     label=f"VQE +2L"
-    # )
-
-    plt.title(f"{nqubits} qubits, {nlayers} layers, XXZ")
-    plt.legend(ncols=2)
-    plt.ylabel("Absolute error")
-    plt.xlabel("Epochs")
-    plt.yscale("log")
-    plt.savefig(f"{title}_epochs.png")
-    plt.savefig(f"{title}_epochs.pdf")
-    plt.show()
-
-
-path = "vqe_data/compile_targets_light/"
+path = "../results/moreonXXZ/compile_targets/"
 true_ground_energy = -15.276131122065937
-studied_epochs = np.arange(1000, 5001, 1000)
+studied_epochs = np.arange(250, 5001, 500)
 steps_colors = ["#f99f1e", "#f05426", "#8c1734"]
 epoch_shapes = ["o", "s", "P", "d", "v"]
 dbi_steps = 3
 nq = 10
 nl = 7
-opt = "Powell"
+opt = "cma"
 seed = 13
 
 studied_epochs_str = [str(epoch) for epoch in studied_epochs]
