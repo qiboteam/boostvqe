@@ -69,7 +69,7 @@ class GroupCommutatorIterationWithEvolutionOracles:
         backward = self._backward(duration=step_duration, d=d, mode=mode)
 
         self.oracle = FrameShiftedEvolutionOracle.from_evolution_oracle(
-            oracle,
+            self.oracle,
             backward,
             forward,
         )
@@ -77,29 +77,29 @@ class GroupCommutatorIterationWithEvolutionOracles:
     def _operators(
         self, duration: float, d: EvolutionOracle, mode: DoubleBracketRotationType
     ):
-        s_step = np.sqrt(step_duration)
+        s_step = np.sqrt(duration)
 
-        if gc_type is DoubleBracketRotationType.group_commutator:
+        if mode is DoubleBracketRotationType.group_commutator:
             operators = [
                 deepcopy(d).circuit(s_step),
                 deepcopy(self.oracle).circuit(s_step),
                 deepcopy(d).circuit(-s_step),
                 deepcopy(self.oracle).circuit(-s_step),
             ]
-        elif gc_type is DoubleBracketRotationType.group_commutator_reordered:
+        elif mode is DoubleBracketRotationType.group_commutator_reordered:
             operators = [
                 deepcopy(self.oracle).circuit(s_step),
                 deepcopy(d).circuit(-s_step),
                 deepcopy(self.oracle).circuit(-s_step),
                 deepcopy(d).circuit(s_step),
             ]
-        elif gc_type is DoubleBracketRotationType.group_commutator_reduced:
+        elif mode is DoubleBracketRotationType.group_commutator_reduced:
             operators = [
                 deepcopy(self.oracle).circuit(s_step),
                 deepcopy(d).circuit(-s_step),
                 deepcopy(self.oracle).circuit(-s_step),
             ]
-        elif gc_type is DoubleBracketRotationType.group_commutator_third_order:
+        elif mode is DoubleBracketRotationType.group_commutator_third_order:
             operators = [
                 deepcopy(d).circuit(-s_step * (np.sqrt(5) - 1) / 2),
                 deepcopy(self.oracle).circuit(-s_step * (np.sqrt(5) - 1) / 2),
@@ -108,7 +108,7 @@ class GroupCommutatorIterationWithEvolutionOracles:
                 deepcopy(d).circuit(-s_step * (3 - np.sqrt(5)) / 2),
                 deepcopy(self.oracle).circuit(-s_step),
             ]
-        elif gc_type is DoubleBracketRotationType.group_commutator_third_order_reduced:
+        elif mode is DoubleBracketRotationType.group_commutator_third_order_reduced:
             operators = [
                 deepcopy(self.oracle).circuit(-s_step * (np.sqrt(5) - 1) / 2),
                 deepcopy(d).circuit(s_step),
@@ -116,15 +116,14 @@ class GroupCommutatorIterationWithEvolutionOracles:
                 deepcopy(d).circuit(-s_step * (3 - np.sqrt(5)) / 2),
                 deepcopy(self.oracle).circuit(-s_step),
             ]
-        elif gc_type is DoubleBracketRotationType.group_commutator_reduced_twice:
+        elif mode is DoubleBracketRotationType.group_commutator_reduced_twice:
             s_step = step_duration / 2
             # FIXME: this will do /2 and sqrt
             opeators = 2 * self._execute(
                 s_step, d, DoubleBracketRotationType.group_commutator_reduced
             )
         elif (
-            gc_type
-            is DoubleBracketRotationType.group_commutator_third_order_reduced_twice
+            mode is DoubleBracketRotationType.group_commutator_third_order_reduced_twice
         ):
             s_step = step_duration / 2
             operators = 2 * self._execute(
@@ -136,14 +135,16 @@ class GroupCommutatorIterationWithEvolutionOracles:
     def _forward(
         self, duration: float, d: EvolutionOracle, mode: DoubleBracketRotationType
     ):
-        assert self.oracle.evolution_oracle_type == self.d.evolution_oracle_type
-        return self._contract(self._operators[::-1], self.d.evolution_oracle_type)
+        assert self.oracle.evolution_oracle_type == d.evolution_oracle_type
+        return self._contract(
+            self._operators(duration, d, mode)[::-1], d.evolution_oracle_type
+        )
 
     def _backward(
         self, duration: float, d: EvolutionOracle, mode: DoubleBracketRotationType
     ):
         return self._invert(
-            self._forward(duration, d, mode), mode=self.oracle.EvolutionOracleType
+            self._forward(duration, d, mode), mode=self.oracle.evolution_oracle_type
         )
 
     @staticmethod
