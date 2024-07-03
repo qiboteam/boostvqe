@@ -40,7 +40,7 @@ class GroupCommutatorIterationWithEvolutionOracles:
     def __init__(self, oracle: EvolutionOracle, mode: DoubleBracketRotationType):
         self.oracle = oracle
         self.mode = mode
-        self.initial_oracle = oracle
+        self.initial_oracle = deepcopy(oracle)
 
     @property
     def nqubits(self):
@@ -81,51 +81,51 @@ class GroupCommutatorIterationWithEvolutionOracles:
 
         if mode is DoubleBracketRotationType.group_commutator:
             operators = [
-                deepcopy(d).circuit(s_step),
-                deepcopy(self.oracle).circuit(s_step),
-                deepcopy(d).circuit(-s_step),
-                deepcopy(self.oracle).circuit(-s_step),
+                d.circuit(s_step),
+                self.oracle.circuit(s_step),
+                d.circuit(-s_step),
+                self.oracle.circuit(-s_step),
             ]
         elif mode is DoubleBracketRotationType.group_commutator_reordered:
             operators = [
-                deepcopy(self.oracle).circuit(s_step),
-                deepcopy(d).circuit(-s_step),
-                deepcopy(self.oracle).circuit(-s_step),
-                deepcopy(d).circuit(s_step),
+                self.oracle.circuit(s_step),
+                d.circuit(-s_step),
+                self.oracle.circuit(-s_step),
+                d.circuit(s_step),
             ]
         elif mode is DoubleBracketRotationType.group_commutator_reduced:
             operators = [
-                deepcopy(self.oracle).circuit(s_step),
-                deepcopy(d).circuit(-s_step),
-                deepcopy(self.oracle).circuit(-s_step),
+                self.oracle.circuit(s_step),
+                d.circuit(-s_step),
+                self.oracle.circuit(-s_step),
             ]
         elif mode is DoubleBracketRotationType.group_commutator_third_order:
             operators = [
-                deepcopy(d).circuit(-s_step * (np.sqrt(5) - 1) / 2),
-                deepcopy(self.oracle).circuit(-s_step * (np.sqrt(5) - 1) / 2),
-                deepcopy(d).circuit(s_step),
-                deepcopy(self.oracle).circuit(s_step * (np.sqrt(5) + 1) / 2),
-                deepcopy(d).circuit(-s_step * (3 - np.sqrt(5)) / 2),
-                deepcopy(self.oracle).circuit(-s_step),
+                d.circuit(-s_step * (np.sqrt(5) - 1) / 2),
+                self.oracle.circuit(-s_step * (np.sqrt(5) - 1) / 2),
+                d.circuit(s_step),
+                self.oracle.circuit(s_step * (np.sqrt(5) + 1) / 2),
+                d.circuit(-s_step * (3 - np.sqrt(5)) / 2),
+                self.oracle.circuit(-s_step),
             ]
         elif mode is DoubleBracketRotationType.group_commutator_third_order_reduced:
             operators = [
-                deepcopy(self.oracle).circuit(-s_step * (np.sqrt(5) - 1) / 2),
-                deepcopy(d).circuit(s_step),
-                deepcopy(self.oracle).circuit(s_step * (np.sqrt(5) + 1) / 2),
-                deepcopy(d).circuit(-s_step * (3 - np.sqrt(5)) / 2),
-                deepcopy(self.oracle).circuit(-s_step),
+                self.oracle.circuit(-s_step * (np.sqrt(5) - 1) / 2),
+                d.circuit(s_step),
+                self.oracle.circuit(s_step * (np.sqrt(5) + 1) / 2),
+                d.circuit(-s_step * (3 - np.sqrt(5)) / 2),
+                self.oracle.circuit(-s_step),
             ]
         elif mode is DoubleBracketRotationType.group_commutator_reduced_twice:
-            s_step = step_duration / 2
+            s_step = duration / 2
             # FIXME: this will do /2 and sqrt
-            opeators = 2 * self._execute(
+            operators = 2 * self._execute(
                 s_step, d, DoubleBracketRotationType.group_commutator_reduced
             )
         elif (
             mode is DoubleBracketRotationType.group_commutator_third_order_reduced_twice
         ):
-            s_step = step_duration / 2
+            s_step = duration / 2
             operators = 2 * self._execute(
                 s_step, d, DoubleBracketRotationType.group_commutator_third_order
             )
