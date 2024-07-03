@@ -29,6 +29,7 @@ class EvolutionOracle:
     evolution_oracle_type: EvolutionOracleType
 
     def __post_init__(self):
+        # TODO: call trotter-suzuki-step
         self.steps = 1
 
     def __call__(self, t_duration: float):
@@ -51,6 +52,7 @@ class EvolutionOracle:
 
 @dataclass
 class FrameShiftedEvolutionOracle(EvolutionOracle):
+    # TODO: circuit
     before_circuit: str
     after_circuit: str
     base_evolution_oracle: EvolutionOracle
@@ -76,6 +78,7 @@ class FrameShiftedEvolutionOracle(EvolutionOracle):
         return self.before_circuit.nqubits
 
     def circuit(self, t_duration: float = None):
+        # TODO: rename to __call__
         if self.evolution_oracle_type is EvolutionOracleType.numerical:
             return (
                 self.before_circuit
@@ -95,6 +98,7 @@ class FrameShiftedEvolutionOracle(EvolutionOracle):
             )
 
     def get_composed_circuit(self):
+        """Collect all frame shift in circuits."""
         c = Circuit(nqubits=self.nqubits)
         fseo = self
         while isinstance(fseo, FrameShiftedEvolutionOracle):
@@ -139,6 +143,29 @@ class MagneticFieldEvolutionOracle(EvolutionOracle):
         return cls(
             h=hamiltonian, evolution_oracle_type=evolution_oracle_type, _params=params
         )
+
+    def circuit(self, t):
+        """
+        Constructs an Magnetic Field model circuit for n qubits, given by:
+        .. math::
+            H(B) = \\sum_{i=0}^{N-1} B_i Z_i
+
+
+        Args:
+        nqubits (int): Number of qubits.
+        t (float): Total evolution time.
+
+        Returns:
+        Circuit: The final multi-layer circuit.
+
+        """
+        nqubits = len(self.params)
+        circuit = Circuit(nqubits=nqubits)
+
+        circuit.add(
+            gates.RZ(q_i, 2 * t * b) for q_i, b in zip(range(nqubits), self.params)
+        )
+        return circuit
 
 
 @dataclass
@@ -191,7 +218,7 @@ class IsingNNEvolutionOracle(EvolutionOracle):
         Returns:
         Circuit: The final multi-layer circuit.
 
-        #"""
+        """
         nqubits = len(self.params) // 2
         circuit = Circuit(nqubits=nqubits)
         # Create lists of even and odd qubit indices
