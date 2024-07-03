@@ -16,21 +16,28 @@ from boostvqe.compiling_XXZ import nqubit_XXZ_decomposition
 
 
 class EvolutionOracleType(Enum):
+    """Mode to represent evolution oracle exp{-i t H}."""
+
     numerical = auto()
-    """If you will work with exp(is_k J_k) as a numerical matrix"""
+    """Matrix exponentiation."""
 
     hamiltonian_simulation = auto()
-    """If you will use SymbolicHamiltonian"""
+    """Use SymbolicHamiltonian and the compiles the circuit."""
 
 
 @dataclass
 class EvolutionOracle:
+    """Representation of an EvolutionOracle exp{-i t h }."""
+
     h: AbstractHamiltonian
+    """Hamiltonian to be exponentiated."""
     evolution_oracle_type: EvolutionOracleType
+    """Type of evolution oracle."""
 
     def __post_init__(self):
         # TODO: call trotter-suzuki-step
         self.steps = 1
+        """Trotter suzuki step."""
 
     def __call__(self, t_duration: float):
         """Returns either the name or the circuit"""
@@ -52,9 +59,14 @@ class EvolutionOracle:
 
 @dataclass
 class FrameShiftedEvolutionOracle(EvolutionOracle):
-    # TODO: circuit
-    before_circuit: str
-    after_circuit: str
+    """EvolutionOracle to perform FrameShift.
+
+    The new EvolutionOracle will be the following V base_evolution_oracle Vdag.
+    Where V is `before circuit` and Vdag is `after circuit.
+    """
+
+    before_circuit: Union[Circuit, np.ndarray]
+    after_circuit: Union[Circuit, np.ndarray]
     base_evolution_oracle: EvolutionOracle
 
     @classmethod
@@ -64,6 +76,7 @@ class FrameShiftedEvolutionOracle(EvolutionOracle):
         before_circuit,
         after_circuit,
     ):
+        """Create instance using only new attributes of FreameShiftedEvolutionOracle."""
         return cls(
             base_evolution_oracle=base_evolution_oracle,
             before_circuit=before_circuit,
@@ -78,7 +91,8 @@ class FrameShiftedEvolutionOracle(EvolutionOracle):
         return self.before_circuit.nqubits
 
     def circuit(self, t_duration: float = None):
-        # TODO: rename to __call__
+        """Compute corresponding circuit."""
+
         if self.evolution_oracle_type is EvolutionOracleType.numerical:
             return (
                 self.before_circuit
@@ -118,6 +132,8 @@ class FrameShiftedEvolutionOracle(EvolutionOracle):
 
 @dataclass
 class MagneticFieldEvolutionOracle(EvolutionOracle):
+    """Evolution oracle with MagneticField."""
+
     _params: Union[list, np.ndarray]
 
     @property
