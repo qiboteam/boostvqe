@@ -4,7 +4,6 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-from matplotlib.backend_managers import ToolManagerMessageEvent
 from qibo import hamiltonians, set_backend
 
 from boostvqe.ansatze import build_circuit
