@@ -1,15 +1,15 @@
 #!/bin/bash
-#SBATCH --job-name=adamch
-#SBATCH --output=bp_regime.log
+#SBATCH --job-name=tlfim
+#SBATCH --output=tlfim_shots.log
 
-NQUBITS=5
-NLAYERS=1
+NQUBITS=10
+NLAYERS=3
 
 DBI_STEPS=0
 NBOOST=0
 BOOST_FREQUENCY=100
 
-NSHOTS=1000
+NSHOTS=500
 SEED=42
 
 OPTIMIZER="sgd"
@@ -22,4 +22,4 @@ python3 main.py  --nqubits $NQUBITS --nlayers $NLAYERS --optimizer $OPTIMIZER \
                 --dbi_step $DBI_STEPS --seed $SEED \
                 --boost_frequency $BOOST_FREQUENCY --nboost $NBOOST \
                 --optimizer_options "$OPTIMIZER_OPTIONS" \
-                --decay_rate_lr $DECAY_RATE_LR
+                --hamiltonian "TLFIM" --nshots $NSHOTS

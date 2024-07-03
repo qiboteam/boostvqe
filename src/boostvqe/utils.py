@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 import time
@@ -75,7 +76,7 @@ def callback_energy_fluctuations(params, circuit, hamiltonian):
     circ.set_parameters(params)
     result = hamiltonian.backend.execute_circuit(circ)
     final_state = result.state()
-    return hamiltonian.energy_fluctuation(final_state)
+    return hamiltonian.dense.energy_fluctuation(final_state)
 
 
 def train_vqe(
@@ -127,7 +128,7 @@ def train_vqe(
         loss_fluctuation.append(
             callback_energy_fluctuations(params, vqe.circuit, vqe.hamiltonian)
         )
-        params_history.append(params)
+        params_history.append(copy.deepcopy(params))
         grads_history.append(
             compute_gradients(
                 parameters=params, circuit=circ.copy(deep=True), hamiltonian=ham
@@ -168,12 +169,10 @@ def rotate_h_with_vqe(hamiltonian, vqe):
     backend = hamiltonian.backend
     circuit = vqe.circuit
     # create circuit matrix and compute the rotation
-    matrix_circ = np.matrix(backend.to_numpy(circuit.fuse().unitary()))
-    matrix_circ_dagger = backend.cast(matrix_circ.getH())
+    matrix_circ = np.matrix(backend.to_numpy(circuit.unitary()))
+    matrix_circ_dagger = backend.cast(np.array(matrix_circ.getH()))
     matrix_circ = backend.cast(matrix_circ)
-    new_hamiltonian = np.matmul(
-        matrix_circ_dagger, np.matmul(hamiltonian.matrix, matrix_circ)
-    )
+    new_hamiltonian = matrix_circ_dagger @ hamiltonian.matrix @ np.array(matrix_circ)
     return new_hamiltonian
 
 
