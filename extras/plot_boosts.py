@@ -4,8 +4,11 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+from qibo import hamiltonians, set_backend
 
 from boostvqe.ansatze import build_circuit
+
+set_backend("numpy")
 
 
 def calculate_vqe_gates(nqubits, nlayers):
@@ -98,20 +101,20 @@ def plot_jumps(path, nqubits, nlayers, seed, rotation_type, optimizer, epochs, t
     delta = nlosses / 50
 
     _, (a0, a1) = plt.subplots(2, 1, sharex=True, gridspec_kw={"height_ratios": [6, 2]})
-    a0.plot(losses, color="royalblue", lw=1, alpha=1, label="VQE loss")
+    a0.plot(losses, color="royalblue", lw=1, alpha=1, label="VQE 7 layers")
     a0.plot(
         losses_1Lmore,
         color="royalblue",
         lw=1,
         alpha=0.7,
-        label="VQE loss +1 layer",
+        label="VQE 8 layers",
     )
     a0.plot(
         losses_2Lmore,
         color="royalblue",
         lw=1,
         alpha=0.5,
-        label="VQE loss +2 layer",
+        label="VQE 9 layers",
     )
     a0.hlines(
         true_ground_energy,
@@ -121,12 +124,21 @@ def plot_jumps(path, nqubits, nlayers, seed, rotation_type, optimizer, epochs, t
         color="black",
         ls="--",
         alpha=0.4,
-        label="Target energy",
+    )
+    a0.hlines(
+        true_second_energy,
+        0,
+        len(losses),
+        lw=1,
+        color="black",
+        ls="--",
+        alpha=0.4,
     )
 
-    for i in range(energies.shape[1]):
+    for i in [2, 1, 0]:
         energy = energies[:, i]
         a0.vlines(epochs, energy, losses[epochs], color=steps_colors[i], ls="-", lw=1)
+
         a0.hlines(
             energy,
             epochs - delta,
@@ -135,10 +147,20 @@ def plot_jumps(path, nqubits, nlayers, seed, rotation_type, optimizer, epochs, t
             lw=1,
             label=f"{i+1} GCI steps",
         )
+        a0.scatter(
+            epochs,
+            energy,
+            color=steps_colors[i],
+            marker="s",
+            s=2,
+        )
+    for i in range(energies.shape[1]):
         a1.plot(
             epochs,
             1 - (energies[:, i] / true_ground_energy),
             color=steps_colors[i],
+            marker="s",
+            markersize=2,
             lw=1,
         )
     a1.plot(
@@ -148,17 +170,27 @@ def plot_jumps(path, nqubits, nlayers, seed, rotation_type, optimizer, epochs, t
         alpha=1,
         label="VQE loss",
     )
-
+    a0.annotate(
+        "Ground state $E_0$", (200, true_ground_energy + 0.02), c="grey", size=8
+    )
+    a0.annotate(
+        "First excited state", (200, true_second_energy + 0.02), c="grey", size=8
+    )
     a1.set_ylim(2e-5, 1e-1)
-    a0.set_ylim(-15.4, -13)
-    a0.legend(ncols=2)
-    a1.set_xlabel("Epoch")
+    a0.set_ylim(-15.4, -14.1)
+    a0.legend(loc=3, bbox_to_anchor=(0.6, 0.4))
+    a1.set_xlabel("VQE training epochs")
     a1.set_yscale("log")
     a1.set_ylabel(r"$ 1-\frac{E}{E_0} $")
     a1.set_yticks([1e-2, 1e-3, 1e-4])
-    a0.set_ylabel("Energy")
-    a0.set_title(f"{nqubits} qubits, {nlayers} layers, XXZ")
+    yticks = np.round(
+        np.concatenate(([true_ground_energy, true_second_energy], energies[0, 0:3:2])),
+        2,
+    )
+    a0.set_yticks(yticks)
+    a0.set_ylabel(r"Energy expectation $E$")
     plt.subplots_adjust(wspace=0, hspace=0)
+    plt.tight_layout()
     plt.savefig(f"{title}.png", dpi=600)
 
 
@@ -242,13 +274,16 @@ def scatterplot_acc_vs_gates(
     plt.ylabel(r"$ 1-\frac{E}{E_0} $")
     plt.xlabel("# 2q gates")
     plt.yscale("log")
-    plt.legend(loc=3)
     plt.savefig(f"{title}.png", dpi=600)
     plt.savefig(f"{title}.pdf")
 
 
 path = "vqe_data/compile_targets_light/"
-true_ground_energy = -15.276131122065937
+hamiltonian = hamiltonians.XXZ(10, delta=0.5)
+eigenvalues = hamiltonian.eigenvalues()
+eigenvalues = np.sort(eigenvalues)
+true_ground_energy = float(eigenvalues[0])
+true_second_energy = float(eigenvalues[1])
 studied_epochs = np.arange(1000, 5001, 1000)
 steps_colors = ["#f99f1e", "#f05426", "#8c1734"]
 epoch_shapes = ["o", "s", "P", "d", "v"]
