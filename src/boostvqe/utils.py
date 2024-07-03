@@ -177,25 +177,35 @@ def rotate_h_with_vqe(hamiltonian, vqe):
     return new_hamiltonian
 
 
-def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=False):
+def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=True):
     """Apply `nsteps` of `dbi` to `hamiltonian`."""
     step = stepsize
     energies, fluctuations, hamiltonians, steps, d_matrix = [], [], [], [], []
     logging.info(f"Applying {nsteps} steps of DBI to the given hamiltonian.")
     operators = []
     for _ in range(nsteps):
+        logging.info(f"step {_+1}")
         if optimize_step:
+            logging.info(f"optimizing step")
             # Change logging level to reduce verbosity
             logging.getLogger().setLevel(logging.WARNING)
             step = dbi.choose_step(
-                scheduling=hyperopt_step, step_min=1e-4, step_max=0.01, max_evals=50,
+                scheduling=hyperopt_step, step_min=1e-4, step_max=0.01, max_evals=2,
             )
             # Restore the original logging level
             logging.getLogger().setLevel(logging.INFO)
+            logging.info(f"Optimized step: {step}")
+
+        # import pdb
+        # pdb.set_trace()
+
+        print("diag h matrix:", dbi.diagonal_h_matrix)
         operators.append(dbi(step=step, d=dbi.diagonal_h_matrix))
         steps.append(step)
         d_matrix.append(np.diag(dbi.diagonal_h_matrix))
         zero_state = np.transpose([dbi.h.backend.zero_state(dbi.h.nqubits)])
+
+        logging.info(f"\nH matrix: {dbi.h.matrix}\n")
 
         energies.append(dbi.h.expectation(zero_state))
         fluctuations.append(dbi.energy_fluctuation(zero_state))

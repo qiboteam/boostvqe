@@ -88,7 +88,7 @@ def main(args):
     dbi_results = apply_dbi_steps(
         dbi=dbi,
         nsteps=args.steps,
-        optimize_step=True,
+        optimize_step=False,
     )
 
     dbi_energies = dbi_results[1]
