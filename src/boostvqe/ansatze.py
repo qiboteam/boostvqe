@@ -22,6 +22,27 @@ def build_circuit(nqubits, nlayers):
 
     return circuit
 
+def build_circuit_RBS(nqubits, nlayers=1):
+    """Build qibo's aavqe example circuit."""
+
+    if nqubits%2 != 0:
+        raise_error(
+            ValueError,
+            "To use this ansatz please be sure number of qubits is even."
+    )
+
+    circuit = Circuit(nqubits)
+    for q in range(int(nqubits/2)):
+        circuit.add(gates.X(q))
+        
+    for _ in range(nlayers):
+        for q in range(0, nqubits - 1, 2):
+            circuit.add(gates.RBS(q0=q, q1=q+1, theta=0.))
+        for q in range(1, nqubits - 1, 2):
+            circuit.add(gates.RBS(q0=q, q1=q+1, theta=0.))
+
+    return circuit
+
 
 def compute_gradients(parameters, circuit, hamiltonian):
     """

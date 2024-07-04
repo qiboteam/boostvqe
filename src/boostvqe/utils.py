@@ -12,7 +12,12 @@ from qibo.models.dbi.utils_scheduling import hyperopt_step
 
 from scipy import optimize
 
-from boostvqe.ansatze import VQE, build_circuit, compute_gradients
+from boostvqe.ansatze import (
+    VQE, 
+    build_circuit,
+    build_circuit_RBS, 
+    compute_gradients,
+)
 from boostvqe.compiling_XXZ import *
 from boostvqe.models.dbi.double_bracket_evolution_oracles import *
 from boostvqe.models.dbi.group_commutator_iteration_transpiler import *
@@ -189,26 +194,20 @@ def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=True):
             # Change logging level to reduce verbosity
             logging.getLogger().setLevel(logging.WARNING)
             step = dbi.choose_step(
-                scheduling=hyperopt_step, step_min=1e-4, step_max=0.01, max_evals=2,
+                scheduling=grid_search_step, step_min=1e-5, step_max=0.05, num_evals=100,
             )
             # Restore the original logging level
             logging.getLogger().setLevel(logging.INFO)
             logging.info(f"Optimized step: {step}")
 
-        # import pdb
-        # pdb.set_trace()
+            operators.append(dbi(step=step, d=dbi.diagonal_h_matrix))
+            steps.append(step)
+            d_matrix.append(np.diag(dbi.diagonal_h_matrix))
+            zero_state = np.transpose([dbi.h.backend.zero_state(dbi.h.nqubits)])
 
-        print("diag h matrix:", dbi.diagonal_h_matrix)
-        operators.append(dbi(step=step, d=dbi.diagonal_h_matrix))
-        steps.append(step)
-        d_matrix.append(np.diag(dbi.diagonal_h_matrix))
-        zero_state = np.transpose([dbi.h.backend.zero_state(dbi.h.nqubits)])
-
-        logging.info(f"\nH matrix: {dbi.h.matrix}\n")
-
-        energies.append(dbi.h.expectation(zero_state))
-        fluctuations.append(dbi.energy_fluctuation(zero_state))
-        hamiltonians.append(dbi.h.matrix)
+            energies.append(dbi.h.expectation(zero_state))
+            fluctuations.append(dbi.energy_fluctuation(zero_state))
+            hamiltonians.append(dbi.h.matrix)
 
         logging.info(f"DBI energies: {energies}")
     return hamiltonians, energies, fluctuations, steps, d_matrix, operators
@@ -232,7 +231,9 @@ def initialize_gci_from_vqe(
 
     nqubits = config["nqubits"]
     # build circuit, hamiltonian and VQE
-    circuit = build_circuit(nqubits, config["nlayers"], "numpy")
+    # circuit = build_circuit(nqubits, config["nlayers"], "numpy")
+    circuit = build_circuit_RBS(nqubits, config["nlayers"], "numpy")
+
     hamiltonian = hamiltonians.XXZ(nqubits=nqubits, delta=0.5)
 
     vqe = VQE(circuit, hamiltonian)

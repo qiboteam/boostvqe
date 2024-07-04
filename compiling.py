@@ -12,7 +12,7 @@ from qibo import hamiltonians
 from qibo.backends import construct_backend
 from qibo.quantum_info.metrics import fidelity
 
-from boostvqe.ansatze import VQE, build_circuit
+from boostvqe.ansatze import VQE, build_circuit_RBS
 from boostvqe.models.dbi import double_bracket_evolution_oracles
 from boostvqe.models.dbi.double_bracket_evolution_oracles import (
     FrameShiftedEvolutionOracle,
@@ -27,7 +27,7 @@ from boostvqe.models.dbi.group_commutator_iteration_transpiler import (
 from boostvqe.utils import (
     OPTIMIZATION_FILE,
     PARAMS_FILE,
-    build_circuit,
+    build_circuit_RBS,
     optimize_D,
     select_recursion_step_gd_circuit,
 )
@@ -75,7 +75,7 @@ def main(args):
         nqubits=nqubits, delta=0.5, backend=vqe_backend
     )
     vqe = VQE(
-        build_circuit(
+        build_circuit_RBS(
             nqubits=nqubits,
             nlayers=nlayers,
         ),

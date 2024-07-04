@@ -20,19 +20,20 @@ from qibo.symbols import Z
 
 DEFAULT_DELTA = 0.5
 """Default `delta` value of XXZ Hamiltonian"""
-DEFAULT_DELTAS = [0.5, 0.5]
+DEFAULT_DELTAS = [0., 2.]
+TLFIM_h = [1., 2.]
 
 
 class Model(Enum):
     XXZ = lambda nqubits: hamiltonians.XXZ(
         nqubits=nqubits, delta=DEFAULT_DELTA, dense=False
     )
-    XYZ = lambda nqubits: XYZ(nqubits=nqubits, delta=DEFAULT_DELTAS, dense=False)
+    XYZ = lambda nqubits: XYZ(nqubits=nqubits, delta=[0.5, 0.5], dense=False)
     TFIM = lambda nqubits: hamiltonians.TFIM(nqubits=nqubits, h=nqubits, dense=False)
-    TLFIM = lambda nqubits: TLFIM(nqubits=nqubits, h=[nqubits, nqubits], dense=False)
+    TLFIM = lambda nqubits: TLFIM(nqubits=nqubits, h=TLFIM_h, dense=False)
 
 
-def TLFIM(nqubits, h=[0.5, 0.5], dense=True, backend=None):
+def TLFIM(nqubits, h=TLFIM_h, dense=True, backend=None):
     """Transverse and longitudinal field Ising model with periodic boundary conditions.
 
     .. math::
@@ -45,7 +46,6 @@ def TLFIM(nqubits, h=[0.5, 0.5], dense=True, backend=None):
             :class:`qibo.core.hamiltonians.Hamiltonian`, otherwise it creates
             a :class:`qibo.core.hamiltonians.SymbolicHamiltonian`.
     """
-    h = [nqubits, nqubits]
     if nqubits < 2:
         raise_error(ValueError, "Number of qubits must be larger than one.")
     if dense:
@@ -55,6 +55,7 @@ def TLFIM(nqubits, h=[0.5, 0.5], dense=True, backend=None):
             if h[m] != 0:
                 condition = lambda i, j: i == j % nqubits
                 ham += h[m] * _build_spin_model(nqubits, matrix, condition)
+        ham *= -1
         return Hamiltonian(nqubits, ham, backend=backend)
 
     matrix = -(
