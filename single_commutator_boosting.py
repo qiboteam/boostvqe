@@ -18,7 +18,7 @@ from boostvqe.ansatze import VQE, build_circuit
 from boostvqe.utils import (
     OPTIMIZATION_FILE,
     PARAMS_FILE,
-    build_circuit, 
+    build_circuit_RBS, 
     apply_dbi_steps, 
     rotate_h_with_vqe,
 )
@@ -52,12 +52,13 @@ def main(args):
         nqubits=nqubits, delta=0.5, backend=vqe_backend
     )
     vqe = VQE(
-        build_circuit(
+        build_circuit_RBS(
             nqubits=nqubits,
             nlayers=nlayers,
         ),
         hamiltonian=hamiltonian,
     )
+    print(vqe.circuit.draw())
     vqe.circuit.set_parameters(params)
 
     zero_state = hamiltonian.backend.zero_state(config["nqubits"])
@@ -70,7 +71,7 @@ def main(args):
     ene1 = hamiltonian.expectation(vqe_state)
 
     print("Rotating with VQE")
-    new_hamiltonian_matrix = rotate_h_with_vqe(hamiltonian=hamiltonian, vqe=vqe)
+    new_hamiltonian_matrix = np.array(rotate_h_with_vqe(hamiltonian=hamiltonian, vqe=vqe))
     new_hamiltonian = hamiltonians.Hamiltonian(
         nqubits, matrix=new_hamiltonian_matrix
     )
@@ -88,11 +89,14 @@ def main(args):
     dbi_results = apply_dbi_steps(
         dbi=dbi,
         nsteps=args.steps,
-        optimize_step=False,
+        #optimize_step=True,
+        stepsize=0.01,
     )
 
     dbi_energies = dbi_results[1]
     dict_results = {
+        "VQE energy": float(ene1),
+        "Ground state": float(target_energy),
         "dbi_energies": dbi_energies
     }
     
