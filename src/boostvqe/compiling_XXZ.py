@@ -1,10 +1,17 @@
 """
 Module for constructing a quantum circuit that simulates the time evolution
-of an XXZ spin chain model using a sequence of quantum gates.
+of an XXZ spin chain model (with periodic boundary condition) using single 
+qubit rotations and 3 CNOTs.
 
 This module provides functions to add gates to a quantum circuit for the XXZ
 model and to decompose the time evolution operator into a multi-layer quantum
 circuit, according to https://arxiv.org/pdf/quant-ph/0308006 (fig 6). 
+
+Note that there is a phase (:math:`e^{i\pi/4}`) missing in the circuit, 
+addressed by the function vw_xxz_compiling_phase.
+
+The module also provide a simple function for comparison between the circuit 
+unitary and the unitary calculated from the spin chain hamiltonian.
 
 The XXZ model is represented by the Hamiltonian:
 
@@ -18,6 +25,12 @@ Functions:
     nqubit_XXZ_decomposition(nqubits, t, delta=0.5, steps=1):
         Constructs an XXZ model circuit for n qubits, decomposing the
         time evolution operator into a sequence of quantum gates.
+
+    vw_xxz_compiling_phase(nqubits, steps, order = 1):
+        Return the global phase missing from Vatan William circuit
+
+    test_compiling_XXZ(t = 0.1, nqubits = 4, steps = 3):
+        Compare the Hamiltonian achieved from decomposition circuit and from qibo hamiltonians.XXZ
 
 Example:
     .. testcode::
@@ -140,7 +153,7 @@ def nqubit_XXZ_decomposition(nqubits, t, delta=0.5, steps=1, order=1):
             circuit = _add_gates(circuit, odd_numbers, even_numbers[1:], t / 2, delta, steps)
             circuit = _add_gates(circuit, [nqubits - 1], [0], t / 2, delta, steps)
     else:
-        print("we only accepts order 1 and 2 for now, returning empty circuit")
+        print("We only accepts order 1 and 2 for now, returning empty circuit")
         return Circuit(nqubits=nqubits)
     # Create a multi-layer circuit with the time evolution steps
     multi_layer = Circuit(nqubits=nqubits)
@@ -158,6 +171,9 @@ def vw_xxz_compiling_phase(nqubits, steps, order = 1):
             return np.exp(1j *np.pi/4* nqubits * steps * 1.5)
         else:
             return np.exp(1j *np.pi/4* nqubits * steps +1j *np.pi/4* (nqubits  + 1)* steps /2)
+    else:
+        print("We only accepts order 1 and 2 for now")
+        return None
 
 
 def test_compiling_XXZ(t = 0.1, nqubits = 4, steps = 3):
