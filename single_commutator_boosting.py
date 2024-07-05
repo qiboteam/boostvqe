@@ -2,9 +2,12 @@ import json
 import time
 import argparse
 import logging
+import copy
 import pathlib
 
 import numpy as np
+from scipy.optimize import minimize
+
 import qibo
 from qibo import hamiltonians, set_backend
 from qibo.backends import construct_backend
@@ -25,6 +28,25 @@ from boostvqe.utils import (
 
 logging.basicConfig(level=logging.INFO)
 qibo.set_backend("numpy")
+
+def cost_function(s, dbi, zero_state):
+    """Compute the final energy we get applying step `s` to DBI."""
+    original_h = copy.deepcopy(dbi.h)
+    dbi(step=s, d=dbi.diagonal_h_matrix)
+    cost = dbi.h.expectation(np.asarray(zero_state))
+    dbi.h = original_h
+    return cost
+
+def optimize_s(dbi, zero_state):
+    """Optimize DBI stepsize using Powell minimizer."""
+    opt_result = minimize(
+        cost_function, 
+        x0=[0.01], 
+        args=(dbi, zero_state),
+        method="Powell",
+        options={"maxiter": 200}
+    )
+    return opt_result
 
 def main(args):
     path = pathlib.Path(args.path)
@@ -61,7 +83,7 @@ def main(args):
     print(vqe.circuit.draw())
     vqe.circuit.set_parameters(params)
 
-    zero_state = hamiltonian.backend.zero_state(config["nqubits"])
+    zero_state = np.asarray(hamiltonian.backend.zero_state(config["nqubits"]))
     target_energy = np.min(np.array(hamiltonian.eigenvalues()))
 
     # set target parameters into the VQE
@@ -76,6 +98,7 @@ def main(args):
         nqubits, matrix=new_hamiltonian_matrix
     )
 
+
     dbi = DoubleBracketIteration(
         hamiltonian=new_hamiltonian,
         mode=DoubleBracketGeneratorType.single_commutator,
@@ -85,19 +108,20 @@ def main(args):
     energy_h0 = float(dbi.h.expectation(np.array(zero_state_t)))
     fluctuations_h0 = float(dbi.h.energy_fluctuation(zero_state_t))
 
+    energies = []
 
-    dbi_results = apply_dbi_steps(
-        dbi=dbi,
-        nsteps=args.steps,
-        #optimize_step=True,
-        stepsize=0.01,
-    )
-
-    dbi_energies = dbi_results[1]
+    for s in range(args.steps):
+        logging.info(f"Optimizing step {s+1}")
+        s = optimize_s(dbi, zero_state).x
+        dbi(step=s, d=dbi.diagonal_h_matrix)
+        this_energy = dbi.h.expectation(zero_state)
+        logging.info(f"Best found energy: {this_energy}")
+        energies.append(this_energy)
+    
     dict_results = {
         "VQE energy": float(ene1),
         "Ground state": float(target_energy),
-        "dbi_energies": dbi_energies
+        "dbi_energies": energies
     }
     
     (dump_path / "boosting_data.json").write_text(json.dumps(dict_results, indent=4))
