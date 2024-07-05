@@ -8,8 +8,6 @@ from qibo import gates, symbols
 from qibo.config import raise_error
 from qibo.hamiltonians import Hamiltonian, SymbolicHamiltonian
 
-from boostvqe.models.dbi import *
-from boostvqe.models.dbi.double_bracket import *
 from boostvqe.models.dbi.double_bracket_evolution_oracles import *
 
 
@@ -66,12 +64,9 @@ class GroupCommutatorIterationWithEvolutionOracles:
 
         forward = self._forward(duration=step_duration, d=d, mode=mode)
 
-        backward = self._backward(duration=step_duration, d=d, mode=mode)
-
         self.oracle = FrameShiftedEvolutionOracle.from_evolution_oracle(
-            self.oracle,
-            backward,
-            forward,
+            base_evolution_oracle=self.oracle,
+            circuit_frame=forward,
         )
 
     def _operators(
@@ -81,10 +76,10 @@ class GroupCommutatorIterationWithEvolutionOracles:
 
         if mode is DoubleBracketRotationType.group_commutator:
             operators = [
-                d.circuit(s_step),
-                self.oracle.circuit(s_step),
                 d.circuit(-s_step),
                 self.oracle.circuit(-s_step),
+                d.circuit(s_step),
+                self.oracle.circuit(s_step),
             ]
         elif mode is DoubleBracketRotationType.group_commutator_reordered:
             operators = [
@@ -95,26 +90,26 @@ class GroupCommutatorIterationWithEvolutionOracles:
             ]
         elif mode is DoubleBracketRotationType.group_commutator_reduced:
             operators = [
-                self.oracle.circuit(s_step),
                 d.circuit(-s_step),
-                self.oracle.circuit(-s_step),
+                self.oracle.circuit(s_step),
+                d.circuit(s_step),
             ]
         elif mode is DoubleBracketRotationType.group_commutator_third_order:
             operators = [
-                d.circuit(-s_step * (np.sqrt(5) - 1) / 2),
                 self.oracle.circuit(-s_step * (np.sqrt(5) - 1) / 2),
-                d.circuit(s_step),
-                self.oracle.circuit(s_step * (np.sqrt(5) + 1) / 2),
-                d.circuit(-s_step * (3 - np.sqrt(5)) / 2),
-                self.oracle.circuit(-s_step),
+                d.circuit(-s_step * (np.sqrt(5) - 1) / 2),
+                self.oracle.circuit(s_step),
+                d.circuit(s_step * (np.sqrt(5) + 1) / 2),
+                self.oracle.circuit(-s_step * (3 - np.sqrt(5)) / 2),
+                d.oracle.circuit(-s_step),
             ]
         elif mode is DoubleBracketRotationType.group_commutator_third_order_reduced:
             operators = [
-                self.oracle.circuit(-s_step * (np.sqrt(5) - 1) / 2),
-                d.circuit(s_step),
-                self.oracle.circuit(s_step * (np.sqrt(5) + 1) / 2),
-                d.circuit(-s_step * (3 - np.sqrt(5)) / 2),
-                self.oracle.circuit(-s_step),
+                d.circuit(-s_step * (np.sqrt(5) - 1) / 2),
+                self.oracle.circuit(s_step),
+                d.circuit(s_step * (np.sqrt(5) + 1) / 2),
+                self.oracle.circuit(-s_step * (3 - np.sqrt(5)) / 2),
+                d.circuit(-s_step),
             ]
         elif mode is DoubleBracketRotationType.group_commutator_reduced_twice:
             s_step = duration / 2
@@ -137,29 +132,15 @@ class GroupCommutatorIterationWithEvolutionOracles:
     ):
         assert self.oracle.evolution_oracle_type == d.evolution_oracle_type
         return self._contract(
-            self._operators(duration, d, mode)[::-1], d.evolution_oracle_type
-        )
-
-    def _backward(
-        self, duration: float, d: EvolutionOracle, mode: DoubleBracketRotationType
-    ):
-        return self._invert(
-            self._forward(duration, d, mode), mode=self.oracle.evolution_oracle_type
+            self._operators(duration, d, mode), d.evolution_oracle_type
         )
 
     @staticmethod
     def _contract(operators: list, mode: EvolutionOracleType.hamiltonian_simulation):
         if mode is EvolutionOracleType.hamiltonian_simulation:
-            return reduce(Circuit.__add__, operators[::-1])  # why inversion only here
+            return reduce(Circuit.__add__, operators[::-1])
         elif mode is EvolutionOracleType.numerical:
             return reduce(np.ndarray.__matmul__, operators)
-
-    @staticmethod
-    def _invert(operator: Union[Circuit, np.ndarray], mode: EvolutionOracleType):
-        if mode is EvolutionOracleType.hamiltonian_simulation:
-            return operator.invert()
-        elif mode is EvolutionOracleType.numerical:
-            return np.linalg.inv(operator)
 
     def loss(
         self, step_duration: float, d: EvolutionOracle, mode: DoubleBracketRotationType

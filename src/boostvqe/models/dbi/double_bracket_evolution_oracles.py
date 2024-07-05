@@ -1,7 +1,7 @@
 from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum, auto
-from functools import reduce
+from functools import cached_property, reduce
 from typing import Union
 
 import hyperopt
@@ -48,13 +48,20 @@ class EvolutionOracle:
         In the hamiltonian_simulation mode we evaluate an appropriate Trotter-Suzuki discretization up to `self.eps_trottersuzuki` threshold.
         """
         if self.evolution_oracle_type is EvolutionOracleType.numerical:
-            return self.h.exp(t_duration)
+            return self.h.exp(t_duration)  # e^{- i t_duration H}
         else:
             dt = t_duration / self.steps
             return reduce(
                 Circuit.__add__,
-                [deepcopy(self.h).circuit(dt)] * self.steps,
+                [deepcopy(self.h).circuit(dt)]
+                * self.steps,  # approx of e^{- i t_duration H}
             )
+
+    def inverted(self, duration: float):
+        if self.evolution_oracle_type is EvolutionOracleType.hamiltonian_simulation:
+            return self.circuit(duration).operator.invert()
+        elif self.evolution_oracle_type is EvolutionOracleType.numerical:
+            return np.linalg.inv(self.circuit(duration))
 
 
 @dataclass
@@ -65,51 +72,56 @@ class FrameShiftedEvolutionOracle(EvolutionOracle):
     Where V is `before circuit` and Vdag is `after circuit.
     """
 
-    before_circuit: Union[Circuit, np.ndarray]
-    after_circuit: Union[Circuit, np.ndarray]
+    # before_circuit: Union[Circuit, np.ndarray]
+    # after_circuit: Union[Circuit, np.ndarray]
+    circuit_frame: Union[Circuit, np.ndarray]
     base_evolution_oracle: EvolutionOracle
 
     @classmethod
     def from_evolution_oracle(
         cls,
         base_evolution_oracle: EvolutionOracle,
-        before_circuit,
-        after_circuit,
+        circuit_frame,
     ):
         """Create instance using only new attributes of FreameShiftedEvolutionOracle."""
         return cls(
             base_evolution_oracle=base_evolution_oracle,
-            before_circuit=before_circuit,
-            after_circuit=after_circuit,
+            circuit_frame=circuit_frame,
             h=base_evolution_oracle.h,
             evolution_oracle_type=base_evolution_oracle.evolution_oracle_type,
         )
 
     @property
     def nqubits(self):
-        assert self.before_circuit.nqubits == self.after_circuit.nqubits
-        return self.before_circuit.nqubits
+        return self.circuit_frame.nqubits
 
-    def circuit(self, t_duration: float = None):
+    def circuit(self, duration: float = None):
         """Compute corresponding circuit."""
 
         if self.evolution_oracle_type is EvolutionOracleType.numerical:
             return (
-                self.before_circuit
-                @ self.base_evolution_oracle(t_duration)
-                @ self.after_circuit
+                self.inverse_circuit
+                @ self.base_evolution_oracle(duration)
+                @ self.circuit_frame
             )
         elif self.evolution_oracle_type is EvolutionOracleType.hamiltonian_simulation:
             return (
-                self.after_circuit
-                + self.base_evolution_oracle.circuit(t_duration)
-                + self.before_circuit
+                self.circuit_frame
+                + self.base_evolution_oracle.circuit(duration)
+                + self.inverse_circuit
             )
         else:
             raise_error(
                 ValueError,
                 f"You are using an EvolutionOracle type which is not yet supported.",
             )
+
+    @cached_property
+    def inverse_circuit(self):
+        if self.evolution_oracle_type is EvolutionOracleType.hamiltonian_simulation:
+            return self.circuit_frame.invert()
+        elif self.evolution_oracle_type is EvolutionOracleType.numerical:
+            return np.linalg.inv(self.circuit_frame)
 
     def get_composed_circuit(self):
         """Collect all frame shift in circuits."""
@@ -120,12 +132,12 @@ class FrameShiftedEvolutionOracle(EvolutionOracle):
                 self.base_evolution_oracle.evolution_oracle_type
                 is EvolutionOracleType.numerical
             ):
-                c = c @ fseo.after_circuit
+                c = c @ fseo.circuit_frame
             elif (
                 self.base_evolution_oracle.evolution_oracle_type
                 is EvolutionOracleType.hamiltonian_simulation
             ):
-                c = c + fseo.after_circuit
+                c = c + fseo.circuit_frame
             fseo = fseo.base_evolution_oracle
         return c
 
@@ -177,7 +189,7 @@ class MagneticFieldEvolutionOracle(EvolutionOracle):
         """
         nqubits = len(self.params)
         circuit = Circuit(nqubits=nqubits)
-
+        # TODO: ask Marek
         circuit.add(
             gates.RZ(q_i, 2 * t * b) for q_i, b in zip(range(nqubits), self.params)
         )
@@ -235,6 +247,7 @@ class IsingNNEvolutionOracle(EvolutionOracle):
         Circuit: The final multi-layer circuit.
 
         """
+        # TODO: ask Marek
         nqubits = len(self.params) // 2
         circuit = Circuit(nqubits=nqubits)
         # Create lists of even and odd qubit indices
@@ -288,6 +301,7 @@ class XXZ_EvolutionOracle(EvolutionOracle):
             steps = self.steps
         if order is None:
             order = self.order
+            # this is doing correctly e^{- i t H_XXZ}
         return nqubit_XXZ_decomposition(
             nqubits=self.h.nqubits,
             t=t_duration,

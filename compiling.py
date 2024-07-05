@@ -89,8 +89,8 @@ def main(args):
 
     # We rotate H_XXZ with VQE using the FrameShiftedOracle e^{i H' t} = V e^{i H0 t} Vdag
     oracle = FrameShiftedEvolutionOracle.from_evolution_oracle(
-        before_circuit=vqe.circuit.invert(),
-        after_circuit=vqe.circuit,
+        # before_circuit=vqe.circuit.invert(),
+        circuit_frame=vqe.circuit,
         base_evolution_oracle=base_oracle,
     )
 
