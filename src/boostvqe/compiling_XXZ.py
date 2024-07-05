@@ -29,6 +29,7 @@ Example:
 
 import numpy as np
 from qibo import Circuit, gates
+from qibo import hamiltonians
 
 
 def _add_gates(circuit, list_q_i, list_q_ip1, t, delta, steps):
@@ -149,6 +150,7 @@ def nqubit_XXZ_decomposition(nqubits, t, delta=0.5, steps=1, order=1):
     return multi_layer  
 
 def vw_xxz_compiling_phase(nqubits, steps, order = 1):
+    "Return the global phase missing from Vatan William circuit"
     if order == 1:
         return np.exp(1j *np.pi/4* nqubits * steps)
     elif order == 2:
@@ -159,6 +161,9 @@ def vw_xxz_compiling_phase(nqubits, steps, order = 1):
 
 
 def test_compiling_XXZ(t = 0.1, nqubits = 4, steps = 3):
-    h = hamiltonians.XXZ(nqubits=nqubits, delta=0.5)
-    return  np.linalg.norm(h.exp(t) - circuit_compiling_phase(nqubits, steps) * nqubit_XXZ_decomposition(
-            nqubits=nqubits,t=0.1,delta=0.5,steps=steps))
+    "Compare the Hamiltonian achieved from decomposition circuit and from qibo hamiltonians.XXZ"
+    h_xxz = hamiltonians.XXZ(nqubits=nqubits, delta = 0.5)
+    u = h_xxz.exp(t)
+    circ = nqubit_XXZ_decomposition(nqubits=nqubits,t=t,delta=0.5,steps=steps)
+    v = circ.unitary()
+    return np.linalg.norm(u-vw_xxz_compiling_phase(nqubits, steps)*v)
