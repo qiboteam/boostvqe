@@ -58,13 +58,19 @@ def main(args):
     logging.info("Set VQE")
     path = pathlib.Path(create_folder(generate_path(args)))
     ham = getattr(Model, args.hamiltonian)(args.nqubits)
-    print("dddddd", np.asarray(ham.eigenvalues()))
-    print(np.min(np.asarray(ham.eigenvalues())))
     target_energy = np.real(np.min(np.asarray(ham.eigenvalues())))
-    circ0 = build_circuit_RBS(
-        nqubits=args.nqubits,
-        nlayers=args.nlayers,
-    )
+
+    if args.ansatz == "hw_preserving":
+        circ0 = build_circuit_RBS(
+            nqubits=args.nqubits,
+            nlayers=args.nlayers,
+        )
+    elif args.ansatz == "hdw_efficient":
+        circ0 = build_circuit(
+            nqubits=args.nqubits,
+            nlayers=args.nlayers,
+        )
+
     logging.info(circ0.draw())
     
     circ = circ0.copy(deep=True)
@@ -329,6 +335,11 @@ if __name__ == "__main__":
         "--nshots",
         type=int,
         help="number of shots",
+    )
+    parser.add_argument(
+        "--ansatz",
+        type=str,
+        help="Parametric quantum circuit ansatz. It can be hw_preserving or hdw_efficient",
     )
     args = parser.parse_args()
     main(args)

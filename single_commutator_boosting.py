@@ -17,11 +17,17 @@ from qibo.models.dbi.double_bracket import (
     DoubleBracketIteration,
 )
 
-from boostvqe.ansatze import VQE, build_circuit
+from boostvqe.ansatze import (
+    VQE, 
+    build_circuit,
+    build_circuit_RBS,
+)
+
+from boostvqe.training_utils import Model
+
 from boostvqe.utils import (
     OPTIMIZATION_FILE,
     PARAMS_FILE,
-    build_circuit_RBS, 
     apply_dbi_steps, 
     rotate_h_with_vqe,
 )
@@ -70,14 +76,21 @@ def main(args):
     nlayers = config["nlayers"]
     vqe_backend = construct_backend(backend=config["backend"])
     # TODO: remove delta hardcoded
-    hamiltonian = getattr(hamiltonians, config["hamiltonian"])(
-        nqubits=nqubits, delta=0.5, backend=vqe_backend
-    )
+    hamiltonian = getattr(Model, config["hamiltonian"])(config["nqubits"])
+
+    if config["ansatz"] == "hw_preserving":
+        circ = build_circuit_RBS(
+            nqubits=config["nqubits"],
+            nlayers=config["nlayers"],
+        )
+    elif config["ansatz"] == "hdw_efficient":
+        circ = build_circuit(
+            nqubits=config["nqubits"],
+            nlayers=config["nlayers"],
+        )
+
     vqe = VQE(
-        build_circuit_RBS(
-            nqubits=nqubits,
-            nlayers=nlayers,
-        ),
+        circuit=circ,
         hamiltonian=hamiltonian,
     )
     print(vqe.circuit.draw())
