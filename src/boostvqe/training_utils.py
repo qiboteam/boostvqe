@@ -20,8 +20,9 @@ from qibo.symbols import Z
 
 DEFAULT_DELTA = 0.5
 """Default `delta` value of XXZ Hamiltonian"""
-DEFAULT_DELTAS = [0., 2.]
-TLFIM_h = [1., 2.]
+DEFAULT_DELTAS = [0.0, 2.0]
+TLFIM_h = [1.0, 2.0]
+J1J2_h = [1.0, 0.2]
 
 
 class Model(Enum):
@@ -66,6 +67,38 @@ def TLFIM(nqubits, h=TLFIM_h, dense=True, backend=None):
     )
     terms = [HamiltonianTerm(matrix, i, i + 1) for i in range(nqubits - 1)]
     terms.append(HamiltonianTerm(matrix, nqubits - 1, 0))
+    ham = SymbolicHamiltonian(backend=backend)
+    ham.terms = terms
+    return ham
+
+
+def J1J2(nqubits, h=J1J2_h, dense=True, backend=None):
+    """Heisenberg J1-J2 model."""
+    if nqubits < 3:
+        raise_error(ValueError, "Number of qubits must be larger than two.")
+    if nqubits < 3:
+        raise_error(ValueError, "Number of qubits must be larger than two.")
+    if dense:
+        print("Dense model has been used.")
+        condition_1 = lambda i, j: i in {j % nqubits, (j + 1) % nqubits}
+        hx = _build_spin_model(nqubits, matrices.X, condition_1)
+        hy = _build_spin_model(nqubits, matrices.Y, condition_1)
+        hz = _build_spin_model(nqubits, matrices.Z, condition_1)
+        condition_2 = lambda i, j: i in {j % nqubits, (j + 2) % nqubits}
+        hx2 = _build_spin_model(nqubits, matrices.X, condition_2)
+        hy2 = _build_spin_model(nqubits, matrices.Y, condition_2)
+        hz2 = _build_spin_model(nqubits, matrices.Z, condition_2)
+        matrix = h[0] * (hx + hy + hz) + h[1] * (hx2 + hy2 + hz2)
+        return Hamiltonian(nqubits, matrix, backend=backend)
+
+    hx = multikron([matrices.X, matrices.X])
+    hy = multikron([matrices.Y, matrices.Y])
+    hz = multikron([matrices.Z, matrices.Z])
+    matrix = hx + hy + hz
+    terms = [HamiltonianTerm(matrix, i, i + 1) for i in range(nqubits - 1)]
+    terms.extend([HamiltonianTerm(matrix, i, i + 2) for i in range(nqubits - 2)])
+    terms.append(HamiltonianTerm(matrix, nqubits - 1, 0))
+    terms.append(HamiltonianTerm(matrix, nqubits - 2, 0))
     ham = SymbolicHamiltonian(backend=backend)
     ham.terms = terms
     return ham
