@@ -12,12 +12,7 @@ from qibo.models.dbi.utils_scheduling import hyperopt_step
 
 from scipy import optimize
 
-from boostvqe.ansatze import (
-    VQE, 
-    build_circuit,
-    build_circuit_RBS, 
-    compute_gradients,
-)
+from boostvqe import ansatze
 from boostvqe.compiling_XXZ import *
 from boostvqe.models.dbi.double_bracket_evolution_oracles import *
 from boostvqe.models.dbi.group_commutator_iteration_transpiler import *
@@ -110,7 +105,7 @@ def train_vqe(
 
     circ.set_parameters(initial_parameters)
 
-    vqe = VQE(
+    vqe = ansatze.VQE(
         circuit=circ,
         hamiltonian=ham,
     )
@@ -135,7 +130,7 @@ def train_vqe(
         )
         params_history.append(copy.deepcopy(params))
         grads_history.append(
-            compute_gradients(
+            ansatze.compute_gradients(
                 parameters=params, circuit=circ.copy(deep=True), hamiltonian=ham
             )
         )
@@ -232,11 +227,11 @@ def initialize_gci_from_vqe(
     nqubits = config["nqubits"]
     # build circuit, hamiltonian and VQE
     # circuit = build_circuit(nqubits, config["nlayers"], "numpy")
-    circuit = build_circuit_RBS(nqubits, config["nlayers"], "numpy")
+    circuit = getattr(ansatze, config["ansatz"])(config["nqubits"], config["nlayers"])
 
     hamiltonian = hamiltonians.XXZ(nqubits=nqubits, delta=0.5)
 
-    vqe = VQE(circuit, hamiltonian)
+    vqe = ansatze.VQE(circuit, hamiltonian)
     # set target parameters into the VQE
     vqe.circuit.set_parameters(params)
 

@@ -16,7 +16,7 @@ from qibo.models.dbi.double_bracket import (
 )
 
 # boostvqe's
-from boostvqe.ansatze import build_circuit, build_circuit_RBS
+from boostvqe import ansatze
 from boostvqe.plotscripts import plot_gradients, plot_loss
 from boostvqe.training_utils import Model, vqe_loss
 from boostvqe.utils import (
@@ -60,16 +60,8 @@ def main(args):
     ham = getattr(Model, args.hamiltonian)(args.nqubits)
     target_energy = np.real(np.min(np.asarray(ham.eigenvalues())))
 
-    if args.ansatz == "hw_preserving":
-        circ0 = build_circuit_RBS(
-            nqubits=args.nqubits,
-            nlayers=args.nlayers,
-        )
-    elif args.ansatz == "hdw_efficient":
-        circ0 = build_circuit(
-            nqubits=args.nqubits,
-            nlayers=args.nlayers,
-        )
+    # construct circuit from parsed ansatz name
+    circ0 = getattr(ansatze, args.ansatz)(args.nqubits, args.nlayers)
 
     logging.info(circ0.draw())
     
