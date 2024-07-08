@@ -75,7 +75,7 @@ def main(args):
     )
 
     # construct circuit from parsed ansatz name
-    circi = getattr(ansatze, config["ansatz"])(config["nqubits"], config["nlayers"])
+    circ = getattr(ansatze, config["ansatz"])(config["nqubits"], config["nlayers"])
 
     vqe = ansatze.VQE(
         circuit=circ,
