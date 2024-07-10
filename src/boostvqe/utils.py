@@ -192,10 +192,10 @@ def apply_dbi_steps(dbi, nsteps, d_type, method, **kwargs):
             p0, dbi, d_type, method, **kwargs
         )
         step = optimized_params[0]
-        new_d = d_type.load(optimized_params[1:]).hamiltonian.matrix
+        new_d = d_type.load(optimized_params[1:]).h.matrix
         operators.append(dbi(step=step, d=new_d))
         steps.append(step)
-        d_matrix.append(np.diag(dbi.new_d))
+        d_matrix.append(np.diag(new_d))
         zero_state = np.transpose([dbi.h.backend.zero_state(dbi.h.nqubits)])
 
         logging.info(f"\nH matrix: {dbi.h.matrix}\n")
