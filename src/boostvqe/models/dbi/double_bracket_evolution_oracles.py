@@ -35,9 +35,8 @@ class EvolutionOracle:
     """Type of evolution oracle."""
 
     def __post_init__(self):
-        # TODO: call trotter-suzuki-step
         self.steps = 1
-        """Trotter suzuki step."""
+        """Number of steps in Trotter-Suzuki discretization."""
 
     def __call__(self, t_duration: float):
         """Returns either the name or the circuit"""
@@ -53,7 +52,7 @@ class EvolutionOracle:
             dt = t_duration / self.steps
             return reduce(
                 Circuit.__add__,
-                [deepcopy(self.h).circuit(dt)]
+                [self.h.circuit(dt)]
                 * self.steps,  # approx of e^{- i t_duration H}
             )
 
@@ -247,7 +246,6 @@ class IsingNNEvolutionOracle(EvolutionOracle):
         Circuit: The final multi-layer circuit.
 
         """
-        # TODO: ask Marek
         nqubits = len(self.params) // 2
         circuit = Circuit(nqubits=nqubits)
         # Create lists of even and odd qubit indices
