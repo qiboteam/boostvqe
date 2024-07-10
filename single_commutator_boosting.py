@@ -1,13 +1,11 @@
 import argparse
+import copy
 import json
 import logging
-import copy
 import pathlib
 import time
 
 import numpy as np
-from scipy.optimize import minimize
-
 import qibo
 from qibo import hamiltonians, set_backend
 from qibo.backends import construct_backend
@@ -15,15 +13,11 @@ from qibo.models.dbi.double_bracket import (
     DoubleBracketGeneratorType,
     DoubleBracketIteration,
 )
+from scipy.optimize import minimize
 
-from boostvqe.ansatze import (
-    VQE,
-    build_circuit,
-    build_circuit_RBS,
-)
-
-from boostvqe.training_utils import Model
+from boostvqe import ansatze
 from boostvqe.models.dbi import double_bracket_evolution_oracles
+from boostvqe.training_utils import Model
 from boostvqe.utils import (  # build_circuit_RBS,
     OPTIMIZATION_FILE,
     PARAMS_FILE,
@@ -56,23 +50,15 @@ def main(args):
     vqe_backend = construct_backend(backend=config["backend"])
     hamiltonian = getattr(Model, config["hamiltonian"])(config["nqubits"])
 
-    if config["ansatz"] == "hw_preserving":
-        circ = build_circuit_RBS(
-            nqubits=config["nqubits"],
-            nlayers=config["nlayers"],
-        )
-    elif config["ansatz"] == "hdw_efficient":
-        circ = build_circuit(
-            nqubits=config["nqubits"],
-            nlayers=config["nlayers"],
-        )
     eo_d_type = getattr(double_bracket_evolution_oracles, args.eo_d)
     if args.optimization_config is None:
         opt_options = {}
     else:
         opt_options = json.loads(args.optimization_config)
+    # construct circuit from parsed ansatz name
+    circ = getattr(ansatze, config["ansatz"])(config["nqubits"], config["nlayers"])
 
-    vqe = VQE(
+    vqe = ansatze.VQE(
         circuit=circ,
         hamiltonian=hamiltonian,
     )
@@ -93,7 +79,6 @@ def main(args):
         rotate_h_with_vqe(hamiltonian=hamiltonian, vqe=vqe)
     )
     new_hamiltonian = hamiltonians.Hamiltonian(nqubits, matrix=new_hamiltonian_matrix)
-
 
     dbi = DoubleBracketIteration(
         hamiltonian=new_hamiltonian,

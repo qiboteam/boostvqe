@@ -12,7 +12,7 @@ from qibo import hamiltonians
 from qibo.backends import construct_backend
 from qibo.quantum_info.metrics import fidelity
 
-from boostvqe.ansatze import VQE, build_circuit_RBS, build_circuit
+from boostvqe import ansatze
 from boostvqe.models.dbi import double_bracket_evolution_oracles
 from boostvqe.models.dbi.double_bracket_evolution_oracles import (
     FrameShiftedEvolutionOracle,
@@ -74,18 +74,10 @@ def main(args):
         nqubits=nqubits, delta=0.5, backend=vqe_backend
     )
 
-    if config["ansatz"] == "hw_preserving":
-        circ = build_circuit_RBS(
-            nqubits=config["nqubits"],
-            nlayers=config["nlayers"],
-        )
-    elif config["ansatz"] == "hdw_efficient":
-        circ = build_circuit(
-            nqubits=config["nqubits"],
-            nlayers=config["nlayers"],
-        )
+    # construct circuit from parsed ansatz name
+    circ = getattr(ansatze, config["ansatz"])(config["nqubits"], config["nlayers"])
 
-    vqe = VQE(
+    vqe = ansatze.VQE(
         circuit=circ,
         hamiltonian=hamiltonian,
     )

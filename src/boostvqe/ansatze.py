@@ -5,8 +5,18 @@ from qibo.models import Circuit
 
 from boostvqe.training_utils import vqe_loss
 
+def connect_qubits(circuit, jumpsize=1, start_from=0):
+    def get_circular_index(n, index):
+        circular_index = index % n
+        return circular_index
+    for q in range(start_from, circuit.nqubits, jumpsize+1):
+        ctrl_index = q
+        targ_index = get_circular_index(circuit.nqubits, q+jumpsize)
+        circuit.add(gates.RBS(q0=ctrl_index, q1=targ_index, theta=0.))
+    return circuit
 
-def build_circuit(nqubits, nlayers):
+
+def hdw_efficient(nqubits, nlayers):
     """Build qibo's aavqe example circuit."""
 
     circuit = Circuit(nqubits)
@@ -21,19 +31,9 @@ def build_circuit(nqubits, nlayers):
     circuit.add(gates.RY(q, theta=0) for q in range(nqubits))
 
     return circuit
-
-def connect_qubits(circuit, jumpsize=1, start_from=0):
-    def get_circular_index(n, index):
-        circular_index = index % n
-        return circular_index
-    for q in range(start_from, circuit.nqubits, jumpsize+1):
-        ctrl_index = q
-        targ_index = get_circular_index(circuit.nqubits, q+jumpsize)
-        circuit.add(gates.RBS(q0=ctrl_index, q1=targ_index, theta=0.))
-    return circuit
             
 
-def build_circuit_RBS(nqubits, nlayers=1):
+def hw_preserving(nqubits, nlayers=1):
 
     if nqubits%2 != 0:
         raise_error(
@@ -45,7 +45,7 @@ def build_circuit_RBS(nqubits, nlayers=1):
     for q in range(int(nqubits/2)):
         c.add(gates.X(q))
 
-    for q in range(int(nqubits)):
+    for _ in range(int(nlayers)):
         c = connect_qubits(c, jumpsize=1, start_from=0)
         c = connect_qubits(c, jumpsize=1, start_from=1)
         c = connect_qubits(c, jumpsize=2, start_from=0)
@@ -54,6 +54,19 @@ def build_circuit_RBS(nqubits, nlayers=1):
 
     return c
 
+def su2_preserving(nqubits, nlayers):
+    """SU2 invariant circuit."""
+    c = Circuit(nqubits)
+    for _ in range(nlayers):
+        for q in range(1, nqubits, 2):
+            c.add(gates.RXX(q0=q, q1=(q+1)%nqubits, theta=0.))
+            c.add(gates.RYY(q0=q, q1=(q+1)%nqubits, theta=0.))
+            c.add(gates.RZZ(q0=q, q1=(q+1)%nqubits, theta=0.))
+        for q in range(0, nqubits, 2):
+            c.add(gates.RXX(q0=q, q1=(q+1)%nqubits, theta=0.))
+            c.add(gates.RYY(q0=q, q1=(q+1)%nqubits, theta=0.))
+            c.add(gates.RZZ(q0=q, q1=(q+1)%nqubits, theta=0.))
+    return c
 
 def compute_gradients(parameters, circuit, hamiltonian):
     """
