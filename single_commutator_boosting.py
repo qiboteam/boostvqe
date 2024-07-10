@@ -1,9 +1,9 @@
-import json
-import time
 import argparse
+import json
 import logging
 import copy
 import pathlib
+import time
 
 import numpy as np
 from scipy.optimize import minimize
@@ -11,55 +11,37 @@ from scipy.optimize import minimize
 import qibo
 from qibo import hamiltonians, set_backend
 from qibo.backends import construct_backend
-
 from qibo.models.dbi.double_bracket import (
     DoubleBracketGeneratorType,
     DoubleBracketIteration,
 )
 
 from boostvqe.ansatze import (
-    VQE, 
+    VQE,
     build_circuit,
     build_circuit_RBS,
 )
 
 from boostvqe.training_utils import Model
-
-from boostvqe.utils import (
+from boostvqe.models.dbi.double_bracket_evolution_oracles import (
+    IsingNNEvolutionOracle,
+    MagneticFieldEvolutionOracle,
+)
+from boostvqe.utils import (  # build_circuit_RBS,
     OPTIMIZATION_FILE,
     PARAMS_FILE,
-    apply_dbi_steps, 
+    apply_dbi_steps,
+    build_circuit,
     rotate_h_with_vqe,
 )
 
 logging.basicConfig(level=logging.INFO)
 qibo.set_backend("numpy")
 
-def cost_function(s, dbi, zero_state):
-    """Compute the final energy we get applying step `s` to DBI."""
-    original_h = copy.deepcopy(dbi.h)
-    dbi(step=s, d=dbi.diagonal_h_matrix)
-    cost = dbi.h.expectation(np.asarray(zero_state))
-    dbi.h = original_h
-    return cost
-
-def optimize_s(dbi, zero_state):
-    """Optimize DBI stepsize using Powell minimizer."""
-    opt_result = minimize(
-        cost_function, 
-        x0=[0.01], 
-        args=(dbi, zero_state),
-        method="Powell",
-        options={"maxiter": 200}
-    )
-    return opt_result
 
 def main(args):
     path = pathlib.Path(args.path)
-    dump_path = (
-        path
-        / f"single_commutator_hyperopt_{args.epoch}e_{args.steps}s"
-    )
+    dump_path = path / f"single_commutator_hyperopt_{args.epoch}e_{args.steps}s"
     dump_path.mkdir(parents=True, exist_ok=True)
 
     config = json.loads((path / OPTIMIZATION_FILE).read_text())
@@ -106,10 +88,10 @@ def main(args):
     ene1 = hamiltonian.expectation(vqe_state)
 
     print("Rotating with VQE")
-    new_hamiltonian_matrix = np.array(rotate_h_with_vqe(hamiltonian=hamiltonian, vqe=vqe))
-    new_hamiltonian = hamiltonians.Hamiltonian(
-        nqubits, matrix=new_hamiltonian_matrix
+    new_hamiltonian_matrix = np.array(
+        rotate_h_with_vqe(hamiltonian=hamiltonian, vqe=vqe)
     )
+    new_hamiltonian = hamiltonians.Hamiltonian(nqubits, matrix=new_hamiltonian_matrix)
 
 
     dbi = DoubleBracketIteration(
@@ -121,23 +103,19 @@ def main(args):
     energy_h0 = float(dbi.h.expectation(np.array(zero_state_t)))
     fluctuations_h0 = float(dbi.h.energy_fluctuation(zero_state_t))
 
-    energies = []
+    dbi_results = apply_dbi_steps(
+        dbi=dbi, nsteps=args.steps, d_type=MagneticFieldEvolutionOracle, method="Powell"
+    )
 
-    for s in range(args.steps):
-        logging.info(f"Optimizing step {s+1}")
-        s = optimize_s(dbi, zero_state).x
-        dbi(step=s, d=dbi.diagonal_h_matrix)
-        this_energy = dbi.h.expectation(zero_state)
-        logging.info(f"Best found energy: {this_energy}")
-        energies.append(this_energy)
-    
+    dbi_energies = dbi_results[1]
     dict_results = {
         "VQE energy": float(ene1),
         "Ground state": float(target_energy),
-        "dbi_energies": energies
+        "dbi_energies": dbi_energies,
     }
-    
+
     (dump_path / "boosting_data.json").write_text(json.dumps(dict_results, indent=4))
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Boosting VQE with DBI.")
@@ -145,7 +123,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--epoch", default=-1, type=int, help="VQE epoch where DBI will be applied."
     )
-    parser.add_argument("--steps", default=3, type=int, help="DBI steps")
+    parser.add_argument("--steps", default=1, type=int, help="DBI steps")
 
     args = parser.parse_args()
     main(args)
