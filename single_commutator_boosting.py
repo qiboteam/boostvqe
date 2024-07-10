@@ -35,7 +35,7 @@ from boostvqe.utils import (  # build_circuit_RBS,
     rotate_h_with_vqe,
 )
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.ERROR)
 qibo.set_backend("numpy")
 
 
@@ -104,7 +104,7 @@ def main(args):
     fluctuations_h0 = float(dbi.h.energy_fluctuation(zero_state_t))
 
     dbi_results = apply_dbi_steps(
-        dbi=dbi, nsteps=args.steps, d_type=MagneticFieldEvolutionOracle, method="Powell"
+        dbi=dbi, nsteps=args.steps, d_type=MagneticFieldEvolutionOracle, method="cma"
     )
 
     dbi_energies = dbi_results[1]

@@ -216,10 +216,10 @@ def apply_dbi_steps(dbi, nsteps, d_type, method):
 
         optimized_params, opt_dict = optimize_D_for_dbi(p0, dbi, d_type, method)
         step = optimized_params[0]
-        new_d = d_type.load(optimized_params[1:]).hamiltonian.matrix
+        new_d = d_type.load(optimized_params[1:]).h.matrix
         operators.append(dbi(step=step, d=new_d))
         steps.append(step)
-        d_matrix.append(np.diag(dbi.new_d))
+        d_matrix.append(np.diag(new_d))
         zero_state = np.transpose([dbi.h.backend.zero_state(dbi.h.nqubits)])
 
         logging.info(f"\nH matrix: {dbi.h.matrix}\n")
@@ -471,7 +471,7 @@ def optimize_D_for_dbi(
             sigma0=0.5,
             x0=params,
             args=(dbi, d_type),
-            options={"bounds": bounds, "maxiter": maxiter},
+            options={"bounds": bounds, "maxiter": 1},
         )
         result_dict = convert_numpy(opt_results[-2].result._asdict())
         return opt_results[0], {f"{method}_extras": result_dict}
