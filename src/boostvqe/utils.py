@@ -11,12 +11,7 @@ from qibo import hamiltonians
 from qibo.models.dbi.utils_scheduling import hyperopt_step
 from scipy import optimize
 
-from boostvqe.ansatze import (
-    VQE, 
-    build_circuit,
-    build_circuit_RBS, 
-    compute_gradients,
-)
+from boostvqe.ansatze import VQE, build_circuit, build_circuit_RBS, compute_gradients
 from boostvqe.compiling_XXZ import *
 from boostvqe.models.dbi.double_bracket_evolution_oracles import *
 from boostvqe.models.dbi.group_commutator_iteration_transpiler import *
@@ -192,36 +187,15 @@ def apply_dbi_steps(dbi, nsteps, d_type, method, **kwargs):
     operators = []
     for _ in range(nsteps):
         logging.info(f"step {_+1}")
-<<<<<<< HEAD
-        if optimize_step:
-            logging.info(f"optimizing step")
-            # Change logging level to reduce verbosity
-            logging.getLogger().setLevel(logging.WARNING)
-            step = dbi.choose_step(
-                scheduling=grid_search_step, step_min=1e-5, step_max=0.05, num_evals=100,
-            )
-            # Restore the original logging level
-            logging.getLogger().setLevel(logging.INFO)
-            logging.info(f"Optimized step: {step}")
-
-            operators.append(dbi(step=step, d=dbi.diagonal_h_matrix))
-            steps.append(step)
-            d_matrix.append(np.diag(dbi.diagonal_h_matrix))
-            zero_state = np.transpose([dbi.h.backend.zero_state(dbi.h.nqubits)])
-
-            energies.append(dbi.h.expectation(zero_state))
-            fluctuations.append(dbi.energy_fluctuation(zero_state))
-            hamiltonians.append(dbi.h.matrix)
-=======
 
         optimized_params, opt_dict = optimize_D_for_dbi(
             p0, dbi, d_type, method, **kwargs
         )
         step = optimized_params[0]
-        new_d = d_type.load(optimized_params[1:]).h.matrix
+        new_d = d_type.load(optimized_params[1:]).hamiltonian.matrix
         operators.append(dbi(step=step, d=new_d))
         steps.append(step)
-        d_matrix.append(np.diag(new_d))
+        d_matrix.append(np.diag(dbi.new_d))
         zero_state = np.transpose([dbi.h.backend.zero_state(dbi.h.nqubits)])
 
         logging.info(f"\nH matrix: {dbi.h.matrix}\n")
@@ -229,7 +203,6 @@ def apply_dbi_steps(dbi, nsteps, d_type, method, **kwargs):
         energies.append(dbi.h.expectation(zero_state))
         fluctuations.append(dbi.energy_fluctuation(zero_state))
         hamiltonians.append(dbi.h.matrix)
->>>>>>> 31d3f4a (feat: single comm with optimizers)
 
         logging.info(f"DBI energies: {energies}")
     return hamiltonians, energies, fluctuations, steps, d_matrix, operators
@@ -521,7 +494,7 @@ def optimize_D_for_dbi(
                 bounds=bounds,
                 args=(dbi, d_type),
                 method=method,
-                options={"disp": 1, "maxiter": maxiter},
+                options={"disp": 1, "maxiter": 2},
             )
     return opt_results.x, {f"{method}_extras": convert_numpy(dict(opt_results))}
 
@@ -529,8 +502,10 @@ def optimize_D_for_dbi(
 def loss_function_D_dbi(dbi_params, dbi, d_type):
     """``params`` has shape [s0, b_list_0]."""
     d = d_type.load(dbi_params[1:]).h.matrix
+    original_h = copy.deepcopy(dbi.h)
     new_h = dbi(step=dbi_params[0], d=d)
     zero_state = dbi.backend.zero_state(dbi.nqubits)
+    dbi.h = original_h
     return hamiltonians.Hamiltonian(dbi.nqubits, new_h).expectation(zero_state)
 
 
