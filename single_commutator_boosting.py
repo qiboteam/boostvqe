@@ -22,7 +22,6 @@ from boostvqe.utils import (  # build_circuit_RBS,
     OPTIMIZATION_FILE,
     PARAMS_FILE,
     apply_dbi_steps,
-    build_circuit,
     rotate_h_with_vqe,
 )
 
