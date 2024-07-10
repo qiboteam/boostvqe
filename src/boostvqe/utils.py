@@ -179,7 +179,7 @@ def rotate_h_with_vqe(hamiltonian, vqe):
     return new_hamiltonian
 
 
-def apply_dbi_steps(dbi, nsteps, d_type, method):
+def apply_dbi_steps(dbi, nsteps, d_type, method, **kwargs):
     """Apply `nsteps` of `dbi` to `hamiltonian`."""
     nqubits = dbi.nqubits
     p0 = [0.01]
@@ -214,7 +214,9 @@ def apply_dbi_steps(dbi, nsteps, d_type, method):
             hamiltonians.append(dbi.h.matrix)
 =======
 
-        optimized_params, opt_dict = optimize_D_for_dbi(p0, dbi, d_type, method)
+        optimized_params, opt_dict = optimize_D_for_dbi(
+            p0, dbi, d_type, method, **kwargs
+        )
         step = optimized_params[0]
         new_d = d_type.load(optimized_params[1:]).h.matrix
         operators.append(dbi(step=step, d=new_d))
@@ -471,7 +473,7 @@ def optimize_D_for_dbi(
             sigma0=0.5,
             x0=params,
             args=(dbi, d_type),
-            options={"bounds": bounds, "maxiter": 1},
+            options={"bounds": bounds, "maxiter": maxiter},
         )
         result_dict = convert_numpy(opt_results[-2].result._asdict())
         return opt_results[0], {f"{method}_extras": result_dict}
@@ -519,7 +521,7 @@ def optimize_D_for_dbi(
                 bounds=bounds,
                 args=(dbi, d_type),
                 method=method,
-                options={"disp": 1, "maxiter": 2},
+                options={"disp": 1, "maxiter": maxiter},
             )
     return opt_results.x, {f"{method}_extras": convert_numpy(dict(opt_results))}
 

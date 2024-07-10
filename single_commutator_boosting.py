@@ -23,10 +23,7 @@ from boostvqe.ansatze import (
 )
 
 from boostvqe.training_utils import Model
-from boostvqe.models.dbi.double_bracket_evolution_oracles import (
-    IsingNNEvolutionOracle,
-    MagneticFieldEvolutionOracle,
-)
+from boostvqe.models.dbi import double_bracket_evolution_oracles
 from boostvqe.utils import (  # build_circuit_RBS,
     OPTIMIZATION_FILE,
     PARAMS_FILE,
@@ -57,7 +54,6 @@ def main(args):
     nqubits = config["nqubits"]
     nlayers = config["nlayers"]
     vqe_backend = construct_backend(backend=config["backend"])
-    # TODO: remove delta hardcoded
     hamiltonian = getattr(Model, config["hamiltonian"])(config["nqubits"])
 
     if config["ansatz"] == "hw_preserving":
@@ -70,6 +66,11 @@ def main(args):
             nqubits=config["nqubits"],
             nlayers=config["nlayers"],
         )
+    eo_d_type = getattr(double_bracket_evolution_oracles, args.eo_d)
+    if args.optimization_config is None:
+        opt_options = {}
+    else:
+        opt_options = json.loads(args.optimization_config)
 
     vqe = VQE(
         circuit=circ,
@@ -102,9 +103,12 @@ def main(args):
     zero_state_t = np.transpose([zero_state])
     energy_h0 = float(dbi.h.expectation(np.array(zero_state_t)))
     fluctuations_h0 = float(dbi.h.energy_fluctuation(zero_state_t))
-
     dbi_results = apply_dbi_steps(
-        dbi=dbi, nsteps=args.steps, d_type=MagneticFieldEvolutionOracle, method="cma"
+        dbi=dbi,
+        nsteps=args.steps,
+        d_type=eo_d_type,
+        method=args.optimization_method,
+        **opt_options,
     )
 
     dbi_energies = dbi_results[1]
@@ -124,6 +128,18 @@ if __name__ == "__main__":
         "--epoch", default=-1, type=int, help="VQE epoch where DBI will be applied."
     )
     parser.add_argument("--steps", default=1, type=int, help="DBI steps")
-
+    parser.add_argument(
+        "--optimization_method", default="sgd", type=str, help="Optimization method"
+    )
+    parser.add_argument(
+        "--eo_d",
+        default="IsingNNEvolutionOracle",
+        help="Evolution Oracle D operator. Can be either MagneticFieldEvolutionOracle or IsingNNEvolutionOracle.",
+    )
+    parser.add_argument(
+        "--optimization_config",
+        type=str,
+        help="Options to customize the optimizer training.",
+    )
     args = parser.parse_args()
     main(args)
