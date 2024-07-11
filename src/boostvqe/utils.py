@@ -191,6 +191,7 @@ def apply_dbi_steps(dbi, nsteps, d_type, method, **kwargs):
         optimized_params, opt_dict = optimize_D_for_dbi(
             p0, dbi, d_type, method, **kwargs
         )
+
         step = optimized_params[0]
         new_d = d_type.load(optimized_params[1:]).h.matrix
         operators.append(dbi(step=step, d=new_d))
@@ -507,6 +508,11 @@ def loss_function_D_dbi(dbi_params, dbi, d_type):
     zero_state = dbi.backend.zero_state(dbi.nqubits)
     dbi.h = original_h
     return hamiltonians.Hamiltonian(dbi.nqubits, new_h).expectation(zero_state)
+
+
+def loss_function_D(gci_params, gci, eo_d_type, mode):
+    """``params`` has shape [s0, b_list_0]."""
+    return gci.loss(gci_params[0], eo_d_type.load(gci_params[1:]), mode)
 
 
 def convert_numpy(obj):
