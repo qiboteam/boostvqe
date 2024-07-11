@@ -64,7 +64,7 @@ def main(args):
     print(vqe.circuit.draw())
     vqe.circuit.set_parameters(params)
 
-    zero_state = np.asarray(hamiltonian.backend.zero_state(config["nqubits"]))
+    zero_state = hamiltonian.backend.zero_state(config["nqubits"])
     target_energy = np.min(np.array(hamiltonian.eigenvalues()))
 
     # set target parameters into the VQE
@@ -84,9 +84,6 @@ def main(args):
         mode=DoubleBracketGeneratorType.single_commutator,
     )
 
-    zero_state_t = np.transpose([zero_state])
-    energy_h0 = float(dbi.h.expectation(np.array(zero_state_t)))
-    fluctuations_h0 = float(dbi.h.energy_fluctuation(zero_state_t))
     dbi_results = apply_dbi_steps(
         dbi=dbi,
         nsteps=args.steps,
@@ -113,7 +110,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--steps", default=1, type=int, help="DBI steps")
     parser.add_argument(
-        "--optimization_method", default="sgd", type=str, help="Optimization method"
+        "--optimization_method", default="cma", type=str, help="Optimization method"
     )
     parser.add_argument(
         "--eo_d",
