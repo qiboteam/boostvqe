@@ -101,7 +101,7 @@ class GroupCommutatorIterationWithEvolutionOracles:
                 self.oracle.circuit(s_step),
                 d.circuit(s_step * (np.sqrt(5) + 1) / 2),
                 self.oracle.circuit(-s_step * (3 - np.sqrt(5)) / 2),
-                d.oracle.circuit(-s_step),
+                d.circuit(-s_step),
             ]
         elif mode is DoubleBracketRotationType.group_commutator_third_order_reduced:
             operators = [

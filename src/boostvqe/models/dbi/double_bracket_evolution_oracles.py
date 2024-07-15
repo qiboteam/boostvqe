@@ -307,3 +307,7 @@ class XXZ_EvolutionOracle(EvolutionOracle):
             steps=steps,
             order=order,
         )
+    
+    def get_composed_circuit(self):
+        """Collect all frame shift in circuits."""
+        return Circuit(nqubits=self.h.nqubits)
