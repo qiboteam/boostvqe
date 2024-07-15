@@ -35,7 +35,8 @@ class EvolutionOracle:
     """Type of evolution oracle."""
 
     def __post_init__(self):
-        self.steps = 1
+        if self.steps is None:
+            self.steps = 1
         """Number of steps in Trotter-Suzuki discretization."""
 
     def __call__(self, t_duration: float):
@@ -52,8 +53,7 @@ class EvolutionOracle:
             dt = t_duration / self.steps
             return reduce(
                 Circuit.__add__,
-                [self.h.circuit(dt)]
-                * self.steps,  # approx of e^{- i t_duration H}
+                [self.h.circuit(dt)] * self.steps,  # approx of e^{- i t_duration H}
             )
 
     def inverted(self, duration: float):
