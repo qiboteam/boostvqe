@@ -80,6 +80,7 @@ def hyperopt_step(
         algo=optimizer.suggest,
         max_evals=max_evals,
         show_progressbar=False,
+        verbose=False,
     )
     return best["step"]
 
@@ -87,7 +88,7 @@ def hyperopt_step(
 def polynomial_step(
     dbi_object,
     n: int = 2,
-    n_max: int = 5,
+    n_max: int = None,
     d: np.array = None,
     coef: Optional[list] = None,
     cost: Optional[str] = None,
@@ -106,7 +107,10 @@ def polynomial_step(
 
     if d is None:
         d = dbi_object.diagonal_h_matrix
-
+        
+    if n_max is None:
+        n_max = n + 3
+        
     if n > n_max:
         raise ValueError(
             "No solution can be found with polynomial approximation. Increase `n_max` or use other scheduling methods."
@@ -266,3 +270,13 @@ def adaptive_binary_search(loss_func, threshold=1e-4, a=0, b=2, max_eval=10):
         eval_func_at_points(eval_points)
 
     return eval_grid[ind_min_val], loss_0, evaluated_points, exit_criterion
+
+def adaptive_binary_step(dbi, d, threshold=1e-4, step_min=0, step_max=2, max_eval=10):
+    # control s>0
+    def loss(s):
+        if s>0:
+            return dbi.loss(step=s, d=d)
+        else:
+            return dbi.loss(step=0, d=d) + 10
+    s, loss_0, evaluated_points, exit_criterion = adaptive_binary_search(loss, threshold=threshold, a=step_min, b=step_max, max_eval=max_eval)
+    return s

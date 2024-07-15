@@ -1,6 +1,7 @@
 from copy import deepcopy
 from enum import Enum, auto
 from functools import partial
+from typing import Optional
 
 import hyperopt
 import numpy as np
@@ -12,6 +13,7 @@ from boostvqe.models.dbi.utils_scheduling import (
     hyperopt_step,
     polynomial_step,
     simulated_annealing_step,
+    adaptive_binary_step,
 )
 
 
@@ -54,6 +56,7 @@ class DoubleBracketScheduling(Enum):
     """Use polynomial expansion (analytical) of the loss function."""
     simulated_annealing = simulated_annealing_step
     """Use simulated annealing algorithm"""
+    binary_search = adaptive_binary_step
 
 
 class DoubleBracketIteration:
@@ -167,27 +170,24 @@ class DoubleBracketIteration:
                 d = self.diagonal_h_matrix
             sqrt_step = np.sqrt(step)
             operator = (
-                self.h.exp(-step * (np.sqrt(5) - 1) / 2)
-                @ self.backend.calculate_matrix_exp(-step * (np.sqrt(5) - 1) / 2, d)
-                @ self.h.exp(step)
-                @ self.backend.calculate_matrix_exp(step * (np.sqrt(5) + 1) / 2, d)
-                @ self.h.exp(-step * (3 - np.sqrt(5)) / 2)
-                @ self.backend.calculate_matrix_exp(-step, d)
+                self.h.exp(sqrt_step * (np.sqrt(5) - 1) / 2)
+                @ self.backend.calculate_matrix_exp(-sqrt_step * (np.sqrt(5) - 1) / 2, d)
+                @ self.h.exp(-sqrt_step)
+                @ self.backend.calculate_matrix_exp(sqrt_step * (np.sqrt(5) + 1) / 2, d)
+                @ self.h.exp(sqrt_step * (3 - np.sqrt(5)) / 2)
+                @ self.backend.calculate_matrix_exp(-sqrt_step, d)
             )
         elif mode is DoubleBracketGeneratorType.group_commutator_3_reduced:
             if d is None:
                 d = self.diagonal_h_matrix
             sqrt_step = np.sqrt(step)
             operator = (
-                 self.backend.calculate_matrix_exp(-step * (np.sqrt(5) - 1) / 2, d)
-                @ self.h.exp(step)
-                @ self.backend.calculate_matrix_exp(step * (np.sqrt(5) + 1) / 2, d)
-                @ self.h.exp(-step * (3 - np.sqrt(5)) / 2)
-                @ self.backend.calculate_matrix_exp(-step, d)
+                 self.backend.calculate_matrix_exp(-sqrt_step * (np.sqrt(5) - 1) / 2, d)
+                @ self.h.exp(-sqrt_step)
+                @ self.backend.calculate_matrix_exp(sqrt_step * (np.sqrt(5) + 1) / 2, d)
+                @ self.h.exp(sqrt_step * (3 - np.sqrt(5)) / 2)
+                @ self.backend.calculate_matrix_exp(-sqrt_step, d)
             )
-        operator_dagger = self.backend.cast(
-            np.array(np.matrix(self.backend.to_numpy(operator)).getH())
-        )
         return operator
 
     @staticmethod
@@ -261,47 +261,29 @@ class DoubleBracketIteration:
             step = scheduling(self, d=d, **kwargs)
             # if for a given polynomial order n, no solution is found, we increase the order of the polynomial by 1
         return step
+    
     def choose_step(
-                self,
-        step_min: float = 1e-5,
-        step_max: float = 1,
-        max_evals: int = 1000,
-        space: callable = None,
-        optimizer: callable = None,
-        look_ahead: int = 1,
-        verbose: bool = False,
-        d: np.array = None,
+        self,
+        d: Optional[np.array] = None,
+        scheduling: Optional[DoubleBracketScheduling] = None,
+        **kwargs,
     ):
         """
-        Optimize iteration step.
-
-        Args:
-            step_min: lower bound of the search grid;
-            step_max: upper bound of the search grid;
-            max_evals: maximum number of iterations done by the hyperoptimizer;
-            space: see hyperopt.hp possibilities;
-            optimizer: see hyperopt algorithms;
-            look_ahead: number of iteration steps to compute the loss function;
-            verbose: level of verbosity;
-            d: diagonal operator for generating double-bracket iterations.
-
-        Returns:
-            (float): optimized best iteration step.
+        Calculate the optimal step using respective `scheduling` methods.
         """
-        if space is None:
-            space = hyperopt.hp.uniform
-        if optimizer is None:
-            optimizer = hyperopt.tpe
-
-        space = space("step", step_min, step_max)
-        best = hyperopt.fmin(
-            fn=partial(self.loss, d=d, look_ahead=look_ahead),
-            space=space,
-            algo=optimizer.suggest,
-            max_evals=max_evals,
-            verbose=verbose,
-        )
-        return best["step"]
+        if scheduling is None:
+            scheduling = self.scheduling
+        step = scheduling(self, d=d, **kwargs)
+        if (
+            step is None
+            and scheduling is DoubleBracketScheduling.polynomial_approximation
+        ):
+            kwargs["n"] = kwargs.get("n", 3)
+            kwargs["n"] += 1
+            # if n==n_max, return None
+            step = scheduling(self, d=d, **kwargs)
+            # if for a given polynomial order n, no solution is found, we increase the order of the polynomial by 1
+        return step
 
 
     def loss(self, step: float, d: np.array = None, look_ahead: int = 1):
