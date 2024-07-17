@@ -264,6 +264,35 @@ class IsingNNEvolutionOracle(EvolutionOracle):
         return circuit
 
 
+##############################################
+#pseudocode follows
+@dataclass
+class HamiltonianSimulation_EvolutionOracle(EvolutionOracle):
+    steps: int = None
+    order: int = None
+    delta: float = 0.5
+
+    @classmethod
+    def from_symbolic_hamiltonian(cls, h):
+        
+        hamiltonian = h
+        ...
+        return cls(
+            h=hamiltonian,
+            evolution_oracle_type=EvolutionOracleType.hamiltonian_simulation,
+            **kwargs,
+        )
+
+    def circuit(self, t_duration, steps=None, order=None):
+        c=self.h.circuit(dt)
+        for g in c.queue:
+            if g is two qubit
+                new_gate_list_add(two_qubit_decomposition(g)
+        c_recompiled_into_CNOT = ...collect...decompositions here
+
+        return reduce(__add__,c_recompiled_dt) #cf XXZ compiling
+
+
 @dataclass
 class XXZ_EvolutionOracle(EvolutionOracle):
     steps: int = None
