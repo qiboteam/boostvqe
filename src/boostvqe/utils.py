@@ -174,29 +174,37 @@ def rotate_h_with_vqe(hamiltonian, vqe):
     return new_hamiltonian
 
 
-def apply_dbi_steps(dbi, nsteps, d_type, method, **kwargs):
+def apply_dbi_steps(dbi, nsteps, d_type=None, method=None, **kwargs):
     """Apply `nsteps` of `dbi` to `hamiltonian`."""
     nqubits = dbi.nqubits
+
     p0 = [0.01]
-    if d_type == MagneticFieldEvolutionOracle:
-        p0.extend([4 - np.sin(x / 3) for x in range(nqubits)])
-    elif d_type == IsingNNEvolutionOracle:
-        p0.extend([4 - np.sin(x / 3) for x in range(nqubits)] + nqubits * [1])
+    if d_type is not None:
+        if d_type == MagneticFieldEvolutionOracle:
+            p0.extend([4 - np.sin(x / 3) for x in range(nqubits)])
+        elif d_type == IsingNNEvolutionOracle:
+            p0.extend([4 - np.sin(x / 3) for x in range(nqubits)] + nqubits * [1])
     energies, fluctuations, hamiltonians, steps, d_matrix = [], [], [], [], []
     logging.info(f"Applying {nsteps} steps of DBI to the given hamiltonian.")
     operators = []
     for _ in range(nsteps):
         logging.info(f"step {_+1}")
 
-        optimized_params, opt_dict = optimize_D_for_dbi(
-            p0, dbi, d_type, method, **kwargs
-        )
+        if d_type is not None:
+            optimized_params, opt_dict = optimize_D_for_dbi(
+                p0, copy.deepcopy(dbi), d_type, method, **kwargs
+            )
+            step = optimized_params[0]
+            new_d = d_type.load(optimized_params[1:]).h.matrix
+        else:
+            step = p0[0]
+            new_d = dbi.diagonal_h_matrix
 
-        step = optimized_params[0]
-        new_d = d_type.load(optimized_params[1:]).h.matrix
-        operators.append(dbi(step=step, d=new_d))
+        operator = dbi(step=step, d=new_d)
+
+        operators.append(operator)
         steps.append(step)
-        d_matrix.append(np.diag(new_d))
+        d_matrix.append(new_d)
         zero_state = np.transpose([dbi.h.backend.zero_state(dbi.h.nqubits)])
 
         logging.info(f"\nH matrix: {dbi.h.matrix}\n")
@@ -495,19 +503,18 @@ def optimize_D_for_dbi(
                 bounds=bounds,
                 args=(dbi, d_type),
                 method=method,
-                options={"disp": 1, "maxiter": 2},
+                options={"disp": 1, "maxiter": maxiter},
             )
     return opt_results.x, {f"{method}_extras": convert_numpy(dict(opt_results))}
 
 
 def loss_function_D_dbi(dbi_params, dbi, d_type):
     """``params`` has shape [s0, b_list_0]."""
+    test_dbi = copy.deepcopy(dbi)
     d = d_type.load(dbi_params[1:]).h.matrix
-    original_h = copy.deepcopy(dbi.h)
-    new_h = dbi(step=dbi_params[0], d=d)
-    zero_state = dbi.backend.zero_state(dbi.nqubits)
-    dbi.h = original_h
-    return hamiltonians.Hamiltonian(dbi.nqubits, new_h).expectation(zero_state)
+    test_dbi(step=dbi_params[0], d=d)
+    zero_state = test_dbi.backend.zero_state(test_dbi.nqubits)
+    return test_dbi.h.expectation(zero_state)
 
 
 def loss_function_D(gci_params, gci, eo_d_type, mode):
