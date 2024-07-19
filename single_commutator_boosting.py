@@ -31,7 +31,7 @@ qibo.set_backend("numpy")
 
 def main(args):
     path = pathlib.Path(args.path)
-    dump_path = path / f"single_commutator_hyperopt_{args.epoch}e_{args.steps}s"
+    dump_path = path / f"single_commutator_{args.optimization_method}_{args.epoch}e_{args.steps}s"
     dump_path.mkdir(parents=True, exist_ok=True)
 
     config = json.loads((path / OPTIMIZATION_FILE).read_text())
@@ -124,3 +124,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     main(args)
+    

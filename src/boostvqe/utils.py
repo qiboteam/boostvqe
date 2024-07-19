@@ -439,8 +439,8 @@ def optimize_D_for_dbi(
     dbi,
     d_type,
     method,
-    s_bounds=(1e-4, 1e-1),
-    b_bounds=(0.0, 9.0),
+    s_bounds=(-1e-1, 1e-1),
+    b_bounds=(0., 9.0),
     maxiter=100,
 ):
     """Optimize Ising GCI model using chosen optimization `method`."""
