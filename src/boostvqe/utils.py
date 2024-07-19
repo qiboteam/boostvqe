@@ -191,7 +191,7 @@ def apply_dbi_steps(dbi, nsteps, d_type=None, method=None, **kwargs):
         logging.info(f"step {_+1}")
 
         if d_type is not None:
-            optimized_params, opt_dict = optimize_D_for_dbi(
+            optimized_params, opt_dict = optimize_d_for_dbi(
                 p0, copy.deepcopy(dbi), d_type, method, **kwargs
             )
             step = optimized_params[0]
@@ -434,13 +434,13 @@ def optimize_D(
     return opt_results.x, {f"{method}_extras": convert_numpy(dict(opt_results))}
 
 
-def optimize_D_for_dbi(
+def optimize_d_for_dbi(
     params,
     dbi,
     d_type,
     method,
     s_bounds=(-1e-1, 1e-1),
-    b_bounds=(0., 9.0),
+    b_bounds=(0.0, 9.0),
     maxiter=100,
 ):
     """Optimize Ising GCI model using chosen optimization `method`."""
@@ -451,7 +451,7 @@ def optimize_D_for_dbi(
         upper_bounds = s_bounds[1] + b_bounds[1] * (len(params) - 1)
         bounds = [lower_bounds, upper_bounds]
         opt_results = cma.fmin(
-            loss_function_D_dbi,
+            loss_function_d_dbi,
             sigma0=0.5,
             x0=params,
             args=(dbi, d_type),
@@ -467,7 +467,7 @@ def optimize_D_for_dbi(
         # dual annealing algorithm
         if method == "annealing":
             opt_results = optimize.dual_annealing(
-                func=loss_function_D_dbi,
+                func=loss_function_d_dbi,
                 x0=params,
                 bounds=bounds,
                 args=(dbi, d_type),
@@ -475,7 +475,7 @@ def optimize_D_for_dbi(
             )
         elif method == "differential_evolution":
             opt_results = optimize.differential_evolution(
-                func=loss_function_D_dbi,
+                func=loss_function_d_dbi,
                 x0=params,
                 bounds=bounds,
                 args=(dbi, d_type),
@@ -483,14 +483,14 @@ def optimize_D_for_dbi(
             )
         elif method == "DIRECT":
             opt_results = optimize.direct(
-                func=loss_function_D_dbi,
+                func=loss_function_d_dbi,
                 bounds=bounds,
                 args=(dbi, d_type),
                 maxiter=maxiter,
             )
         elif method == "basinhopping":
             opt_results = optimize.basinhopping(
-                func=loss_function_D_dbi,
+                func=loss_function_d_dbi,
                 x0=params,
                 niter=maxiter,
                 minimizer_kwargs={"method": "Powell", "args": (dbi, d_type)},
@@ -498,7 +498,7 @@ def optimize_D_for_dbi(
         # scipy local minimizers
         else:
             opt_results = optimize.minimize(
-                fun=loss_function_D_dbi,
+                fun=loss_function_d_dbi,
                 x0=params,
                 bounds=bounds,
                 args=(dbi, d_type),
@@ -508,7 +508,7 @@ def optimize_D_for_dbi(
     return opt_results.x, {f"{method}_extras": convert_numpy(dict(opt_results))}
 
 
-def loss_function_D_dbi(dbi_params, dbi, d_type):
+def loss_function_d_dbi(dbi_params, dbi, d_type):
     """``params`` has shape [s0, b_list_0]."""
     test_dbi = copy.deepcopy(dbi)
     d = d_type.load(dbi_params[1:]).h.matrix
