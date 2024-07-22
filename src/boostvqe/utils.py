@@ -9,14 +9,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qibo import hamiltonians
 from qibo.models.dbi.utils_scheduling import hyperopt_step
-
 from scipy import optimize
 
 from boostvqe import ansatze
 from boostvqe.compiling_XXZ import *
 from boostvqe.models.dbi.double_bracket_evolution_oracles import *
 from boostvqe.models.dbi.group_commutator_iteration_transpiler import *
-
 
 OPTIMIZATION_FILE = "optimization_results.json"
 PARAMS_FILE = "parameters_history.npy"
@@ -176,33 +174,44 @@ def rotate_h_with_vqe(hamiltonian, vqe):
     return new_hamiltonian
 
 
-def apply_dbi_steps(dbi, nsteps, stepsize=0.01, optimize_step=True):
+def apply_dbi_steps(dbi, nsteps, d_type=None, method=None, **kwargs):
     """Apply `nsteps` of `dbi` to `hamiltonian`."""
-    step = stepsize
+    nqubits = dbi.nqubits
+
+    p0 = [0.01]
+    if d_type is not None:
+        if d_type == MagneticFieldEvolutionOracle:
+            p0.extend([4 - np.sin(x / 3) for x in range(nqubits)])
+        elif d_type == IsingNNEvolutionOracle:
+            p0.extend([4 - np.sin(x / 3) for x in range(nqubits)] + nqubits * [1])
     energies, fluctuations, hamiltonians, steps, d_matrix = [], [], [], [], []
     logging.info(f"Applying {nsteps} steps of DBI to the given hamiltonian.")
     operators = []
     for _ in range(nsteps):
         logging.info(f"step {_+1}")
-        if optimize_step:
-            logging.info(f"optimizing step")
-            # Change logging level to reduce verbosity
-            logging.getLogger().setLevel(logging.WARNING)
-            step = dbi.choose_step(
-                scheduling=grid_search_step, step_min=1e-5, step_max=0.05, num_evals=100,
+
+        if d_type is not None:
+            optimized_params, opt_dict = optimize_d_for_dbi(
+                p0, copy.deepcopy(dbi), d_type, method, **kwargs
             )
-            # Restore the original logging level
-            logging.getLogger().setLevel(logging.INFO)
-            logging.info(f"Optimized step: {step}")
+            step = optimized_params[0]
+            new_d = d_type.load(optimized_params[1:]).h.matrix
+        else:
+            step = p0[0]
+            new_d = dbi.diagonal_h_matrix
 
-            operators.append(dbi(step=step, d=dbi.diagonal_h_matrix))
-            steps.append(step)
-            d_matrix.append(np.diag(dbi.diagonal_h_matrix))
-            zero_state = np.transpose([dbi.h.backend.zero_state(dbi.h.nqubits)])
+        operator = dbi(step=step, d=new_d)
 
-            energies.append(dbi.h.expectation(zero_state))
-            fluctuations.append(dbi.energy_fluctuation(zero_state))
-            hamiltonians.append(dbi.h.matrix)
+        operators.append(operator)
+        steps.append(step)
+        d_matrix.append(new_d)
+        zero_state = np.transpose([dbi.h.backend.zero_state(dbi.h.nqubits)])
+
+        logging.info(f"\nH matrix: {dbi.h.matrix}\n")
+
+        energies.append(dbi.h.expectation(zero_state))
+        fluctuations.append(dbi.energy_fluctuation(zero_state))
+        hamiltonians.append(dbi.h.matrix)
 
         logging.info(f"DBI energies: {energies}")
     return hamiltonians, energies, fluctuations, steps, d_matrix, operators
@@ -423,6 +432,94 @@ def optimize_D(
                 options={"disp": 1, "maxiter": maxiter},
             )
     return opt_results.x, {f"{method}_extras": convert_numpy(dict(opt_results))}
+
+
+def optimize_d_for_dbi(
+    params,
+    dbi,
+    d_type,
+    method,
+    s_bounds=(-1e-1, 1e-1),
+    b_bounds=(0.0, 9.0),
+    maxiter=100,
+):
+    """Optimize Ising GCI model using chosen optimization `method`."""
+
+    # evolutionary strategy
+    if method == "cma":
+        lower_bounds = s_bounds[0] + b_bounds[0] * (len(params) - 1)
+        upper_bounds = s_bounds[1] + b_bounds[1] * (len(params) - 1)
+        bounds = [lower_bounds, upper_bounds]
+        opt_results = cma.fmin(
+            loss_function_d_dbi,
+            sigma0=0.5,
+            x0=params,
+            args=(dbi, d_type),
+            options={"bounds": bounds, "maxiter": maxiter},
+        )
+        result_dict = convert_numpy(opt_results[-2].result._asdict())
+        return opt_results[0], {f"{method}_extras": result_dict}
+    # scipy optimizations
+    else:
+        bounds = [s_bounds]
+        for _ in range(len(params) - 1):
+            bounds.append(b_bounds)
+        # dual annealing algorithm
+        if method == "annealing":
+            opt_results = optimize.dual_annealing(
+                func=loss_function_d_dbi,
+                x0=params,
+                bounds=bounds,
+                args=(dbi, d_type),
+                maxiter=maxiter,
+            )
+        elif method == "differential_evolution":
+            opt_results = optimize.differential_evolution(
+                func=loss_function_d_dbi,
+                x0=params,
+                bounds=bounds,
+                args=(dbi, d_type),
+                maxiter=maxiter,
+            )
+        elif method == "DIRECT":
+            opt_results = optimize.direct(
+                func=loss_function_d_dbi,
+                bounds=bounds,
+                args=(dbi, d_type),
+                maxiter=maxiter,
+            )
+        elif method == "basinhopping":
+            opt_results = optimize.basinhopping(
+                func=loss_function_d_dbi,
+                x0=params,
+                niter=maxiter,
+                minimizer_kwargs={"method": "Powell", "args": (dbi, d_type)},
+            )
+        # scipy local minimizers
+        else:
+            opt_results = optimize.minimize(
+                fun=loss_function_d_dbi,
+                x0=params,
+                bounds=bounds,
+                args=(dbi, d_type),
+                method=method,
+                options={"disp": 1, "maxiter": maxiter},
+            )
+    return opt_results.x, {f"{method}_extras": convert_numpy(dict(opt_results))}
+
+
+def loss_function_d_dbi(dbi_params, dbi, d_type):
+    """``params`` has shape [s0, b_list_0]."""
+    test_dbi = copy.deepcopy(dbi)
+    d = d_type.load(dbi_params[1:]).h.matrix
+    test_dbi(step=dbi_params[0], d=d)
+    zero_state = test_dbi.backend.zero_state(test_dbi.nqubits)
+    return test_dbi.h.expectation(zero_state)
+
+
+def loss_function_D(gci_params, gci, eo_d_type, mode):
+    """``params`` has shape [s0, b_list_0]."""
+    return gci.loss(gci_params[0], eo_d_type.load(gci_params[1:]), mode)
 
 
 def convert_numpy(obj):

@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=sgc_xxz
-#SBATCH --output=sgc_xxz_%A_%a.log  
-#SBATCH --array=0-74  # this has to be adapted to the total number of jobs you plan (here is ndirs * nepochs)
+#SBATCH --job-name=j1j2_sgc
+#SBATCH --output=lighttest_%A_%a.log  
+#SBATCH --array=0-999
 
 # Base directory containing the target folders
-base_dir="./results/XXZ_hw/3_5_layers"
+base_dir="./results/J1J2_HW_many_seeds/3_6_layers"
 
 # Read all directories into an array
 dirs=($base_dir/*/)
@@ -28,12 +28,11 @@ if [ $dir_index -lt $num_dirs ]; then
         epoch_start=${epoch_points[$epoch_index]}
         echo "Running job for directory $(basename "$dir") at epoch $epoch_start"
         # Run the Python script with the dynamically set parameters
-        # python3 compiling.py --backend numpy --path "$dir" \
-        #                      --epoch $epoch_start --steps 3 \
-        #                      --optimization_method "cma" \
-        #                      --optimization_config "{ \"maxiter\": 50}"
         python3 single_commutator_boosting.py   --path "$dir" \
-                                                --epoch $epoch_start --steps 3 
+                                                --epoch $epoch_start --steps 3 \
+                                                --optimization_method "cma" \
+                                                --optimization_config "{ \"maxiter\": 50}" \
+
     fi
 else
     echo "Directory index out of range"
