@@ -97,8 +97,13 @@ def main(args):
         args.db_rotation,
     )
 
+
     # TODO: remove hardcoded magnetic field
     eo_d_type = getattr(double_bracket_evolution_oracles, args.eo_d)
+    params = [4 - np.sin(x / 3) for x in range(20)]
+
+    loss_value = gci.loss(0.01, eo_d_type.load(params), args.db_rotation, args.nshots)
+    print("LOSSONA: ", loss_value)
 
     print(
         f"The gci mode is {gci.double_bracket_rotation_type} rotation with {eo_d_type.__name__} as the oracle.\n"
@@ -151,6 +156,7 @@ def main(args):
                 eo_d_type=eo_d_type,
                 mode=args.db_rotation,
                 method=args.optimization_method,
+                nshots=args.nshots,
                 **opt_options,
             )
             best_s = optimized_params[0]
@@ -256,6 +262,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--optimization_method", default="sgd", type=str, help="Optimization method"
+    )
+    parser.add_argument(
+        "--nshots", type=int, help="Number of shots in case of shot-noisy GCI"
     )
     parser.add_argument(
         "--optimization_config",

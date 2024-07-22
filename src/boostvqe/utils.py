@@ -354,9 +354,11 @@ def callback_D_optimization(params, gci, loss_history, params_history):
     loss_history.append(gci.loss(params[0]))
 
 
-def loss_function_D(gci_params, gci, eo_d_type, mode):
+def loss_function_D(gci_params, gci, eo_d_type, mode, nshots=None):
     """``params`` has shape [s0, b_list_0]."""
-    return gci.loss(gci_params[0], eo_d_type.load(gci_params[1:]), mode)
+    loss_value = gci.loss(gci_params[0], eo_d_type.load(gci_params[1:]), mode, nshots)
+    print(f"LOSS:{loss_value}")
+    return loss_value
 
 
 def optimize_D(
@@ -367,12 +369,14 @@ def optimize_D(
     method,
     s_bounds=(1e-4, 1e-1),
     b_bounds=(0.0, 9.0),
+    nshots=None,
     maxiter=100,
 ):
     """Optimize Ising GCI model using chosen optimization `method`."""
 
     # evolutionary strategy
     if method == "cma":
+        print("ciao")
         lower_bounds = s_bounds[0] + b_bounds[0] * (len(params) - 1)
         upper_bounds = s_bounds[1] + b_bounds[1] * (len(params) - 1)
         bounds = [lower_bounds, upper_bounds]
@@ -396,7 +400,7 @@ def optimize_D(
                 func=loss_function_D,
                 x0=params,
                 bounds=bounds,
-                args=(gci, eo_d_type, mode),
+                args=(gci, eo_d_type, mode, nshots),
                 maxiter=maxiter,
             )
         elif method == "differential_evolution":
@@ -404,14 +408,14 @@ def optimize_D(
                 func=loss_function_D,
                 x0=params,
                 bounds=bounds,
-                args=(gci, eo_d_type, mode),
+                args=(gci, eo_d_type, mode, nshots),
                 maxiter=maxiter,
             )
         elif method == "DIRECT":
             opt_results = optimize.direct(
                 func=loss_function_D,
                 bounds=bounds,
-                args=(gci, eo_d_type, mode),
+                args=(gci, eo_d_type, mode, nshots),
                 maxiter=maxiter,
             )
         elif method == "basinhopping":
@@ -419,7 +423,7 @@ def optimize_D(
                 func=loss_function_D,
                 x0=params,
                 niter=maxiter,
-                minimizer_kwargs={"method": "Powell", "args": (gci, eo_d_type, mode)},
+                minimizer_kwargs={"method": "Powell", "args": (gci, eo_d_type, mode, nshots)},
             )
         # scipy local minimizers
         else:
@@ -427,7 +431,7 @@ def optimize_D(
                 fun=loss_function_D,
                 x0=params,
                 bounds=bounds,
-                args=(gci, eo_d_type, mode),
+                args=(gci, eo_d_type, mode, nshots),
                 method=method,
                 options={"disp": 1, "maxiter": maxiter},
             )
@@ -440,10 +444,10 @@ def optimize_d_for_dbi(
     d_type,
     method,
     s_bounds=(-1e-1, 1e-1),
-    b_bounds=(0.0, 9.0),
+    b_bounds=(0.0, 9.0),            
     maxiter=100,
 ):
-    """Optimize Ising GCI model using chosen optimization `method`."""
+    """Optimize Ising D model using chosen optimization `method`."""
 
     # evolutionary strategy
     if method == "cma":
