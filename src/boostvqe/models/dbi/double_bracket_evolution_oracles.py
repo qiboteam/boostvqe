@@ -2,7 +2,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import reduce
-from typing import Union
+from typing import Optional, Union
 
 import hyperopt
 import matplotlib.pyplot as plt
@@ -10,7 +10,6 @@ import numpy as np
 from qibo import Circuit, gates, symbols
 from qibo.config import raise_error
 from qibo.hamiltonians import AbstractHamiltonian, SymbolicHamiltonian
-
 from qibo.transpiler.unitary_decompositions import two_qubit_decomposition
 
 # TODO: remove this global import
@@ -37,17 +36,32 @@ class EvolutionOracle:
         """Returns either the name or the circuit"""
         return self.circuit(t_duration=t_duration)
 
-    def circuit(self, t_duration: float):
+    def circuit(self, t_duration: float, steps: Optional[int] = None):
         """This function returns depending on `EvolutionOracleType` string, ndarray or `Circuit`.
         In the hamiltonian_simulation mode we evaluate an appropriate Trotter-Suzuki discretization up to `self.eps_trottersuzuki` threshold.
         """
         if self.evolution_oracle_type is EvolutionOracleType.numerical:
             return self.h.exp(t_duration)
         else:
-            dt = t_duration / self.steps
+            if steps is None:
+                steps = self.steps
+            dt = t_duration / steps
+            original_circuit = self.h.circuit(dt)
+            decomposed_circuit = Circuit(original_circuit.nqubits)
+
+            for gate in original_circuit.queue:
+                if len(gate.qubits) > 1:  # if gate is two qubit
+                    gate_decomposition = two_qubit_decomposition(
+                        *gate.qubits, gate.matrix()
+                    )
+                    for gate_elem in gate_decomposition:
+                        decomposed_circuit.add(gate_elem)
+                else:
+                    decomposed_circuit.add(gate)
+
             return reduce(
                 Circuit.__add__,
-                [deepcopy(self.h).circuit(dt)] * self.steps,
+                [decomposed_circuit] * steps,
             )
 
 
@@ -256,29 +270,33 @@ class XXZ_EvolutionOracle(EvolutionOracle):
         )
 
 
-@dataclass 
+@dataclass
 class SymbolicHamiltonian_EvolutionOracle(EvolutionOracle):
-    steps: int = None 
-    order: int = None 
-    delta: float = 0.5 
-  
-    @classmethod 
-    def from_symbolic_hamiltonian(cls, symbolic_hamiltonian: SymbolicHamiltonian, **kwargs): 
-        return cls( 
-            symbolic_hamiltonian, 
-            evolution_oracle_type=EvolutionOracleType.hamiltonian_simulation, 
+    steps: int = None
+    order: int = None
+    delta: float = 0.5
+
+    @classmethod
+    def from_symbolic_hamiltonian(
+        cls, symbolic_hamiltonian: SymbolicHamiltonian, **kwargs
+    ):
+        return cls(
+            symbolic_hamiltonian,
+            evolution_oracle_type=EvolutionOracleType.hamiltonian_simulation,
             **kwargs,
-        ) 
-  
-    def circuit(self, t_duration: int, steps:int=1, order=None): 
-        dt = t_duration/steps    
-        c = self.h.circuit(dt) 
+        )
+
+    def circuit(self, t_duration: int, steps: int = 1, order=None):
+        dt = t_duration / steps
+        c = self.h.circuit(dt)
         nqubits = c.nqubits
         c_recompiled_into_CNOT = Circuit(nqubits=nqubits)
-        
-        for gate in c.queue: 
-            if len(gate.qubits) > 1: #if gate is two qubit 
-                gate_decomposition = two_qubit_decomposition(*gate.qubits, gate.matrix())
+
+        for gate in c.queue:
+            if len(gate.qubits) > 1:  # if gate is two qubit
+                gate_decomposition = two_qubit_decomposition(
+                    *gate.qubits, gate.matrix()
+                )
                 for gate_elem in gate_decomposition:
                     c_recompiled_into_CNOT.add(gate_elem)
             else:
@@ -286,6 +304,6 @@ class SymbolicHamiltonian_EvolutionOracle(EvolutionOracle):
 
         multi_layer = Circuit(nqubits=nqubits)
         for _ in range(steps):
-            multi_layer += c_recompiled_into_CNOT 
-  
-        return multi_layer 
+            multi_layer += c_recompiled_into_CNOT
+
+        return multi_layer
