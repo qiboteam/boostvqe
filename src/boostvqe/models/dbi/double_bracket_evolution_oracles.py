@@ -2,7 +2,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import reduce
-from typing import Union
+from typing import Optional, Union
 
 import hyperopt
 import matplotlib.pyplot as plt
@@ -10,6 +10,7 @@ import numpy as np
 from qibo import Circuit, gates, symbols
 from qibo.config import raise_error
 from qibo.hamiltonians import AbstractHamiltonian, SymbolicHamiltonian
+from qibo.transpiler.unitary_decompositions import two_qubit_decomposition
 
 # TODO: remove this global import
 from boostvqe.compiling_XXZ import nqubit_XXZ_decomposition
@@ -35,17 +36,32 @@ class EvolutionOracle:
         """Returns either the name or the circuit"""
         return self.circuit(t_duration=t_duration)
 
-    def circuit(self, t_duration: float):
+    def circuit(self, t_duration: float, steps: Optional[int] = None):
         """This function returns depending on `EvolutionOracleType` string, ndarray or `Circuit`.
         In the hamiltonian_simulation mode we evaluate an appropriate Trotter-Suzuki discretization up to `self.eps_trottersuzuki` threshold.
         """
         if self.evolution_oracle_type is EvolutionOracleType.numerical:
             return self.h.exp(t_duration)
         else:
-            dt = t_duration / self.steps
+            if steps is None:
+                steps = self.steps
+            dt = t_duration / steps
+            original_circuit = self.h.circuit(dt)
+            decomposed_circuit = Circuit(original_circuit.nqubits)
+
+            for gate in original_circuit.queue:
+                if len(gate.qubits) > 1:  # if gate is two qubit
+                    gate_decomposition = two_qubit_decomposition(
+                        *gate.qubits, gate.matrix()
+                    )
+                    for gate_elem in gate_decomposition:
+                        decomposed_circuit.add(gate_elem)
+                else:
+                    decomposed_circuit.add(gate)
+
             return reduce(
                 Circuit.__add__,
-                [deepcopy(self.h).circuit(dt)] * self.steps,
+                [decomposed_circuit] * steps,
             )
 
 
