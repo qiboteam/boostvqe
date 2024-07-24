@@ -11,6 +11,8 @@ from qibo import Circuit, gates, symbols
 from qibo.config import raise_error
 from qibo.hamiltonians import AbstractHamiltonian, SymbolicHamiltonian
 
+from qibo.transpiler.unitary_decompositions import two_qubit_decomposition
+
 # TODO: remove this global import
 from boostvqe.compiling_XXZ import nqubit_XXZ_decomposition
 
@@ -252,3 +254,38 @@ class XXZ_EvolutionOracle(EvolutionOracle):
             steps=steps,
             order=order,
         )
+
+
+@dataclass 
+class SymbolicHamiltonian_EvolutionOracle(EvolutionOracle):
+    steps: int = None 
+    order: int = None 
+    delta: float = 0.5 
+  
+    @classmethod 
+    def from_symbolic_hamiltonian(cls, symbolic_hamiltonian: SymbolicHamiltonian, **kwargs): 
+        return cls( 
+            symbolic_hamiltonian, 
+            evolution_oracle_type=EvolutionOracleType.hamiltonian_simulation, 
+            **kwargs,
+        ) 
+  
+    def circuit(self, t_duration: int, steps:int=1, order=None): 
+        dt = t_duration/steps    
+        c = self.h.circuit(dt) 
+        nqubits = c.nqubits
+        c_recompiled_into_CNOT = Circuit(nqubits=nqubits)
+        
+        for gate in c.queue: 
+            if len(gate.qubits) > 1: #if gate is two qubit 
+                gate_decomposition = two_qubit_decomposition(*gate.qubits, gate.matrix())
+                for gate_elem in gate_decomposition:
+                    c_recompiled_into_CNOT.add(gate_elem)
+            else:
+                c_recompiled_into_CNOT.add(gate)
+
+        multi_layer = Circuit(nqubits=nqubits)
+        for _ in range(steps):
+            multi_layer += c_recompiled_into_CNOT 
+  
+        return multi_layer 
