@@ -16,7 +16,7 @@ from qibo.models.dbi.double_bracket import (
 )
 
 # boostvqe's
-from boostvqe.ansatze import build_circuit
+from boostvqe import ansatze
 from boostvqe.plotscripts import plot_gradients, plot_loss
 from boostvqe.training_utils import Model, vqe_loss
 from boostvqe.utils import (
@@ -59,10 +59,12 @@ def main(args):
     path = pathlib.Path(create_folder(generate_path(args)))
     ham = getattr(Model, args.hamiltonian)(args.nqubits)
     target_energy = np.real(np.min(np.asarray(ham.eigenvalues())))
-    circ0 = build_circuit(
-        nqubits=args.nqubits,
-        nlayers=args.nlayers,
-    )
+
+    # construct circuit from parsed ansatz name
+    circ0 = getattr(ansatze, args.ansatz)(args.nqubits, args.nlayers)
+
+    logging.info(circ0.draw())
+    
     circ = circ0.copy(deep=True)
     backend = ham.backend
     zero_state = backend.zero_state(args.nqubits)
@@ -325,6 +327,11 @@ if __name__ == "__main__":
         "--nshots",
         type=int,
         help="number of shots",
+    )
+    parser.add_argument(
+        "--ansatz",
+        type=str,
+        help="Parametric quantum circuit ansatz. It can be hw_preserving or hdw_efficient",
     )
     args = parser.parse_args()
     main(args)

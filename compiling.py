@@ -8,12 +8,11 @@ from copy import deepcopy
 import numpy as np
 import qibo
 
-qibo.set_backend("numpy")
 from qibo import hamiltonians
 from qibo.backends import construct_backend
 from qibo.quantum_info.metrics import fidelity
 
-from boostvqe.ansatze import VQE, build_circuit
+from boostvqe import ansatze
 from boostvqe.models.dbi import double_bracket_evolution_oracles
 from boostvqe.models.dbi.double_bracket_evolution_oracles import (
     FrameShiftedEvolutionOracle,
@@ -28,12 +27,12 @@ from boostvqe.models.dbi.group_commutator_iteration_transpiler import (
 from boostvqe.utils import (
     OPTIMIZATION_FILE,
     PARAMS_FILE,
-    build_circuit,
     optimize_D,
     select_recursion_step_gd_circuit,
 )
 
 logging.basicConfig(level=logging.INFO)
+qibo.set_backend("numpy")
 
 
 def dump_config(config: dict, path):
@@ -70,14 +69,16 @@ def main(args):
     nlayers = config["nlayers"]
     vqe_backend = construct_backend(backend=config["backend"])
     # TODO: remove delta hardcoded
+    print
     hamiltonian = getattr(hamiltonians, config["hamiltonian"])(
         nqubits=nqubits, delta=0.5, backend=vqe_backend
     )
-    vqe = VQE(
-        build_circuit(
-            nqubits=nqubits,
-            nlayers=nlayers,
-        ),
+
+    # construct circuit from parsed ansatz name
+    circ = getattr(ansatze, config["ansatz"])(config["nqubits"], config["nlayers"])
+
+    vqe = ansatze.VQE(
+        circuit=circ,
         hamiltonian=hamiltonian,
     )
     vqe.circuit.set_parameters(params)
