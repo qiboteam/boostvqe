@@ -174,7 +174,7 @@ def params_to_diagonal_operator(
             [
                 backend.to_numpy(params[i])
                 * backend.to_numpy(list(pauli_operator_dict.values())[i])
-                for i in range(nqubits)
+                for i in range(len(params))
             ]
         )
     elif parameterization is ParameterizationTypes.computational:

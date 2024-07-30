@@ -87,7 +87,7 @@ def hyperopt_step(
 
 def polynomial_step(
     dbi_object,
-    n: int = 2,
+    n: int = 8,
     n_max: int = None,
     d: np.array = None,
     coef: Optional[list] = None,
@@ -119,7 +119,7 @@ def polynomial_step(
         coef = dbi_object.cost_expansion(d=d, n=n)
     roots = np.roots(coef)
     real_positive_roots = [
-        np.real(root) for root in roots if np.imag(root) < 1e-3 and np.real(root) > 0
+        np.real(root) for root in roots if np.imag(root) < 1e-3 and (np.real(root) > 0 or np.real(root) == 0)
     ]
     # solution exists, return minimum s
     if len(real_positive_roots) > 0:
