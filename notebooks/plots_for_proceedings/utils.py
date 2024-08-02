@@ -77,18 +77,20 @@ def max_min_diag(dbi):
     d_ls = np.linspace(d_max, d_min, 2**dbi.h.nqubits)
     return np.diag(d_ls)
 
-def min_max_shuffle(dbi):
+def min_max_shuffle(dbi, seed):
     diag = np.diag(dbi.diagonal_h_matrix)
     d_min = min(diag)
     d_max = max(diag)
+    random.seed(seed)
     d_ls = sorted(np.linspace(d_max, d_min, 2**dbi.h.nqubits), key=lambda x:random.random())
     return np.diag(d_ls)
 
-def min_max_sorted_random(dbi):
+def min_max_sorted_random(dbi, seed):
     diag = np.diag(dbi.diagonal_h_matrix)
     d_min = min(diag)
     d_max = max(diag)
     min_max = np.linspace(d_max, d_min, 2**dbi.h.nqubits)
+    random.seed(seed)
     d_ls = sorted([random.choice(list(min_max)) for _ in range(2**dbi.h.nqubits)])
     print(d_ls)
     return np.diag(d_ls)

@@ -16,39 +16,12 @@ from utils import *
 
 run_param_rc(16)
 
-def h_TFIM(nqubits, h):
-    hamiltonian = SymbolicHamiltonian(
-                sum(
-                    [
-                        symbols.X(j) * symbols.X(j + 1)
-                        + h * symbols.Z(j)
-                        for j in range(nqubits - 1)
-                    ]
-                    + [
-                        symbols.X(nqubits - 1) * symbols.X(0)
-                        + h * symbols.Z(nqubits - 1)
-                    ]
-                ),
-                nqubits=nqubits,
-            )
-    return hamiltonian.dense
-
-def initialize_dbi(nqubits, model, param):
-    if model == "XXZ":
-        hamiltonian = hamiltonians.XXZ(nqubits=nqubits, delta=param)
-    if model == "TFIM_qibo":
-        hamiltonian = hamiltonians.TFIM(nqubits=nqubits, h=param)
-    if model == "TFIM":
-        hamiltonian = h_TFIM(nqubits=nqubits, h=param)
-    dbi = DoubleBracketIteration(hamiltonian=hamiltonian)
-    return dbi
-
+fig, ax = plt.subplots(1,2, figsize=(10,4))
 def plot_sigma_time(dbi, d, mode, s_space):
     dbi.mode = mode
     return [dbi.loss(step=s, d=d) for s in s_space]
 
-# dbi = initialize_dbi(5, "TFIM", 2)
-dbi = initialize_dbi(5, "XXZ", 0.3)
+dbi = initialize_dbi(5, "TFIM", 3)
 dbi.cost = DoubleBracketCostFunction.off_diagonal_norm
 s_space = np.linspace(1e-4,0.5,100)
 modes = [DoubleBracketGeneratorType.single_commutator,
@@ -58,15 +31,38 @@ plots = []
 for mode in modes:
     plots.append(plot_sigma_time(dbi, dbi.diagonal_h_matrix, mode, s_space))
 
+plt.rc('text', usetex=True)
+plt.rc('text.latex', preamble=r'\usepackage{amsmath}')
 mode_names = [r'$e^{-s\hat W_k}$',
-              r'$\hat V^{GC}_k$',
-              r'$\hat V^{3rd GC}_k$']
+              r'$\hat V_0^{(\text{GC})}$',
+              r'$\hat Q_0^{(\text{HOPF})}$']
 s_min = []
 for i,mode in enumerate(modes):
-    plt.plot(s_space, plots[i], label=mode_names[i])
+    ax[0].plot(s_space, plots[i], label=mode_names[i])
     s_min.append(s_space[np.argmin(plots[i])])
+    
+dbi = initialize_dbi(5, "XXZ", 0.5)
+dbi.cost = DoubleBracketCostFunction.off_diagonal_norm
+plots = []
+for mode in modes:
+    plots.append(plot_sigma_time(dbi, dbi.diagonal_h_matrix, mode, s_space))
+s_min = []
+for i,mode in enumerate(modes):
+    ax[1].plot(s_space, plots[i], label=mode_names[i])
+    s_min.append(s_space[np.argmin(plots[i])])
+    
+    
+a = -.17
+b = .97
+ax[0].annotate('a)', xy = (a,b), xycoords='axes fraction')
+a = -.08
+b = .97
+ax[1].annotate('b)', xy = (a,b), xycoords='axes fraction')
 # plt.xticks(s_min)
-plt.ylabel(r'Off-diagonal norm $||\sigma(\hat H_{k+1})||$')
-plt.xlabel(r'DBR duration $s$')
-plt.legend()
-plt.savefig('group_commutator_XXZ.pdf')
+ax[0].set_ylabel(r'$||\sigma(e^{s\hat W}\hat H_0e^{-s\hat W})||$')
+# plt.xlabel(r'DBR duration $s$')
+fig.text(0.45, 0.02, r'DBR duration $s$', ha='center')    
+# plt.legend()
+plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.savefig('group_commutator_TFIM.pdf')

@@ -23,15 +23,18 @@ nqubits = dbi.h.nqubits
 
 d_names = [
             'GWW',
-           'Pauli-Z',
-           'GD (comp.)',
-           'GD (pauli-1)',
-           'GD (pauli-2)',
+           'Pauli-Z products',
+           'Entry-wise (GD)',
+           'Magnetic (GD)',
+           'ATA Ising (GD)',
            ]
 
-NSTEPS = 10
+NSTEPS = 15
 loss_list = []
 s_plot_list = []
+
+plot_matrix_inset([0.4, 0.7, 0.25, 0.25], ax, np.abs(dbi.h.matrix))
+# ax.annotate(' ', xy=(0.8,17), xytext=(0.05,18), arrowprops=dict(color='black'))
 
 # GWW
 dbi_eval = deepcopy(dbi)
@@ -47,8 +50,7 @@ for _ in range(NSTEPS):
 loss_list.append(ls)
 s_plot_list.append(s_to_plot(ss))
 final_gww = deepcopy(dbi_eval.h.matrix)
-print(final_gww)
-plot_matrix_inset([0.4, 0.7, 0.25, 0.25], ax, np.real(final_gww))
+
 
 
 # pauli-Z
@@ -66,7 +68,8 @@ for _ in range(NSTEPS):
 loss_list.append(ls)
 s_plot_list.append(s_to_plot(ss))
 final_pauli = deepcopy(dbi_eval.h.matrix)
-plot_matrix_inset([0.5,0.09, 0.25, 0.25], ax, np.real(final_pauli))
+plot_matrix_inset([0.6,0.09, 0.25, 0.25], ax, np.abs(final_pauli))
+# ax.annotate(' ', xy=(1.1,5), xytext=(s_to_plot(ss)[-1],ls[-1]), arrowprops=dict(color='black'))
 
 # gradient descent 
 parameterizations = [ParameterizationTypes.computational,ParameterizationTypes.pauli, ParameterizationTypes.pauli]
@@ -90,9 +93,9 @@ for i,parameterization in enumerate(parameterizations):
 for i, d_name in enumerate(d_names):
         ax.plot(s_plot_list[i], loss_list[i], label=d_name, marker='.')
     # plt.plot(loss_list[i], label=d_name, marker='.')
-ax.set_ylabel(r'$||\sigma(\hat H)||$')
+ax.set_ylabel(r'$||\sigma(\hat H_k)||$')
 ax.set_xlabel(r'DBR duration $s$')
-ax.axhline(8, linestyle='--', label="min(BHMM)", color='0.8', linewidth=1)
+ax.axhline(5.4, linestyle='--', label="min(BHMM)", color='0.8', linewidth=1)
 # plt.xlabel('Iterations')
 # ax.legend(bbox_to_anchor=(1, -0.2),shadow=False, ncol=3)
 ax.legend()

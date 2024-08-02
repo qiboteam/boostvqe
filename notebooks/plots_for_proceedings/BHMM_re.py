@@ -22,21 +22,22 @@ linear_magnetic_coef = np.linspace(1, nqubits+1, nqubits)
 quadratic_magnetic_coef = [x**2/nqubits for x in linear_magnetic_coef]
 ising_coef = [0] * nqubits + [1 if abs(y - x) == 1 else 0 for x, y in list(pauli_operator_dict_2)[dbi.h.nqubits:]]
 
+seed = 12
 d_list_1 = [
     min_max_diag(dbi), 
     max_min_diag(dbi), 
-    min_max_shuffle(dbi), 
-    min_max_sorted_random(dbi), 
+    min_max_shuffle(dbi, seed), 
+    min_max_sorted_random(dbi, seed), 
     eigen_diag(dbi),
     dbi.diagonal_h_matrix
 ]
 d_names_1 = [
     r' Min-max',
     r' Max-min',
-    r' Shuffle',
-    r' Sorted random',
-    r' Eigen',
-    r' $\Delta(\hat H_0)$'
+    r' Shuffled min-max',
+    r' Sampled min-max',
+    r' Eigenvalues spec$(\hat H_0)$',
+    r' Dephasing $\Delta(\hat H_0)$'
 ]
 colors_1 = [
     'C3', 'C1', 'C2', 'C8', 'C5', 'C0'
@@ -55,8 +56,8 @@ d_names_2 = [
         # 'Constant magnetic',
         r' Linear magnetic',
         r' Quadratic magnetic',
-        r' Constant Ising',
-        r' $\Delta(\hat H)$'
+        r' Constant NN-OBC Ising',
+        r' Dephasing $\Delta(\hat H)$'
 ]
 colors_2 = [
     # 'magenta',
@@ -66,11 +67,11 @@ markers_2 = [
     's', 'd', '^', '*'
 ]
 run_param_rc(20)
-fig, ax = plt.subplots(2,2, figsize=(16,10), sharey='row', sharex=False)
+fig, ax = plt.subplots(2,2, figsize=(14,10), sharey='row', sharex=False)
 
 # plot DBR
 s_space = np.linspace(0, 0.2, 100)
-x_ticks_1 = []
+x_ticks_1 = [0]
 y_ticks = [round(dbi.off_diagonal_norm,1)]
 for i, d in enumerate(d_list_1):
     ls = [dbi.loss(d=d, step=s) for s in s_space]
@@ -81,12 +82,15 @@ for i, d in enumerate(d_list_1):
     ax[0][0].plot(s_space, ls, label=d_names_1[i], color=colors_1[i])
     ax[0][0].plot(s_min, ls_min, color=colors_1[i], marker=markers_1[i], fillstyle='none' if i<2 else None)
 ax[0][0].set_xticks(remove_duplicate_and_nearby_elements(x_ticks_1, 0.02))
-ax[0][0].set_yticks(remove_duplicate_and_nearby_elements(y_ticks, 0.3))
+ax[0][0].set_yticks(remove_duplicate_and_nearby_elements(y_ticks, 0.5))
 ax[0][0].grid()
-ax[0][0].set_ylabel(r'$||\sigma(e^{s\hat W}\hat H)e^{-s\hat W}||$')
+ax[0][0].set_ylabel(r'$||\sigma(e^{s\hat W}\hat H_0e^{-s\hat W})||$')
+a = -.17
+b = .97
+ax[0][0].annotate('a)', xy = (a,b), xycoords='axes fraction')
  
  
-x_ticks_2 = [] 
+x_ticks_2 = [0] 
 for i, d in enumerate(d_list_2):
     ls = [dbi.loss(d=d, step=s) for s in s_space]
     ax[0][1].plot(s_space, ls, label=d_names_2[i], color=colors_2[i])
@@ -98,11 +102,14 @@ for i, d in enumerate(d_list_2):
 ax[0][1].set_xticks(remove_duplicate_and_nearby_elements(x_ticks_2, 0.021))
 ax[0][1].set_yticks(remove_duplicate_and_nearby_elements(y_ticks, 0.3))
 ax[0][1].grid()
+a = -.08
+b = .97
+ax[0][1].annotate('b)', xy = (a,b), xycoords='axes fraction')
 
 # plot DBI
 
 last_loss = [round(dbi.off_diagonal_norm,1)]
-last_s_1 = []
+last_s_1 = [0]
 NSTEPS = 15
 for i,d in enumerate(d_list_1):
     dbi_eval = deepcopy(dbi)
@@ -116,7 +123,9 @@ for i,d in enumerate(d_list_1):
         loss.append(dbi_eval.off_diagonal_norm)
     # s = cut_list_at_threshold(s_to_plot(s), 1.6)
     s = s_to_plot(s)
-    if i > 2:
+    if i == 3:
+        print('sample s :', s)
+    if i > 1:
         last_loss.append(round(loss[-1],1))
         last_s_1.append(round(s[-1],2))
     if i < 2: 
@@ -125,14 +134,17 @@ for i,d in enumerate(d_list_1):
         ax[1][0].plot(s, loss[:len(s)], label=d_names_1[i], marker=markers_1[i], color=colors_1[i])
     ls_min = min(loss)
 
-ax[1][0].set_xticks(last_s_1)
+ax[1][0].set_xticks(remove_duplicate_and_nearby_elements(last_s_1, 0.1))
 ax[1][0].grid()
 # ax[1][0].axhline(ls_min, color='grey', linestyle='--')
-ax[1][0].set_ylabel(r'$||\sigma(\hat H)||$')
+ax[1][0].set_ylabel(r'$||\sigma(\hat H_k)||$')
 ax[1][0].legend()
+a = -.17
+b = .97
+ax[1][0].annotate('c)', xy = (a,b), xycoords='axes fraction')
 
 
-last_s_2 = []
+last_s_2 = [0]
 for i,d in enumerate(d_list_2):
     dbi_eval = deepcopy(dbi)
     dbi_eval.scheduling = DoubleBracketScheduling.grid_search
@@ -143,7 +155,10 @@ for i,d in enumerate(d_list_2):
         dbi_eval(d=d, step=s_min)
         s.append(s_min)
         loss.append(dbi_eval.off_diagonal_norm)
-    s = cut_list_at_threshold(s_to_plot(s), 0.6)
+    # s = cut_list_at_threshold(s_to_plot(s), 0.6)
+    s = s_to_plot(s)
+    if i < 2:
+        print('linear and quadratic s :', s)
     if i > 1:
         last_loss.append(round(loss[-1],1))
         last_s_2.append(round(s[-1],2))
@@ -155,8 +170,11 @@ ax[1][1].set_yticks(remove_duplicate_and_nearby_elements(last_loss, 0.5))
 ax[1][1].grid()
 # ax[1][1].axhline(ls_min, color='grey', linestyle='--', linewidth=1)
 ax[1][1].legend()
+a = -.08
+b = .97
+ax[1][1].annotate('d)', xy = (a,b), xycoords='axes fraction')
 
 fig.text(0.45, 0.12, r'DBR duration $s$', ha='center')    
 plt.tight_layout()
-fig.subplots_adjust(right=0.8, bottom=0.2)  
+fig.subplots_adjust(right=0.9, bottom=0.2)  
 plt.savefig('BHMM_re_XXZ.pdf')   

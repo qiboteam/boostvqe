@@ -14,7 +14,7 @@ from boostvqe.compiling_XXZ import *
 from utils import *
 
 run_param_rc(15)
-fig, ax = plt.subplots(1,2, figsize=(13,4.5), gridspec_kw={'width_ratios': [1.2,1]})
+fig, ax = plt.subplots(1,2, figsize=(12,4.5), gridspec_kw={'width_ratios': [1.2,1]})
 # plot a
 NSTEPS = 6
 cost_functions = [
@@ -23,9 +23,9 @@ cost_functions = [
     DoubleBracketCostFunction.energy_fluctuation,
 ]
 cost_names = [
-    'Off-diagonal norm',
-    'Least squares',
-    'Energy fluctuation',
+    r'Off-diagonal norm $f_1$',
+    r'Least squares $f_2$',
+    r'Energy fluctuation $f_3$',
 ]
 markers = [
      'o', 'x', '*'
@@ -35,8 +35,11 @@ sub_ax = inset_axes(
     width="32%",
     height="32%",
     borderpad=1,  # padding between parent and inset axes
-    loc='center right'
+    loc="center right",
+    bbox_to_anchor=(-0.03, -0.08, 1, 1),  # Shifted slightly downwards
+    bbox_transform=ax[0].transAxes
 )
+
 for i, cost in enumerate(cost_functions):
     dbi = initialize_dbi(5, "XXZ", 0.5)
     # d = eigen_diag(dbi)
@@ -61,10 +64,14 @@ for i, cost in enumerate(cost_functions):
     ax[0].plot(s_to_plot(s_ls), norm_ls, label=cost_names[i], marker=markers[i], fillstyle='none' if i!=2 else 'full')
     sub_ax.plot(s_to_plot(s_ls), en_ls, label=cost_names[i], marker=markers[i], fillstyle='none' if i!=2 else 'full')
 ax[0].set_xlabel(r'DBR duration $s$')
-sub_ax.set_xlabel(r'$s$')
-ax[0].set_ylabel(r'Off-diagonal norm $||\sigma(\hat H)||$')
-sub_ax.set_ylabel(r'$\Xi_k(\mu)$')
+sub_ax.set_xlabel(r'DBR duration $s$')
+ax[0].set_ylabel(r'Off-diagonal norm $||\sigma(\hat H_k)||$')
+sub_ax.set_ylabel(r'$f_3$')
 ax[0].legend(loc='lower left')
+ax[0].set_xlim(left=-.049)
+a = -.15
+b = .97
+ax[0].annotate('a)', xy = (a,b), xycoords='axes fraction')
     
 # plot b
 dbi = initialize_dbi(5, "XXZ", 0.5)
@@ -97,11 +104,14 @@ for i,n in enumerate(n_ls):
     min_s.append(round(s_space[poly_fit_ls[i].index(min(poly_fit_ls[i][:crop_iter]))],2))
     # plt.axvline(s_space[poly_fit_ls[i].index(min(poly_fit_ls[i][:crop_iter]))], color=color, linestyle='--')
 ax[1].set_xticks(remove_duplicate_and_nearby_elements(min_s,0.01))
-ax[1].set_yticks(remove_duplicate_and_nearby_elements(min_loss,0.1))
+ax[1].set_yticks(remove_duplicate_and_nearby_elements(min_loss,0.1)+[17.9])
 ax[1].grid()
 ax[1].legend()
 ax[1].set_xlabel(r"DBR duration $s$")
-ax[1].set_ylabel(r"Off-diagonal norm $||\sigma(e^{sW}He^{-sW})||$")
+ax[1].set_ylabel(r"Off-diagonal norm $||\sigma(e^{sW}H_0e^{-sW})||$")
+a = -.15
+b = .97
+ax[1].annotate('b)', xy = (a,b), xycoords='axes fraction')
 plt.tight_layout()
-fig.subplots_adjust(right=0.8, bottom=0.2)  
+fig.subplots_adjust( right=0.9, bottom=0.15, wspace=0.25)  
 plt.savefig("fig1.pdf") 
