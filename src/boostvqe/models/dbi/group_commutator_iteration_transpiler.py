@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum, auto
+import logging
 
 import hyperopt
 import numpy as np
@@ -205,7 +206,7 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         else:
             raise_error(ValueError, "Your EvolutionOracleType is not recognized")
 
-    def loss(self, step_duration: float, eo_d, mode_dbr):
+    def loss(self, step_duration: float, eo_d, mode_dbr, nshots:int=None):
         """
         Compute loss function distance between `look_ahead` steps.
 
@@ -218,17 +219,27 @@ class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
         circ = self.get_composed_circuit()
         if step_duration is not None:
             circ = self.recursion_step_circuit(step_duration, eo_d, mode_dbr) + circ
-        return self.h.expectation(circ().state())
+        
+        if nshots is None:
+            expval = self.h.expectation(circ().state())
+        else: 
+            circ.add(gates.M(*range(circ.nqubits)))
+            logging.info(circ.draw())
+            freq = circ(nshots=nshots).frequencies()
+            expval = self.h.expectation_from_samples(freq)
+
+        return expval
 
     def choose_step(
         self,
         d,
         step_grid=None,
         mode_dbr=None,
+        nshots=None,
     ):
         losses = []
         for s in step_grid:
-            losses.append(self.loss(s, d, mode_dbr))
+            losses.append(self.loss(s, d, mode_dbr, nshots))
         return step_grid[np.argmin(losses)], np.min(losses), losses
 
     def get_composed_circuit(self, step_duration=None, eo_d=None):

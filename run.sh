@@ -3,6 +3,31 @@
 #SBATCH --output=10qVQE_%A_%a.log
 #SBATCH --array=0-249  # Creates 250 jobs in total
 
+# Define arrays of seeds and layers
+SEEDS=(1 2 3 4 42)
+LAYERS=(3 4 5 6 7 8 9 10)
+
+# Calculate the number of layers and seeds
+NUM_SEEDS=${#SEEDS[@]}
+NUM_LAYERS=${#LAYERS[@]}
+
+# Calculate the total number of combinations
+TOTAL_COMBINATIONS=$((NUM_SEEDS * NUM_LAYERS))
+
+# Check if the job array index is within bounds
+if [ ${SLURM_ARRAY_TASK_ID} -ge ${TOTAL_COMBINATIONS} ]; then
+  echo "Error: SLURM_ARRAY_TASK_ID=${SLURM_ARRAY_TASK_ID} exceeds number of combinations."
+  exit 1
+fi
+
+# Calculate the seed and layer for the current job
+SEED_INDEX=$((SLURM_ARRAY_TASK_ID / NUM_LAYERS))
+LAYER_INDEX=$((SLURM_ARRAY_TASK_ID % NUM_LAYERS))
+
+SEED=${SEEDS[$SEED_INDEX]}
+NLAYERS=${LAYERS[$LAYER_INDEX]}
+
+# Parameters
 NQUBITS=10
 
 DBI_STEPS=0
