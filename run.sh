@@ -2,14 +2,14 @@
 #SBATCH --job-name=tlfim
 #SBATCH --output=tlfim_shots.log
 
-NQUBITS=10
+NQUBITS=5
 NLAYERS=3
 
 DBI_STEPS=0
 NBOOST=0
 BOOST_FREQUENCY=100
 
-NSHOTS=500
+NSHOTS=100
 SEED=42
 
 OPTIMIZER="sgd"
@@ -22,4 +22,4 @@ python3 main.py  --nqubits $NQUBITS --nlayers $NLAYERS --optimizer $OPTIMIZER \
                 --dbi_step $DBI_STEPS --seed $SEED \
                 --boost_frequency $BOOST_FREQUENCY --nboost $NBOOST \
                 --optimizer_options "$OPTIMIZER_OPTIONS" \
-                --hamiltonian "TLFIM" --nshots $NSHOTS
+                --hamiltonian "XXZ" --nshots $NSHOTS
