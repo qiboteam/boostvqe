@@ -2,7 +2,7 @@
 #SBATCH --job-name=tlfim
 #SBATCH --output=tlfim_shots.log
 
-NQUBITS=5
+NQUBITS=3
 NLAYERS=3
 
 DBI_STEPS=0
