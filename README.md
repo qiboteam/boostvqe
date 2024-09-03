@@ -1,5 +1,6 @@
 # Boost VQEs with DBI
 
+<img src="figures/diagram.png" style="solid #000; max-width:600px; max-height:1000px;">
 Boosting variational eigenstate preparation algorithms limited by training and not device coherence by diagonalization double-bracket iteration.
 
 ## Setup
@@ -83,4 +84,4 @@ optional arguments:
 
 For more details about this project and citations, please refer to [the article](https://www.arxiv.org/abs/2408.03987).
 
-<img src="example.png" style="solid #000; max-width:600px; max-height:1000px;">
+<img src="figures/hw_preserving_XXZ_10Q3L42S_cma_jumps.pdf" style="solid #000; max-width:600px; max-height:1000px;">
