@@ -15,12 +15,7 @@ will install `boostvqe 0.0.1` and activate a dedicated working shell.
 
 ## Code structure
 
-The code is organized as follows:
-
-* `main.py`: performs boosted VQE training.
-* `compiling.py`: compile DBQA.
-* `single_commutator_boosting.py`: Load the VQE architecture and apply DBI using
-single commutator rotation generator.
+The file `main.py` performs boosted VQE training.
 
 The source code is located in `./src/boostvqe/.` and its composed of:
 
