@@ -7,7 +7,6 @@ from copy import deepcopy
 
 import numpy as np
 import qibo
-
 from qibo import hamiltonians
 from qibo.backends import construct_backend
 from qibo.quantum_info.metrics import fidelity
@@ -58,12 +57,9 @@ def main(args):
     else:
         opt_options = json.loads(args.optimization_config)
 
-    try:
-        params = np.load(path / f"parameters/params_ite{args.epoch}.npy")
-    except FileNotFoundError:
-        params = np.array(
-            np.load(path / PARAMS_FILE, allow_pickle=True).tolist()[0][args.epoch]
-        )
+    params = np.array(
+        np.load(path / PARAMS_FILE, allow_pickle=True).tolist()[0][args.epoch]
+    )
 
     nqubits = config["nqubits"]
     nlayers = config["nlayers"]

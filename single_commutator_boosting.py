@@ -41,12 +41,9 @@ def main(args):
     config = json.loads((path / OPTIMIZATION_FILE).read_text())
     # dump_config(deepcopy(vars(args)), path=dump_path)
 
-    try:
-        params = np.load(path / f"parameters/params_ite{args.epoch}.npy")
-    except FileNotFoundError:
-        params = np.array(
-            np.load(path / PARAMS_FILE, allow_pickle=True).tolist()[0][args.epoch]
-        )
+    params = np.array(
+        np.load(path / PARAMS_FILE, allow_pickle=True).tolist()[0][args.epoch]
+    )
 
     nqubits = config["nqubits"]
     nlayers = config["nlayers"]
