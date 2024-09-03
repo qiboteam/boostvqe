@@ -20,19 +20,22 @@ from qibo.symbols import Z
 
 DEFAULT_DELTA = 0.5
 """Default `delta` value of XXZ Hamiltonian"""
-DEFAULT_DELTAS = [0.5, 0.5]
+DEFAULT_DELTAS = [0.0, 2.0]
+TLFIM_h = [1.0, 2.0]
+J1J2_h = [1.0, 0.2]
 
 
 class Model(Enum):
     XXZ = lambda nqubits: hamiltonians.XXZ(
         nqubits=nqubits, delta=DEFAULT_DELTA, dense=False
     )
-    XYZ = lambda nqubits: XYZ(nqubits=nqubits, delta=DEFAULT_DELTAS, dense=False)
+    XYZ = lambda nqubits: XYZ(nqubits=nqubits, delta=[0.5, 0.5], dense=False)
     TFIM = lambda nqubits: hamiltonians.TFIM(nqubits=nqubits, h=nqubits, dense=False)
-    TLFIM = lambda nqubits: TLFIM(nqubits=nqubits, h=[nqubits, nqubits], dense=False)
+    TLFIM = lambda nqubits: TLFIM(nqubits=nqubits, h=TLFIM_h, dense=False)
+    J1J2 = lambda nqubits: J1J2(nqubits=nqubits, h=J1J2_h, dense=False)
 
 
-def TLFIM(nqubits, h=[0.5, 0.5], dense=True, backend=None):
+def TLFIM(nqubits, h=TLFIM_h, dense=True, backend=None):
     """Transverse and longitudinal field Ising model with periodic boundary conditions.
 
     .. math::
@@ -45,7 +48,6 @@ def TLFIM(nqubits, h=[0.5, 0.5], dense=True, backend=None):
             :class:`qibo.core.hamiltonians.Hamiltonian`, otherwise it creates
             a :class:`qibo.core.hamiltonians.SymbolicHamiltonian`.
     """
-    h = [nqubits, nqubits]
     if nqubits < 2:
         raise_error(ValueError, "Number of qubits must be larger than one.")
     if dense:
@@ -55,6 +57,7 @@ def TLFIM(nqubits, h=[0.5, 0.5], dense=True, backend=None):
             if h[m] != 0:
                 condition = lambda i, j: i == j % nqubits
                 ham += h[m] * _build_spin_model(nqubits, matrix, condition)
+        ham *= -1
         return Hamiltonian(nqubits, ham, backend=backend)
 
     matrix = -(
@@ -64,6 +67,38 @@ def TLFIM(nqubits, h=[0.5, 0.5], dense=True, backend=None):
     )
     terms = [HamiltonianTerm(matrix, i, i + 1) for i in range(nqubits - 1)]
     terms.append(HamiltonianTerm(matrix, nqubits - 1, 0))
+    ham = SymbolicHamiltonian(backend=backend)
+    ham.terms = terms
+    return ham
+
+
+def J1J2(nqubits, h=J1J2_h, dense=True, backend=None):
+    """Heisenberg J1-J2 model."""
+    logging.info("Building the J1-J2 Heisenberg model.")
+    if nqubits < 3:
+        raise_error(ValueError, "Number of qubits must be larger than two.")
+    if dense:
+        condition_1 = lambda i, j: i in {j % nqubits, (j + 1) % nqubits}
+        hx = _build_spin_model(nqubits, matrices.X, condition_1)
+        hy = _build_spin_model(nqubits, matrices.Y, condition_1)
+        hz = _build_spin_model(nqubits, matrices.Z, condition_1)
+        condition_2 = lambda i, j: i in {j % nqubits, (j + 2) % nqubits}
+        hx2 = _build_spin_model(nqubits, matrices.X, condition_2)
+        hy2 = _build_spin_model(nqubits, matrices.Y, condition_2)
+        hz2 = _build_spin_model(nqubits, matrices.Z, condition_2)
+        matrix = h[0] * (hx + hy + hz) + h[1] * (hx2 + hy2 + hz2)
+        return Hamiltonian(nqubits, matrix, backend=backend)
+
+    hx = multikron([matrices.X, matrices.X])
+    hy = multikron([matrices.Y, matrices.Y])
+    hz = multikron([matrices.Z, matrices.Z])
+    matrix_1 = h[0] * (hx + hy + hz)
+    matrix_2 = h[1] * (hx + hy + hz)
+    terms = [HamiltonianTerm(matrix_1, i, i + 1) for i in range(nqubits - 1)]
+    terms.extend([HamiltonianTerm(matrix_2, i, i + 2) for i in range(nqubits - 2)])
+    terms.append(HamiltonianTerm(matrix_1, nqubits - 1, 0))
+    terms.append(HamiltonianTerm(matrix_2, nqubits - 2, 0))
+    terms.append(HamiltonianTerm(matrix_2, nqubits - 1, 1))
     ham = SymbolicHamiltonian(backend=backend)
     ham.terms = terms
     return ham
