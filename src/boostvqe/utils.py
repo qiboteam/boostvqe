@@ -41,7 +41,7 @@ def generate_path(args) -> str:
         output_folder = "results"
     else:
         output_folder = args.output_folder
-    return f"./{output_folder}/{args.optimizer}_{args.nqubits}q_{args.nlayers}l_{args.seed}"
+    return f"./{output_folder}/{args.optimizer}_{args.nqubits}q_{args.nlayers}l_{args.seed}s_{args.decay_rate_lr}decay"
 
 
 def create_folder(path: str) -> Path:
