@@ -61,7 +61,6 @@ def main(args):
         circuit=circ,
         hamiltonian=hamiltonian,
     )
-    print(vqe.circuit.draw())
     vqe.circuit.set_parameters(params)
 
     zero_state = hamiltonian.backend.zero_state(config["nqubits"])

@@ -48,7 +48,6 @@ def TLFIM(nqubits, h=TLFIM_h, dense=True, backend=None):
             :class:`qibo.core.hamiltonians.Hamiltonian`, otherwise it creates
             a :class:`qibo.core.hamiltonians.SymbolicHamiltonian`.
     """
-    print(h)
     if nqubits < 2:
         raise_error(ValueError, "Number of qubits must be larger than one.")
     if dense:

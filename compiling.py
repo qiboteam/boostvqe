@@ -69,7 +69,6 @@ def main(args):
     nlayers = config["nlayers"]
     vqe_backend = construct_backend(backend=config["backend"])
     # TODO: remove delta hardcoded
-    print
     hamiltonian = getattr(hamiltonians, config["hamiltonian"])(
         nqubits=nqubits, delta=0.5, backend=vqe_backend
     )
