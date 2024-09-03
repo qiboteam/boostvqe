@@ -80,7 +80,7 @@ optional arguments:
   --seed SEED           Random seed
   --nshots NSHOTS       number of shots
 ```
-# Reference and citation policy
+# Reference and citation
 
 For more details about this project and citations, please refer to [the article](https://www.arxiv.org/abs/2408.03987).
 
