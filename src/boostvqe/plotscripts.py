@@ -51,6 +51,7 @@ def plot_loss(
     title="",
     save=True,
     width=0.5,
+    error_bars=False,
 ):
     """
     Plot loss with confidence belt.
@@ -82,33 +83,37 @@ def plot_loss(
             lw=1.5,
             label="VQE",
         )
-        plt.plot(
-            np.arange(
-                len(loss_vqe[str(i)]) + start - 1,
-                len(dbi_energies[str(i)]) + len(loss_vqe[str(i)]) + start - 1,
-            ),
-            dbi_energies[str(i)],
-            color=RED,
-            lw=1.5,
-            label="DBI",
-        )
-        plt.fill_between(
-            np.arange(start, len(loss_vqe[str(i)]) + start),
-            loss_vqe[str(i)] - fluctuations_vqe[str(i)],
-            loss_vqe[str(i)] + fluctuations_vqe[str(i)],
-            color=BLUE,
-            alpha=0.4,
-        )
-        plt.fill_between(
-            np.arange(
-                len(loss_vqe[str(i)]) + start - 1,
-                len(dbi_energies[str(i)]) + len(loss_vqe[str(i)]) + start - 1,
-            ),
-            dbi_energies[str(i)] - dbi_fluctuations[str(i)],
-            dbi_energies[str(i)] + dbi_fluctuations[str(i)],
-            color=RED,
-            alpha=0.4,
-        )
+        if len(dbi_energies[str(i)]) > 0:
+            plt.plot(
+                np.arange(
+                    len(loss_vqe[str(i)]) + start - 1,
+                    len(dbi_energies[str(i)]) + len(loss_vqe[str(i)]) + start - 1,
+                ),
+                dbi_energies[str(i)],
+                color=RED,
+                lw=1.5,
+                label="DBI",
+            )
+            if error_bars:
+                plt.fill_between(
+                    np.arange(
+                        len(loss_vqe[str(i)]) + start - 1,
+                        len(dbi_energies[str(i)]) + len(loss_vqe[str(i)]) + start - 1,
+                    ),
+                    dbi_energies[str(i)] - dbi_fluctuations[str(i)],
+                    dbi_energies[str(i)] + dbi_fluctuations[str(i)],
+                    color=RED,
+                    alpha=0.4,
+                )
+
+        if error_bars:
+            plt.fill_between(
+                np.arange(start, len(loss_vqe[str(i)]) + start),
+                loss_vqe[str(i)] - fluctuations_vqe[str(i)],
+                loss_vqe[str(i)] + fluctuations_vqe[str(i)],
+                color=BLUE,
+                alpha=0.4,
+            )
 
     max_length = (
         sum(len(l) for l in list(dbi_energies.values()))
@@ -127,6 +132,9 @@ def plot_loss(
     )
     plt.xlabel("Iterations")
     plt.ylabel("Loss")
+    plt.title(
+        rf'$N_{{\rm qubits}}={config["nqubits"]}, \, N_{{\rm layers}}={config["nlayers"]}, \, \mathrm{{{config["hamiltonian"]}}}$'
+    )
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     plt.legend(by_label.values(), by_label.keys())
@@ -497,3 +505,4 @@ def plot_lr_analysis(
     plt.legend(loc=3)
     if save:
         plt.savefig(f"lr_grads_{title}.pdf", bbox_inches="tight")
+

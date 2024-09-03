@@ -79,22 +79,3 @@ optional arguments:
 ```
 
 <img src="example.png" style="solid #000; max-width:600px; max-height:1000px;">
-
-Example with 1 layer and 6 qubits.
-
-#### basically, do VQE, VQA and DBI together and search for improvements
-
-#### Marek goal
-
-This should be viewed as the faster paced project where we just search for advantages and showcase ideas.
-
-Here we are preparing the more detailed analysis
-https://github.com/qiboteam/dbi_variational_strategies/
-
-Here is the edit link (please be careful sharing, thanks)
-https://www.overleaf.com/1329774127ntmdnsfbwykd#96b12e
-and here is the read link e.g. for interested students
-https://www.overleaf.com/read/crtmjkgvxqrd#79cd6e
-
-Marek revised draft (should be on arxiv still 2023)
-https://www.overleaf.com/read/tpppsvxynsrn#b66556
