@@ -17,14 +17,15 @@ will install `boostvqe 0.0.1` and activate a dedicated working shell.
 
 The code is organized as follows:
 
-* `main.py`: performs boosted VQE training
-* `run.sh`: bash script example using `main.py`
-
+* `main.py`: performs boosted VQE training.
+* `compiling.py`: compile DBQA.
+* `single_commutator_boosting.py`: Load the VQE architecture and apply DBI using single commutator rotation generator.
 The source code is located in `./src/boostvqe/.` and its composed of:
 
 * `ansatze.py`: contains circuit used by VQE
 * `utils.py`: contains utils function used by `main.py`
 * `plotscripts.py`: plotting functions.
+* `compiling_XXZ.py`: compilation for XXZ model.
 
 ## How to run the code
 
@@ -80,6 +81,10 @@ optional arguments:
   --seed SEED           Random seed
   --nshots NSHOTS       number of shots
 ```
+# Tutorials
+
+Some useful notebooks to understand how the library work, are collected [here](notebooks/notebooks_links.md).
+
 # Reference and citation
 
 For more details about this project and citations, please refer to [the article](https://www.arxiv.org/abs/2408.03987).
