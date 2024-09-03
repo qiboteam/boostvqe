@@ -12,7 +12,7 @@ def gradient_numerical(
     loss_0,
     s_0,
     mode,
-    delta: float = 1e-3,
+    delta: float = 1e-7,
 ):
     grad = np.zeros(len(params))
     for i in range(len(params)):
