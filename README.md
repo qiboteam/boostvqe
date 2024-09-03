@@ -1,5 +1,6 @@
 # Boost VQEs with DBI
 
+<img src="figures/diagram.png" style="solid #000; max-width:600px; max-height:1000px;">
 Boosting variational eigenstate preparation algorithms limited by training and not device coherence by diagonalization double-bracket iteration.
 
 ## Setup
@@ -34,14 +35,15 @@ python main.py --help
 ```sh
 
 usage: main.py [-h] [--backend BACKEND] [--platform PLATFORM]
-               [--nthreads NTHREADS] [--optimizer OPTIMIZER] [--tol TOL]
-               [--nqubits NQUBITS] [--nlayers NLAYERS]
-               [--output_folder OUTPUT_FOLDER] [--nboost NBOOST]
-               [--boost_frequency BOOST_FREQUENCY] [--dbi_steps DBI_STEPS]
-               [--stepsize STEPSIZE] [--optimize_dbi_step OPTIMIZE_DBI_STEP]
+               [--nthreads NTHREADS] [--optimizer OPTIMIZER]
+               [--optimizer_options OPTIMIZER_OPTIONS] [--tol TOL]
+               [--decay_rate_lr DECAY_RATE_LR] [--nqubits NQUBITS]
+               [--nlayers NLAYERS] [--output_folder OUTPUT_FOLDER]
+               [--nboost NBOOST] [--boost_frequency BOOST_FREQUENCY]
+               [--dbi_steps DBI_STEPS] [--stepsize STEPSIZE]
+               [--optimize_dbi_step OPTIMIZE_DBI_STEP]
                [--store_h | --no-store_h] [--hamiltonian HAMILTONIAN]
-               [--seed SEED] [--shot_train | --no-shot_train]
-               [--nshots NSHOTS]
+               [--seed SEED] [--nshots NSHOTS]
 
 VQE with DBI training hyper-parameters.
 
@@ -52,7 +54,11 @@ optional arguments:
   --nthreads NTHREADS   Number of threads used by the script.
   --optimizer OPTIMIZER
                         Optimizer used by VQE
+  --optimizer_options OPTIMIZER_OPTIONS
+                        Options to customize the optimizer training
   --tol TOL             Absolute precision to stop VQE training
+  --decay_rate_lr DECAY_RATE_LR
+                        Decay factor of the learning rate if sgd is used
   --nqubits NQUBITS     Number of qubits for Hamiltonian / VQE
   --nlayers NLAYERS     Number of layers for VQE
   --output_folder OUTPUT_FOLDER
@@ -72,10 +78,10 @@ optional arguments:
   --hamiltonian HAMILTONIAN
                         Hamiltonian available in qibo.hamiltonians.
   --seed SEED           Random seed
-  --shot_train, --no-shot_train
-                        If True the Hamiltonian expactation value is evaluate
-                        with the shots, otherwise with the state vector
   --nshots NSHOTS       number of shots
 ```
+# Reference and citation
 
-<img src="example.png" style="solid #000; max-width:600px; max-height:1000px;">
+For more details about this project and citations, please refer to [the article](https://www.arxiv.org/abs/2408.03987).
+
+<img src="figures/hw_preserving_XXZ_10Q3L42S_cma_jumps.png" style="solid #000; max-width:600px; max-height:1000px;">
