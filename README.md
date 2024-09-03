@@ -19,7 +19,9 @@ The code is organized as follows:
 
 * `main.py`: performs boosted VQE training.
 * `compiling.py`: compile DBQA.
-* `single_commutator_boosting.py`: Load the VQE architecture and apply DBI using single commutator rotation generator.
+* `single_commutator_boosting.py`: Load the VQE architecture and apply DBI using
+single commutator rotation generator.
+
 The source code is located in `./src/boostvqe/.` and its composed of:
 
 * `ansatze.py`: contains circuit used by VQE
