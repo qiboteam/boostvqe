@@ -15,16 +15,14 @@ will install `boostvqe 0.0.1` and activate a dedicated working shell.
 
 ## Code structure
 
-The code is organized as follows:
-
-* `main.py`: performs boosted VQE training
-* `run.sh`: bash script example using `main.py`
+The file `main.py` performs boosted VQE training.
 
 The source code is located in `./src/boostvqe/.` and its composed of:
 
 * `ansatze.py`: contains circuit used by VQE
 * `utils.py`: contains utils function used by `main.py`
 * `plotscripts.py`: plotting functions.
+* `compiling_XXZ.py`: compilation for XXZ model.
 
 ## How to run the code
 
@@ -80,6 +78,10 @@ optional arguments:
   --seed SEED           Random seed
   --nshots NSHOTS       number of shots
 ```
+# Tutorials
+
+Some useful notebooks to understand how the library works, are collected [here](notebooks/notebooks_links.md).
+
 # Reference and citation
 
 For more details about this project and citations, please refer to [the article](https://www.arxiv.org/abs/2408.03987).
