@@ -80,7 +80,7 @@ optional arguments:
 ```
 # Tutorials
 
-Some useful notebooks to understand how the library work, are collected [here](notebooks/notebooks_links.md).
+Some useful notebooks to understand how the library works, are collected [here](notebooks/notebooks_links.md).
 
 # Reference and citation
 
