@@ -2,7 +2,7 @@ import logging
 import os
 from enum import Enum
 
-from qibo.hamiltonians.models import HamiltonianTerm, multikron
+from qibo.hamiltonians.models import HamiltonianTerm, _multikron
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
@@ -61,9 +61,9 @@ def TLFIM(nqubits, h=TLFIM_h, dense=True, backend=None):
         return Hamiltonian(nqubits, ham, backend=backend)
 
     matrix = -(
-        multikron([matrices.Z, matrices.Z])
-        + h[0] * multikron([matrices.X, matrices.I])
-        + h[1] * multikron([matrices.Z, matrices.I])
+        _multikron([matrices.Z, matrices.Z])
+        + h[0] * _multikron([matrices.X, matrices.I])
+        + h[1] * _multikron([matrices.Z, matrices.I])
     )
     terms = [HamiltonianTerm(matrix, i, i + 1) for i in range(nqubits - 1)]
     terms.append(HamiltonianTerm(matrix, nqubits - 1, 0))
@@ -89,9 +89,9 @@ def J1J2(nqubits, h=J1J2_h, dense=True, backend=None):
         matrix = h[0] * (hx + hy + hz) + h[1] * (hx2 + hy2 + hz2)
         return Hamiltonian(nqubits, matrix, backend=backend)
 
-    hx = multikron([matrices.X, matrices.X])
-    hy = multikron([matrices.Y, matrices.Y])
-    hz = multikron([matrices.Z, matrices.Z])
+    hx = _multikron([matrices.X, matrices.X])
+    hy = _multikron([matrices.Y, matrices.Y])
+    hz = _multikron([matrices.Z, matrices.Z])
     matrix_1 = h[0] * (hx + hy + hz)
     matrix_2 = h[1] * (hx + hy + hz)
     terms = [HamiltonianTerm(matrix_1, i, i + 1) for i in range(nqubits - 1)]
@@ -128,9 +128,9 @@ def XYZ(nqubits, deltas=[0.5, 0.5], dense=True, backend=None):
         matrix = hx + deltas[0] * hy + deltas[1] * hz
         return Hamiltonian(nqubits, matrix, backend=backend)
 
-    hx = multikron([matrices.X, matrices.X])
-    hy = multikron([matrices.Y, matrices.Y])
-    hz = multikron([matrices.Z, matrices.Z])
+    hx = _multikron([matrices.X, matrices.X])
+    hy = _multikron([matrices.Y, matrices.Y])
+    hz = _multikron([matrices.Z, matrices.Z])
     matrix = (hx + deltas[0] * hy) + deltas[1] * hz
     terms = [HamiltonianTerm(matrix, i, i + 1) for i in range(nqubits - 1)]
     terms.append(HamiltonianTerm(matrix, nqubits - 1, 0))
