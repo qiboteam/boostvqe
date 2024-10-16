@@ -26,7 +26,7 @@ The source code is located in `./src/boostvqe/.` and its composed of:
 
 ## Example
 
-It follows a python snippets explaining how to run the boosting
+It follows a python snippet explaining how to run the boosting
 
 ```py
 
