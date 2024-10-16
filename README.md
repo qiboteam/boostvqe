@@ -14,7 +14,7 @@ pip install -e .
 
 ## Code structure
 
-The file `main.py` performs boosted VQE training.
+The file `src/boostvqe/boost.py` performs boosted VQE training.
 
 The source code is located in `./src/boostvqe/.` and its composed of:
 
@@ -29,17 +29,17 @@ It follows a python snippet explaining how to run the boosting
 
 ```py
 
-from boostvqe.boost import main
+from boostvqe.boost import dbqa_vqe
 from boostvqe.ansatze import hdw_efficient
 
 from qibo.models.dbi.double_bracket import DoubleBracketGeneratorType
 
 circuit = hdw_efficient(nqubits=2, nlayers=2)
 
-main(circuit, "test_output", mode = DoubleBracketGeneratorType.group_commutator)
+dbqa_vqe(circuit, "test_output", mode = DoubleBracketGeneratorType.group_commutator)
 ```
 
-All the info regarding `main`, can be generated with `help(main)`.
+All the info regarding `dbqa_vqe` can be generated with `help(dbqa_vqe)`.
 
 # Tutorials
 

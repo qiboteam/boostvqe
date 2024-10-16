@@ -40,7 +40,7 @@ from boostvqe.utils import (
 NSHOTS = 100
 
 
-def main(
+def dbqa_vqe(
     circuit: Circuit,  # in place of ansatz
     output_folder: str,
     backend: Optional[str] = "qibojit",
