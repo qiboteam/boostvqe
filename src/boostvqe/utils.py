@@ -42,13 +42,14 @@ def generate_path(
     nqubits,
     seed,
     decay_rate_lr,
+    nlayers,
 ) -> str:
     """Generate path according to job parameters"""
     if output_folder is None:
         output_folder = "results"
     else:
         output_folder = output_folder
-    return f"./{output_folder}/{optimizer}_{nqubits}q_{seed}s_{decay_rate_lr}decay"
+    return f"./{output_folder}/{optimizer}_{nqubits}q_{nlayers}l_{seed}s_{decay_rate_lr}decay"
 
 
 def create_folder(path: str) -> Path:

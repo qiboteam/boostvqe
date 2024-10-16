@@ -116,6 +116,9 @@ def main(
 
         nlayers (int):
             Number of circuit layers.
+
+        mode:
+            Define the DBI Generator.
     """
 
     output_dict = locals()
@@ -142,6 +145,7 @@ def main(
                 nqubits,
                 seed,
                 decay_rate_lr,
+                nlayers,
             )
         )
     )
