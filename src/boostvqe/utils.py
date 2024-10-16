@@ -36,13 +36,19 @@ DBI_D_MATRIX = "dbi_d_matrices"
 logging.basicConfig(level=logging.INFO)
 
 
-def generate_path(args) -> str:
+def generate_path(
+    output_folder,
+    optimizer,
+    nqubits,
+    seed,
+    decay_rate_lr,
+) -> str:
     """Generate path according to job parameters"""
-    if args.output_folder is None:
+    if output_folder is None:
         output_folder = "results"
     else:
-        output_folder = args.output_folder
-    return f"./{output_folder}/{args.optimizer}_{args.nqubits}q_{args.nlayers}l_{args.seed}s_{args.decay_rate_lr}decay"
+        output_folder = output_folder
+    return f"./{output_folder}/{optimizer}_{nqubits}q_{seed}s_{decay_rate_lr}decay"
 
 
 def create_folder(path: str) -> Path:
