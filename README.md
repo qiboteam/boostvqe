@@ -35,8 +35,8 @@ from boostvqe.ansatze import hdw_efficient
 from qibo.models.dbi.double_bracket import DoubleBracketGeneratorType
 
 circuit = hdw_efficient(nqubits=2, nlayers=2)
-
-dbqa_vqe(circuit, "test_output", mode = DoubleBracketGeneratorType.group_commutator)
+output_folder = "output"
+dbqa_vqe(circuit, output_folder, mode = DoubleBracketGeneratorType.group_commutator)
 ```
 
 All the info regarding `dbqa_vqe` can be generated with `help(dbqa_vqe)`.
