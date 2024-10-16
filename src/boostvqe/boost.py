@@ -150,7 +150,6 @@ def dbqa_vqe(
         )
     )
     ham = getattr(Model, hamiltonian)(nqubits)  # TODO : use only Model and not str
-    # ham = hamiltonian(nqubits)
     target_energy = np.real(np.min(np.asarray(ham.eigenvalues())))
 
     # construct circuit from parsed ansatz name
