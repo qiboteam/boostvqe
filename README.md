@@ -12,8 +12,6 @@ cd boostvqe
 pip install -e .
 ```
 
-will install `boostvqe 0.0.1` and activate a dedicated working shell.
-
 ## Code structure
 
 The file `main.py` performs boosted VQE training.
