@@ -58,6 +58,7 @@ def main(
     seed: int = SEED,
     nshots: int = NSHOTS,
     nlayers: int = 0,
+    mode: DoubleBracketGeneratorType = DoubleBracketGeneratorType.single_commutator,
 ):
     """
     Args:
@@ -120,7 +121,8 @@ def main(
     output_dict = locals()
     del output_dict["circuit"]
     output_dict["nqubits"] = circuit.nqubits
-    output_dict["nlayers"] = nlayers  # TODO: maybe remove it
+    # output_dict["nlayers"] = nlayers  # TODO: maybe remove it
+    output_dict["mode"] = str(mode)
     # set backend and number of classical threads
 
     if platform is not None:
@@ -213,7 +215,7 @@ def main(
             # Initialize DBI
             dbi = DoubleBracketIteration(
                 hamiltonian=new_hamiltonian,
-                mode=DoubleBracketGeneratorType.single_commutator,
+                mode=mode,
             )
 
             zero_state_t = np.transpose([zero_state])
