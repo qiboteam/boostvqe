@@ -8,10 +8,9 @@ Boosting variational eigenstate preparation algorithms limited by training and n
 The package can be installed by source after cloning the repository:
 
 ```sh
+cd boostvqe
 pip install -e .
 ```
-
-will install `boostvqe 0.0.1` and activate a dedicated working shell.
 
 ## Code structure
 
@@ -24,12 +23,22 @@ The source code is located in `./src/boostvqe/.` and its composed of:
 * `plotscripts.py`: plotting functions.
 * `compiling_XXZ.py`: compilation for XXZ model.
 
-## How to run the code
+## Example
 
-For further information about the inputs:
+It follows a python snippet explaining how to run the boosting
 
-```sh
-python main.py --help
+```py
+
+from boostvqe.boost import main
+from boostvqe.ansatze import hdw_efficient
+
+from qibo.models.dbi.double_bracket import DoubleBracketGeneratorType
+
+help(main) #If you need some info
+
+circuit = hdw_efficient(nqubits=2, nlayers=2)
+
+main(circuit, "test_output", mode = DoubleBracketGeneratorType.group_commutator)
 ```
 
 # Tutorials

@@ -505,4 +505,3 @@ def plot_lr_analysis(
     plt.legend(loc=3)
     if save:
         plt.savefig(f"lr_grads_{title}.pdf", bbox_inches="tight")
-
