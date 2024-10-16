@@ -34,12 +34,12 @@ from boostvqe.ansatze import hdw_efficient
 
 from qibo.models.dbi.double_bracket import DoubleBracketGeneratorType
 
-help(main) #If you need some info
-
 circuit = hdw_efficient(nqubits=2, nlayers=2)
 
 main(circuit, "test_output", mode = DoubleBracketGeneratorType.group_commutator)
 ```
+
+All the info regarding `main`, can be generated with `help(main)`.
 
 # Tutorials
 
