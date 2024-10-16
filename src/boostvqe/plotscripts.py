@@ -132,7 +132,6 @@ def plot_loss(
     )
     plt.xlabel("Iterations")
     plt.ylabel("Loss")
-    print("DDDDDDDDDD", config)
     plt.title(
         rf'$N_{{\rm qubits}}={config["nqubits"]}, \, N_{{\rm layers}}={config["nlayers"]}, \, \mathrm{{{config["hamiltonian"]}}}$'
     )

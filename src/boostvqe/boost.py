@@ -325,8 +325,6 @@ def main(
     )
 
     logging.info("Dump the results")
-    print(params_history)
-    print(output_dict)
     results_dump(path, params_history, output_dict)
     plot_loss(
         path=path,
