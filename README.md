@@ -9,7 +9,7 @@ The package can be installed by source after cloning the repository:
 
 ```sh
 cd boostvqe
-pip install -e .
+pip install .
 ```
 
 ## Code structure
