@@ -16,15 +16,14 @@ from qibo.models.dbi.double_bracket import (
 )
 
 # boostvqe's
-from boostvqe.ansatze import build_circuit
+from boostvqe import ansatze
 from boostvqe.plotscripts import plot_gradients, plot_loss
-from boostvqe.training_utils import vqe_loss
+from boostvqe.training_utils import Model, vqe_loss
 from boostvqe.utils import (
     DBI_D_MATRIX,
     DBI_ENERGIES,
     DBI_FLUCTUATIONS,
     DBI_STEPS,
-    DELTA,
     FLUCTUATION_FILE,
     GRADS_FILE,
     HAMILTONIAN_FILE,
@@ -38,11 +37,6 @@ from boostvqe.utils import (
     rotate_h_with_vqe,
     train_vqe,
 )
-
-DEFAULT_DELTA = 0.5
-"""Default `delta` value of XXZ Hamiltonian"""
-
-logging.basicConfig(level=logging.INFO)
 
 
 def main(args):
@@ -63,18 +57,19 @@ def main(args):
     # setup the results folder
     logging.info("Set VQE")
     path = pathlib.Path(create_folder(generate_path(args)))
-
-    ham = getattr(hamiltonians, args.hamiltonian)(nqubits=args.nqubits)
+    ham = getattr(Model, args.hamiltonian)(args.nqubits)
     target_energy = np.real(np.min(np.asarray(ham.eigenvalues())))
-    circ0 = build_circuit(
-        nqubits=args.nqubits,
-        nlayers=args.nlayers,
-    )
+
+    # construct circuit from parsed ansatz name
+    circ0 = getattr(ansatze, args.ansatz)(args.nqubits, args.nlayers)
+
+    logging.info(circ0.draw())
+    
     circ = circ0.copy(deep=True)
     backend = ham.backend
     zero_state = backend.zero_state(args.nqubits)
 
-    loss = partial(vqe_loss, delta=DELTA, nshots=args.nshots)
+    loss = partial(vqe_loss, nshots=args.nshots)
 
     # fix numpy seed to ensure replicability of the experiment
     np.random.seed(int(args.seed))
@@ -189,7 +184,7 @@ def main(args):
             "true_ground_energy": target_energy,
             "feval": list(fun_eval),
             "energy": float(vqe.hamiltonian.expectation(zero_state)),
-            "fluctuations": float(vqe.hamiltonian.energy_fluctuation(zero_state)),
+            "fluctuations": float(vqe.hamiltonian.dense.energy_fluctuation(zero_state)),
             "reached_accuracy": float(np.abs(target_energy - best_loss)),
         }
     )
@@ -332,6 +327,11 @@ if __name__ == "__main__":
         "--nshots",
         type=int,
         help="number of shots",
+    )
+    parser.add_argument(
+        "--ansatz",
+        type=str,
+        help="Parametric quantum circuit ansatz. It can be hw_preserving or hdw_efficient",
     )
     args = parser.parse_args()
     main(args)
