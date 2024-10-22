@@ -52,7 +52,6 @@ def dbqa_vqe(
     nboost: int = 1,
     boost_frequency: int = 10,
     dbi_steps: int = 1,
-    optimize_dbi_step: bool = False,
     store_h: bool = False,
     hamiltonian: str = "XXZ",
     seed: int = SEED,
@@ -98,9 +97,6 @@ def dbqa_vqe(
 
         stepsize (float, default: 0.01):
             Step size used during DBI updates.
-
-        optimize_dbi_step (bool, default: False):
-            If set to True, the DBI step size is hyperoptimized.
 
         store_h (bool, default: False):
             If this flag is set, the Hamiltonian `H` is stored at each iteration.
@@ -234,9 +230,7 @@ def dbqa_vqe(
                 dbi_steps,
                 dbi_d_matrix,
                 dbi_operators,
-            ) = apply_dbi_steps(
-                dbi=dbi, nsteps=dbi_steps, optimize_step=optimize_dbi_step
-            )
+            ) = apply_dbi_steps(dbi=dbi, nsteps=dbi_steps)
             # Update the circuit appending the DBI generator
             # and the old circuit with non trainable circuit
             dbi_operators = [
