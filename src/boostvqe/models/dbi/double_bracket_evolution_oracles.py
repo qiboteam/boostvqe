@@ -307,3 +307,43 @@ class XXZ_EvolutionOracle(EvolutionOracle):
             steps=steps,
             order=order,
         )
+
+
+@dataclass
+class tfim_EvolutionOracle(EvolutionOracle):
+    steps: int = None
+    B_a: float = None
+
+    def circuit(self, a, t_duration, steps=None, order=None):
+        if steps is None:
+            steps = self.steps
+
+        circuit = Circuit(self.h.nqubits)  # Initialize the circuit with the number of qubits
+
+        # Add CNOT(a, a+1)
+        circuit.add(gates.CNOT(a, a + 1))
+
+        # Time evolution under the transverse field Ising model Hamiltonian
+        # exp(-i t (X(a) + B_a * Z(a)))
+        dt = t_duration / steps  # Divide the time duration for Trotterization if needed
+
+        for _ in range(steps):
+            # Apply time evolution for X(a) + B_a * Z(a)
+            circuit += self._time_evolution_step(a, dt)
+
+        # Add second CNOT(a, a+1)
+        circuit.add(gates.CNOT(a, a + 1))
+
+        return circuit
+
+    def _time_evolution_step(self, a: int, dt: float, B_a: float):
+        """Apply a single Trotter step of the time evolution operator exp(-i dt (X(a) + B_a Z(a)))."""
+        step_circuit = Circuit(self.h.nqubits)
+
+        # Time evolution for X(a)
+        step_circuit.add(gates.RX(a, theta=-2 * dt))  # Apply exp(-i dt X(a))
+
+        # Time evolution for Z(a)
+        step_circuit.add(gates.RZ(a, theta=-2 * dt * B_a))  # Apply exp(-i dt B_a Z(a))
+
+        return step_circuit
