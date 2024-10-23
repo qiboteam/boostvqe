@@ -314,7 +314,7 @@ class tfim_EvolutionOracle(EvolutionOracle):
     steps: int = None
     B_a: float = None
 
-    def circuit(self, a, t_duration, steps=None, order=None):
+    def circuit(self, a, t_duration, B_a, steps=None, order=None):
         if steps is None:
             steps = self.steps
 
@@ -329,7 +329,7 @@ class tfim_EvolutionOracle(EvolutionOracle):
 
         for _ in range(steps):
             # Apply time evolution for X(a) + B_a * Z(a)
-            circuit += self._time_evolution_step(a, dt)
+            circuit += self._time_evolution_step(a, dt, B_a)
 
         # Add second CNOT(a, a+1)
         circuit.add(gates.CNOT(a, a + 1))
