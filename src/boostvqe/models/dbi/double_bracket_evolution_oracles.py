@@ -2,7 +2,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import cached_property, reduce
-from typing import Union
+from typing import Union, Optional
 
 import hyperopt
 import matplotlib.pyplot as plt
