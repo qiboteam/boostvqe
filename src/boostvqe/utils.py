@@ -217,44 +217,6 @@ def apply_dbi_steps(dbi, nsteps, d_type=None, method=None, **kwargs):
     return hamiltonians, energies, fluctuations, steps, d_matrix, operators
 
 
-def initialize_gci_from_vqe(
-    nqubits=10,
-    nlayers=7,
-    seed=42,
-    target_epoch=2000,
-    mode_dbr=DoubleBracketRotationType.group_commutator_third_order_reduced,
-):
-    path = f"../results/vqe_data/with_params/{nqubits}q{nlayers}l/sgd_{nqubits}q_{nlayers}l_{seed}/"
-
-    # upload system configuration and parameters for all the training
-    with open(path + "optimization_results.json") as file:
-        config = json.load(file)
-
-    losses = dict(np.load(path + "energies.npz"))["0"]
-    params = np.load(path + f"parameters/params_ite{target_epoch}.npy")
-
-    nqubits = config["nqubits"]
-    # build circuit, hamiltonian and VQE
-    # circuit = build_circuit(nqubits, config["nlayers"], "numpy")
-    circuit = getattr(ansatze, config["ansatz"])(config["nqubits"], config["nlayers"])
-
-    hamiltonian = hamiltonians.XXZ(nqubits=nqubits, delta=0.5)
-
-    vqe = ansatze.VQE(circuit, hamiltonian)
-    # set target parameters into the VQE
-    vqe.circuit.set_parameters(params)
-
-    eo_xxz = XXZ_EvolutionOracle(nqubits, steps=1, order=2)
-    # implement the rotate by VQE on the level of circuits
-    fsoe = VQERotatedEvolutionOracle(eo_xxz, vqe)
-    # init gci with the vqe-rotated hamiltonian
-    gci = VQEBoostingGroupCommutatorIteration(
-        input_hamiltonian_evolution_oracle=fsoe, mode_double_bracket_rotation=mode_dbr
-    )
-
-    return gci
-
-
 def select_recursion_step_circuit(
     gci,
     mode_dbr_list=[DoubleBracketRotationType.group_commutator_third_order_reduced],
