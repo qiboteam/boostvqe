@@ -159,14 +159,16 @@ class GroupCommutatorIterationWithEvolutionOracles:
             losses.append(self.loss(s, d, mode_dbr))
         return step_grid[np.argmin(losses)], np.min(losses), losses
 
-    def get_composed_circuit(self, step_duration=None, eo_d=None):
+    def get_composed_circuit(self, step_duration=None, eo_d=None, mode_dbr=None):
         """Get the ordered composition of all previous circuits regardless of previous mode_dbr
         settings."""
         if step_duration is None or eo_d is None:
             return self.oracle.get_composed_circuit()
         else:
+            if mode_dbr is None:
+                mode_dbr = self.mode
             return (
-                self._forward(step_duration, eo_d) + self.oracle.get_composed_circuit()
+                self._forward(step_duration, eo_d, mode_dbr) + self.oracle.get_composed_circuit()
             )
 
     @staticmethod
