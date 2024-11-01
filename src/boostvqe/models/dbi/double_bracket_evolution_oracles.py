@@ -36,7 +36,9 @@ class EvolutionOracle:
     """Type of evolution oracle."""
 
     def __post_init__(self):
-        if self.steps is None:
+        if not hasattr(self, 'steps'):
+            self.steps = 1
+        elif self.steps is None:
             self.steps = 1
         """Number of steps in Trotter-Suzuki discretization."""
 
