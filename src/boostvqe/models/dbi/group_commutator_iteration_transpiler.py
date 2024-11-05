@@ -192,10 +192,10 @@ class GroupCommutatorIterationWithEvolutionOracles:
             circuit = self.get_composed_circuit()
         return self.count_gates(circuit, gates.gates.RBS)
 
-    def get_gate_count_dict(self):
+    def get_gate_count_dict(self, composed_circuit=None):
         return dict(
-            nmb_cz=self.count_CZs() + 2 * self.count_RBS(),
-            nmb_cnot=self.count_CNOTs(),
-            nmb_cnot_relative=self.count_CZs() / self.nqubits,
-            nmb_cz_relative=self.count_CNOTs() / self.nqubits,
+            nmb_cz=self.count_CZs(composed_circuit) + 2 * self.count_RBS(composed_circuit),
+            nmb_cnot=self.count_CNOTs(composed_circuit),
+            nmb_cnot_relative=self.count_CZs(composed_circuit) / self.nqubits,
+            nmb_cz_relative=self.count_CNOTs(composed_circuit) / self.nqubits,
         )
