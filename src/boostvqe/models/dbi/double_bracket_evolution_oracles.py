@@ -310,7 +310,7 @@ class XXZ_EvolutionOracle(EvolutionOracle):
 
 
 @dataclass
-class tfim_EvolutionOracle(EvolutionOracle):
+class TFIM_EvolutionOracle(EvolutionOracle):
     steps: int = None
     B_a: float = None
 
