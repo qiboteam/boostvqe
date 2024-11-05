@@ -12,11 +12,12 @@ import tensorflow as tf
 tf.get_logger().setLevel("ERROR")
 
 from qibo import gates, hamiltonians
-from qibo.backends import GlobalBackend, NumpyBackend, TensorflowBackend, matrices
+from qibo.backends import NumpyBackend, matrices
 from qibo.config import raise_error
 from qibo.hamiltonians import AbstractHamiltonian, Hamiltonian, SymbolicHamiltonian
 from qibo.hamiltonians.models import _build_spin_model
 from qibo.symbols import Z
+from qiboml.backends import TensorflowBackend
 
 DEFAULT_DELTA = 0.5
 """Default `delta` value of XXZ Hamiltonian"""

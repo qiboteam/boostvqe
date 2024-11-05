@@ -65,7 +65,7 @@ def plot_loss(
     plt.figure(figsize=(10 * width, 10 * width * 6 / 8))
     plt.title(title)
 
-    for i in range(config["nboost"]):
+    for i in range(config["nboost"] + 1):
         start = (
             0
             if str(i - 1) not in loss_vqe

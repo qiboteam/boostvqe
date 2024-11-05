@@ -5,14 +5,16 @@ from qibo.models import Circuit
 
 from boostvqe.training_utils import vqe_loss
 
+
 def connect_qubits(circuit, jumpsize=1, start_from=0):
     def get_circular_index(n, index):
         circular_index = index % n
         return circular_index
-    for q in range(start_from, circuit.nqubits, jumpsize+1):
+
+    for q in range(start_from, circuit.nqubits, jumpsize + 1):
         ctrl_index = q
-        targ_index = get_circular_index(circuit.nqubits, q+jumpsize)
-        circuit.add(gates.RBS(q0=ctrl_index, q1=targ_index, theta=0.))
+        targ_index = get_circular_index(circuit.nqubits, q + jumpsize)
+        circuit.add(gates.RBS(q0=ctrl_index, q1=targ_index, theta=0.0))
     return circuit
 
 
@@ -31,18 +33,16 @@ def hdw_efficient(nqubits, nlayers):
     circuit.add(gates.RY(q, theta=0) for q in range(nqubits))
 
     return circuit
-            
+
 
 def hw_preserving(nqubits, nlayers=1):
-
-    if nqubits%2 != 0:
+    if nqubits % 2 != 0:
         raise_error(
-            ValueError,
-            "To use this ansatz please be sure number of qubits is even."
-    )
+            ValueError, "To use this ansatz please be sure number of qubits is even."
+        )
     c = Circuit(nqubits)
 
-    for q in range(int(nqubits/2)):
+    for q in range(int(nqubits / 2)):
         c.add(gates.X(q))
 
     for _ in range(int(nlayers)):
@@ -54,19 +54,21 @@ def hw_preserving(nqubits, nlayers=1):
 
     return c
 
+
 def su2_preserving(nqubits, nlayers):
     """SU2 invariant circuit."""
     c = Circuit(nqubits)
     for _ in range(nlayers):
         for q in range(1, nqubits, 2):
-            c.add(gates.RXX(q0=q, q1=(q+1)%nqubits, theta=0.))
-            c.add(gates.RYY(q0=q, q1=(q+1)%nqubits, theta=0.))
-            c.add(gates.RZZ(q0=q, q1=(q+1)%nqubits, theta=0.))
+            c.add(gates.RXX(q0=q, q1=(q + 1) % nqubits, theta=0.0))
+            c.add(gates.RYY(q0=q, q1=(q + 1) % nqubits, theta=0.0))
+            c.add(gates.RZZ(q0=q, q1=(q + 1) % nqubits, theta=0.0))
         for q in range(0, nqubits, 2):
-            c.add(gates.RXX(q0=q, q1=(q+1)%nqubits, theta=0.))
-            c.add(gates.RYY(q0=q, q1=(q+1)%nqubits, theta=0.))
-            c.add(gates.RZZ(q0=q, q1=(q+1)%nqubits, theta=0.))
+            c.add(gates.RXX(q0=q, q1=(q + 1) % nqubits, theta=0.0))
+            c.add(gates.RYY(q0=q, q1=(q + 1) % nqubits, theta=0.0))
+            c.add(gates.RZZ(q0=q, q1=(q + 1) % nqubits, theta=0.0))
     return c
+
 
 def compute_gradients(parameters, circuit, hamiltonian):
     """
@@ -75,7 +77,7 @@ def compute_gradients(parameters, circuit, hamiltonian):
     over the final state get running `circuit.execute` w.r.t. rotational angles.
 
     """
-    tf_backend = construct_backend("tensorflow")
+    tf_backend = construct_backend(backend="qiboml", platform="tensorflow")
     parameters = tf_backend.tf.Variable(parameters, dtype=tf_backend.tf.float64)
 
     with tf_backend.tf.GradientTape() as tape:
