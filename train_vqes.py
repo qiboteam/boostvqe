@@ -2,8 +2,22 @@ import argparse
 import json
 import logging
 
+import qibo
+
 from boostvqe import ansatze
 from boostvqe.boost import dbqa_vqe
+
+
+class SpecificWarningFilter(logging.Filter):
+    def filter(self, record):
+        return (
+            "Calculating the dense form of a symbolic Hamiltonian"
+            not in record.getMessage()
+        )
+
+
+qibo_logger = qibo.config.log
+qibo_logger.addFilter(SpecificWarningFilter())
 
 
 def main():
