@@ -132,9 +132,7 @@ dmypy.json
 # datas returned by cmaes
 .dat
 outcmaes/
-*.pdf
 
 # data returned by the script
 *.npy
 args.json
-*.png
