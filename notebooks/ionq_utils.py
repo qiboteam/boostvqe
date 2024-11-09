@@ -50,15 +50,17 @@ def binary_code_to_index(key):
         index += int(key[i])* 2 ** (size - 1 - i)
     return index
 
-def sample_to_expectation(obs, keys, freq):
+def sample_to_expectation(obs, distribution):
     # check observable diagonal
-    if (
-    np.count_nonzero(
-        obs - np.diag(np.diagonal(obs))
-    )
-    != 0
-    ):
-        print( "Observable is not diagonal.")
+    # if (
+    # np.count_nonzero(
+    #     obs - np.diag(np.diagonal(obs))
+    # )
+    # != 0
+    # ):
+    #     print( "Observable is not diagonal.")
+    keys = list(distribution.keys())
+    freq = list(distribution.values())
     expval = 0
     for i, k in enumerate(keys):
         index = binary_code_to_index(k)
@@ -87,3 +89,12 @@ def rotate_circuit_XYZ(qc):
     qc_z = deepcopy(qc)
     qc_z.measure_all()
     return [qc_x, qc_y, qc_z]
+
+def compute_expectation_value_from_results(
+    results,
+    measurement,
+    operator,
+) -> float:
+    energy = 0
+    
+    
