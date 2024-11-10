@@ -4,8 +4,8 @@ from enum import Enum, auto
 from functools import cached_property, reduce
 from typing import Union
 
-import hyperopt
-import matplotlib.pyplot as plt
+#import hyperopt
+#import matplotlib.pyplot as plt
 import numpy as np
 from qibo import Circuit, gates, symbols
 from qibo.config import raise_error
@@ -314,7 +314,7 @@ class TFIM_EvolutionOracle(EvolutionOracle):
     steps: int = None
     B_a: float = None
 
-    def circuit(self, a, t_duration, B_a, steps=None, order=None):
+    def circuit(self, t_duration, steps=None, order=None):
         if steps is None:
             steps = self.steps
 
@@ -325,11 +325,8 @@ class TFIM_EvolutionOracle(EvolutionOracle):
 
         # Time evolution under the transverse field Ising model Hamiltonian
         # exp(-i t (X(a) + B_a * Z(a)))
-        dt = t_duration / steps  # Divide the time duration for Trotterization if needed
 
-        for _ in range(steps):
-            # Apply time evolution for X(a) + B_a * Z(a)
-            circuit += self._time_evolution_step(a, dt, B_a)
+        circuit += self._time_evolution_step(a, t_duration, B_a)
 
         # Add second CNOT(a, a+1)
         circuit.add(gates.CNOT(a, a + 1))
@@ -347,3 +344,15 @@ class TFIM_EvolutionOracle(EvolutionOracle):
         step_circuit.add(gates.RZ(a, theta=-2 * dt * B_a))  # Apply exp(-i dt B_a Z(a))
 
         return step_circuit
+
+
+hamiltonian = SymbolicHamiltonian(nqubits=3)
+
+# Instantiate the oracle with 10 Trotter steps
+oracle = TFIM_EvolutionOracle(h=hamiltonian, steps=10, evolution_oracle_type="trotter")
+
+# Example: Run the circuit for qubit a=0, B_a=0.8, and t_duration=1.0
+circuit = oracle.circuit(a=0, t_duration=1.0, B_a=0.8)
+
+# Print the resulting circuit to visualize it
+print(circuit.summary())
