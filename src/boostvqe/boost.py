@@ -9,7 +9,6 @@ import numpy as np
 
 # qibo's
 from qibo import Circuit, gates, hamiltonians, set_backend
-from qibo.backends import GlobalBackend
 from qibo.models.dbi.double_bracket import (
     DoubleBracketGeneratorType,
     DoubleBracketIteration,
@@ -128,7 +127,6 @@ def dbqa_vqe(
         set_backend(backend=backend, platform=platform)
     else:
         set_backend(backend=backend)
-        platform = GlobalBackend().platform
 
     nqubits = circuit.nqubits
     # setup the results folder
