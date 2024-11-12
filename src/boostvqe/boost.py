@@ -36,7 +36,7 @@ from boostvqe.utils import (
     train_vqe,
 )
 
-NSHOTS = 100
+NSHOTS = 1000
 
 
 def dbqa_vqe(
