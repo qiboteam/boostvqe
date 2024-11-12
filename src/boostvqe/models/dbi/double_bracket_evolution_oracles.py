@@ -314,26 +314,21 @@ class TFIM_EvolutionOracle(EvolutionOracle):
     steps: int = None
     B_a: float = None
 
-    def circuit(self, t_duration, steps=None, order=None):
-        if steps is None:
-            steps = self.steps
-
+    def circuit(self, t_duration):
         circuit = Circuit(self.h.nqubits)  # Initialize the circuit with the number of qubits
+        for a in range(self.h.nqubits):
+            # Add CNOT(a, a+1)
+            circuit.add(gates.CNOT(a, (a + 1)%self.h.nqubits))
 
-        # Add CNOT(a, a+1)
-        circuit.add(gates.CNOT(a, a + 1))
+            # Time evolution under the transverse field Ising model Hamiltonian
+            # exp(-i t (X(a) + B_a * Z(a)))
+            circuit += self._time_evolution_step(a, t_duration)
 
-        # Time evolution under the transverse field Ising model Hamiltonian
-        # exp(-i t (X(a) + B_a * Z(a)))
-
-        circuit += self._time_evolution_step(a, t_duration, B_a)
-
-        # Add second CNOT(a, a+1)
-        circuit.add(gates.CNOT(a, a + 1))
-
+            # Add second CNOT(a, a+1)
+            circuit.add(gates.CNOT(a, (a + 1)%self.h.nqubits))
         return circuit
 
-    def _time_evolution_step(self, a: int, dt: float, B_a: float):
+    def _time_evolution_step(self, a: int, dt: float):
         """Apply a single Trotter step of the time evolution operator exp(-i dt (X(a) + B_a Z(a)))."""
         step_circuit = Circuit(self.h.nqubits)
 
@@ -341,18 +336,15 @@ class TFIM_EvolutionOracle(EvolutionOracle):
         step_circuit.add(gates.RX(a, theta=-2 * dt))  # Apply exp(-i dt X(a))
 
         # Time evolution for Z(a)
-        step_circuit.add(gates.RZ(a, theta=-2 * dt * B_a))  # Apply exp(-i dt B_a Z(a))
+        step_circuit.add(gates.RZ(a, theta=-2 * dt * self.B_a))  # Apply exp(-i dt B_a Z(a))
 
         return step_circuit
 
 
 hamiltonian = SymbolicHamiltonian(nqubits=3)
-
 # Instantiate the oracle with 10 Trotter steps
-oracle = TFIM_EvolutionOracle(h=hamiltonian, steps=10, evolution_oracle_type="trotter")
-
+oracle = TFIM_EvolutionOracle(h=hamiltonian, evolution_oracle_type="trotter", steps=1, B_a=0.8)
 # Example: Run the circuit for qubit a=0, B_a=0.8, and t_duration=1.0
-circuit = oracle.circuit(a=0, t_duration=1.0, B_a=0.8)
-
+circuit = oracle.circuit(t_duration=1.0)
 # Print the resulting circuit to visualize it
 print(circuit.summary())
