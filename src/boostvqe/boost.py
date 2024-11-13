@@ -93,7 +93,7 @@ def dbqa_vqe(
             Number of optimization steps between DBI boosting calls.
 
         dbqa_steps (int, default: 1):
-            Number of DBI iterations performed each time DBI is called.
+            Number of DBQA iterations performed each time DBI is called.
 
         dbr_duration (float, default: 0.01):
             Time step used during DBI updates.
