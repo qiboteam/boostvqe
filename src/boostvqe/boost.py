@@ -50,7 +50,7 @@ def dbqa_vqe(
     decay_rate_lr: float = 1.0,
     nboost: int = 1,
     boost_frequency: int = 10,
-    dbi_steps: int = 1,
+    dbqa_steps: int = 1,
     store_h: bool = False,
     hamiltonian: str = "XXZ",
     seed: int = SEED,
@@ -92,7 +92,7 @@ def dbqa_vqe(
         boost_frequency (int, default: 10):
             Number of optimization steps between DBI boosting calls.
 
-        dbi_steps (int, default: 1):
+        dbqa_steps (int, default: 1):
             Number of DBI iterations performed each time DBI is called.
 
         time_step (float, default: 0.01):
@@ -225,10 +225,10 @@ def dbqa_vqe(
                 dbi_hamiltonians,
                 dbi_energies,
                 dbi_fluctuations,
-                dbi_steps,
+                dbqa_steps,
                 dbi_d_matrix,
                 dbi_operators,
-            ) = apply_dbi_steps(dbi=dbi, nsteps=dbi_steps, time_step=time_step)
+            ) = apply_dbi_steps(dbi=dbi, nsteps=dbqa_steps, time_step=time_step)
             # Update the circuit appending the DBI generator
             # and the old circuit with non trainable circuit
             dbi_operators = [
@@ -250,7 +250,7 @@ def dbqa_vqe(
             dbi_energies.insert(0, energy_h0)
             boost_fluctuations_dbi[b] = np.array(dbi_fluctuations)
             boost_energies[b] = np.array(dbi_energies)
-            boost_steps[b] = np.array(dbi_steps)
+            boost_steps[b] = np.array(dbqa_steps)
             boost_d_matrix[b] = np.array(dbi_d_matrix)
             initial_parameters = np.zeros(len(initial_parameters))
             circ.set_parameters(initial_parameters)
