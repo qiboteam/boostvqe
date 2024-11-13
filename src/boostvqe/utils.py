@@ -181,11 +181,11 @@ def rotate_h_with_vqe(hamiltonian, vqe):
     return new_hamiltonian
 
 
-def apply_dbi_steps(dbi, nsteps, d_type=None, method=None, **kwargs):
+def apply_dbi_steps(dbi, nsteps, d_type=None, method=None, time_step=0.01, **kwargs):
     """Apply `nsteps` of `dbi` to `hamiltonian`."""
     nqubits = dbi.nqubits
 
-    p0 = [0.01]
+    p0 = [time_step]
     if d_type is not None:
         if d_type == MagneticFieldEvolutionOracle:
             p0.extend([4 - np.sin(x / 3) for x in range(nqubits)])

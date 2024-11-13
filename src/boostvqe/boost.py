@@ -56,6 +56,7 @@ def dbqa_vqe(
     seed: int = SEED,
     nshots: int = NSHOTS,
     nlayers: int = 0,
+    time_step: float = 0.1,
     mode: DoubleBracketGeneratorType = DoubleBracketGeneratorType.single_commutator,
 ):
     """
@@ -85,7 +86,7 @@ def dbqa_vqe(
             Learning rate decay factor used when the optimizer is SGD (stochastic gradient descent).
 
         nboost (int, default: 1):
-            Number of times DBI (Deterministic Boost Iteration) is applied in the optimization process.
+            Number of times DBI is applied in the optimization process.
             If set to 1, no boosting is performed.
 
         boost_frequency (int, default: 10):
@@ -94,8 +95,8 @@ def dbqa_vqe(
         dbi_steps (int, default: 1):
             Number of DBI iterations performed each time DBI is called.
 
-        stepsize (float, default: 0.01):
-            Step size used during DBI updates.
+        time_step (float, default: 0.01):
+            Time step used during DBI updates.
 
         store_h (bool, default: False):
             If this flag is set, the Hamiltonian `H` is stored at each iteration.
@@ -227,7 +228,7 @@ def dbqa_vqe(
                 dbi_steps,
                 dbi_d_matrix,
                 dbi_operators,
-            ) = apply_dbi_steps(dbi=dbi, nsteps=dbi_steps)
+            ) = apply_dbi_steps(dbi=dbi, nsteps=dbi_steps, time_step=time_step)
             # Update the circuit appending the DBI generator
             # and the old circuit with non trainable circuit
             dbi_operators = [
