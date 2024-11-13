@@ -56,7 +56,7 @@ def dbqa_vqe(
     seed: int = SEED,
     nshots: int = NSHOTS,
     nlayers: int = 0,
-    time_step: float = 0.1,
+    dbr_duration: float = 0.1,
     mode: DoubleBracketGeneratorType = DoubleBracketGeneratorType.single_commutator,
 ):
     """
@@ -95,7 +95,7 @@ def dbqa_vqe(
         dbqa_steps (int, default: 1):
             Number of DBI iterations performed each time DBI is called.
 
-        time_step (float, default: 0.01):
+        dbr_duration (float, default: 0.01):
             Time step used during DBI updates.
 
         store_h (bool, default: False):
@@ -228,7 +228,7 @@ def dbqa_vqe(
                 dbqa_steps,
                 dbi_d_matrix,
                 dbi_operators,
-            ) = apply_dbi_steps(dbi=dbi, nsteps=dbqa_steps, time_step=time_step)
+            ) = apply_dbi_steps(dbi=dbi, nsteps=dbqa_steps, time_step=dbr_duration)
             # Update the circuit appending the DBI generator
             # and the old circuit with non trainable circuit
             dbi_operators = [
