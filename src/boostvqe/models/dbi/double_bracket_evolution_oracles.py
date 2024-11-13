@@ -316,16 +316,17 @@ class TFIM_EvolutionOracle(EvolutionOracle):
 
     def circuit(self, t_duration):
         circuit = Circuit(self.h.nqubits)  # Initialize the circuit with the number of qubits
-        for a in range(self.h.nqubits):
-            # Add CNOT(a, a+1)
-            circuit.add(gates.CNOT(a, (a + 1)%self.h.nqubits))
+        for _ in range(self.steps):
+            for a in range(self.h.nqubits):
+                # Add CNOT(a, a+1)
+                circuit.add(gates.CNOT(a, (a + 1)%self.h.nqubits))
 
-            # Time evolution under the transverse field Ising model Hamiltonian
-            # exp(-i t (X(a) + B_a * Z(a)))
-            circuit += self._time_evolution_step(a, t_duration)
+                # Time evolution under the transverse field Ising model Hamiltonian
+                # exp(-i t (X(a) + B_a * Z(a)))
+                circuit += self._time_evolution_step(a, t_duration)
 
-            # Add second CNOT(a, a+1)
-            circuit.add(gates.CNOT(a, (a + 1)%self.h.nqubits))
+                # Add second CNOT(a, a+1)
+                circuit.add(gates.CNOT(a, (a + 1)%self.h.nqubits))
         return circuit
 
     def _time_evolution_step(self, a: int, dt: float):
