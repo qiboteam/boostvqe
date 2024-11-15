@@ -316,48 +316,53 @@ class TFIM_EvolutionOracle(EvolutionOracle):
     order: int = None
 
     def circuit(self, t_duration):
-        circuit = Circuit(self.h.nqubits)  # Initialize the circuit with the number of qubits
+        circuit_v = Circuit(self.h.nqubits)  # Initialize the circuit with the number of qubits
         def routine(tmp_circuit, enum_list, routine_t):
+            print(enum_list)
             for a in enum_list:
+                print(a)
                 tmp_circuit.add(gates.CNOT(a, (a + 1) % self.h.nqubits))
                 # Time evolution under the transverse field Ising model Hamiltonian
                 # exp(-i t (X(a) + B_a * Z(a)))
-                tmp_circuit += self._time_evolution_step(a, routine_t)
+                self._time_evolution_step(tmp_circuit, a, routine_t)
 
                 # Add second CNOT(a, a+1)
                 tmp_circuit.add(gates.CNOT(a, (a + 1) % self.h.nqubits))
         if self.order is None:
             for _ in range(self.steps):
-                routine(circuit, range(self.h.nqubits), t_duration)
+                routine(circuit_v, range(self.h.nqubits), t_duration)
         elif self.order == 1:
-            routine(circuit, range(self.steps, 2), t_duration)
-            routine(circuit, range(1, self.steps, 2), t_duration)
+            routine(circuit_v, range(0, self.h.nqubits, 2), t_duration)
+            routine(circuit_v, range(1, self.h.nqubits, 2), t_duration)
 
         elif self.order == 2:
-            routine(circuit, range(1, self.steps, 2), t_duration/2)
-            routine(circuit, range(self.steps, 2), t_duration)
-            routine(circuit, range(1, self.steps, 2), t_duration / 2)
+            routine(circuit_v, range(1, self.h.nqubits, 2), t_duration/2)
+            print(circuit_v.draw())
+            routine(circuit_v, range(0, self.h.nqubits, 2), t_duration)
+            print(circuit_v.draw())
+            routine(circuit_v, range(1, self.h.nqubits, 2), t_duration / 2)
+            print(circuit_v.draw())
         else:
             print("order must be either 0, 1, 2")
-        return circuit
+        return circuit_v
 
-    def _time_evolution_step(self, a: int, dt: float):
+    def _time_evolution_step(self, tmp_circuit: Circuit, a: int, dt: float):
         """Apply a single Trotter step of the time evolution operator exp(-i dt (X(a) + B_a Z(a)))."""
-        step_circuit = Circuit(self.h.nqubits)
 
         # Time evolution for X(a)
-        step_circuit.add(gates.RX(a, theta=-2 * dt))  # Apply exp(-i dt X(a))
+        tmp_circuit.add(gates.RX(a, theta=-2 * dt))  # Apply exp(-i dt X(a))
 
         # Time evolution for Z(a)
-        step_circuit.add(gates.RZ(a, theta=-2 * dt * self.B_a))  # Apply exp(-i dt B_a Z(a))
+        tmp_circuit.add(gates.RZ(a, theta=-2 * dt * self.B_a))  # Apply exp(-i dt B_a Z(a))
 
-        return step_circuit
+        return tmp_circuit
 
 
-hamiltonian = SymbolicHamiltonian(nqubits=3)
+hamiltonian = SymbolicHamiltonian(nqubits=5)
 # Instantiate the oracle with 10 Trotter steps
-oracle = TFIM_EvolutionOracle(h=hamiltonian, evolution_oracle_type="trotter", steps=1, B_a=0.8, order=2)
+oracle = TFIM_EvolutionOracle(h=hamiltonian, evolution_oracle_type="trotter", steps=3, B_a=0.8, order=2)
 # Example: Run the circuit for qubit a=0, B_a=0.8, and t_duration=1.0
 circuit = oracle.circuit(t_duration=1.0)
 # Print the resulting circuit to visualize it
 print(circuit.summary())
+print(circuit.draw())
