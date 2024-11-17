@@ -1,0 +1,9 @@
+{
+    "shots": 1000,
+    "observables": {
+        "XX": -0.48,
+        "YY": -0.45600000000000007,
+        "ZZ": -0.254
+    },
+    "total_expectation_energy": -1.19
+}

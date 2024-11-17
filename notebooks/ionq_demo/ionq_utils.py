@@ -1,6 +1,7 @@
 from qiskit.quantum_info import Pauli, SparsePauliOp
 import numpy as np
 from copy import deepcopy
+import pandas as pd
 
 def xxz_hamiltonian(n, delta=0.5, select=None):
     """Returns the XXZ model Hamiltonian for n qubits and a given delta in Qiskit.
@@ -90,11 +91,96 @@ def rotate_circuit_XYZ(qc):
     qc_z.measure_all()
     return [qc_x, qc_y, qc_z]
 
-def compute_expectation_value_from_results(
-    results,
-    measurement,
-    operator,
-) -> float:
-    energy = 0
+def report_ionq(vqe_analytical, gci_analytical, ham_matrix, expval_vqe, expval_gci, expval_vqe_noise, expval_gci_noise):
+    eigenvalues, eigenstates = eigh(ham_matrix)
+    ground_state_energy = eigenvalues[0]
+    vqe_energy = vqe_analytical
+    gci_energy = gci_analytical
+    gap = float(eigenvalues[1] - eigenvalues[0])
+    return (
+        dict(
+            nqubits = int(np.log(len(ham_matrix))/np.log(2)),
+            gci_energy=float(gci_energy),
+            vqe_energy=float(vqe_energy),
+            vqe_energy_emulator=float(expval_vqe),
+            gci_energy_emulator=float(expval_gci),
+            vqe_energy_emulator_noise=float(expval_vqe_noise),
+            gci_energy_emulator_noise=float(expval_gci_noise),
+            target_energy=ground_state_energy,
+            diff_vqe_target=vqe_energy - ground_state_energy,
+            diff_gci_target=gci_energy - ground_state_energy,
+            diff_vqe_target_emulator=expval_vqe - ground_state_energy,
+            diff_gci_target_emulator=expval_gci - ground_state_energy,
+            diff_vqe_target_emulator_noise=expval_vqe_noise - ground_state_energy,
+            diff_gci_target_emulator_noise=expval_gci_noise - ground_state_energy,
+            gap=gap,
+            diff_vqe_target_perc=abs(vqe_energy - ground_state_energy)
+            / abs(ground_state_energy)
+            * 100,
+            diff_gci_target_perc=abs(gci_energy - ground_state_energy)
+            / abs(ground_state_energy)
+            * 100,
+            diff_vqe_target_perc_emulator=abs(expval_vqe - ground_state_energy)
+            / abs(ground_state_energy)
+            * 100,
+            diff_gci_target_perc_emulator=abs(expval_gci - ground_state_energy)
+            / abs(ground_state_energy)
+            * 100,
+            diff_vqe_target_perc_emulator_noise=abs(expval_vqe_noise - ground_state_energy)
+            / abs(ground_state_energy)
+            * 100,
+            diff_gci_target_perc_emulator_noise=abs(expval_gci_noise - ground_state_energy)
+            / abs(ground_state_energy)
+            * 100,
+            fidelity_witness_vqe=1 - (vqe_energy - ground_state_energy) / gap,
+            fidelity_witness_gci=1 - (gci_energy - ground_state_energy) / gap,
+            fidelity_witness_vqe_emulator=1 - (expval_vqe - ground_state_energy) / gap,
+            fidelity_witness_gci_emulator=1 - (expval_gci - ground_state_energy) / gap,
+            fidelity_witness_vqe_emulator_noise=1 - (expval_vqe_noise - ground_state_energy) / gap,
+            fidelity_witness_gci_emulator_noise=1 - (expval_gci_noise - ground_state_energy) / gap,
+        )
+    )
     
-    
+def report_table(report):
+    df = pd.DataFrame({
+        "Analytical": [
+            report['vqe_energy'],
+            report['gci_energy'],
+            report['diff_vqe_target'],
+            report['diff_gci_target'],
+            report['diff_vqe_target_perc'],
+            report['diff_gci_target_perc'],
+            report['fidelity_witness_vqe'],
+            report['fidelity_witness_gci']
+        ],
+        "Emulator": [
+            report['vqe_energy_emulator'],
+            report['gci_energy_emulator'],
+            report['diff_vqe_target_emulator'],
+            report['diff_gci_target_emulator'],
+            report['diff_vqe_target_perc_emulator'],
+            report['diff_gci_target_perc_emulator'],
+            report['fidelity_witness_vqe_emulator'],
+            report['fidelity_witness_gci_emulator']
+        ],
+        "Emulator with Noise": [
+            report['vqe_energy_emulator_noise'],
+            report['gci_energy_emulator_noise'],
+            report['diff_vqe_target_emulator_noise'],
+            report['diff_gci_target_emulator_noise'],
+            report['diff_vqe_target_perc_emulator_noise'],
+            report['diff_gci_target_perc_emulator_noise'],
+            report['fidelity_witness_vqe_emulator_noise'],
+            report['fidelity_witness_gci_emulator_noise']
+        ]
+    }, index=[
+        "VQE energy",
+        "GCI energy",
+        "Difference to target (VQE)",
+        "Difference to target (GCI)",
+        "Percentage difference to target (VQE)",
+        "Percentage difference to target (GCI)",
+        "Fidelity witness (VQE)",
+        "Fidelity witness (GCI)"
+    ])
+    return df
