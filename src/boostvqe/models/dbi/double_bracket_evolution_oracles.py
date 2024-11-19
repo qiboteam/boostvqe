@@ -4,6 +4,7 @@ from enum import Enum, auto
 from functools import cached_property, reduce
 from typing import Union
 
+
 #import hyperopt
 #import matplotlib.pyplot as plt
 import numpy as np
@@ -318,9 +319,7 @@ class TFIM_EvolutionOracle(EvolutionOracle):
     def circuit(self, t_duration):
         circuit_v = Circuit(self.h.nqubits)  # Initialize the circuit with the number of qubits
         def routine(tmp_circuit, enum_list, routine_t):
-            print(enum_list)
             for a in enum_list:
-                print(a)
                 tmp_circuit.add(gates.CNOT(a, (a + 1) % self.h.nqubits))
                 # Time evolution under the transverse field Ising model Hamiltonian
                 # exp(-i t (X(a) + B_a * Z(a)))
@@ -332,16 +331,15 @@ class TFIM_EvolutionOracle(EvolutionOracle):
             for _ in range(self.steps):
                 routine(circuit_v, range(self.h.nqubits), t_duration)
         elif self.order == 1:
-            routine(circuit_v, range(0, self.h.nqubits, 2), t_duration)
-            routine(circuit_v, range(1, self.h.nqubits, 2), t_duration)
+            for _ in range(self.steps):
+                routine(circuit_v, range(0, self.h.nqubits, 2), t_duration)
+                routine(circuit_v, range(1, self.h.nqubits, 2), t_duration)
 
         elif self.order == 2:
-            routine(circuit_v, range(1, self.h.nqubits, 2), t_duration/2)
-            print(circuit_v.draw())
-            routine(circuit_v, range(0, self.h.nqubits, 2), t_duration)
-            print(circuit_v.draw())
-            routine(circuit_v, range(1, self.h.nqubits, 2), t_duration / 2)
-            print(circuit_v.draw())
+            for _ in range(self.steps):
+                routine(circuit_v, range(1, self.h.nqubits, 2), t_duration/2)
+                routine(circuit_v, range(0, self.h.nqubits, 2), t_duration)
+                routine(circuit_v, range(1, self.h.nqubits, 2), t_duration / 2)
         else:
             print("order must be either 0, 1, 2")
         return circuit_v
@@ -358,11 +356,51 @@ class TFIM_EvolutionOracle(EvolutionOracle):
         return tmp_circuit
 
 
-hamiltonian = SymbolicHamiltonian(nqubits=5)
+hamiltonian = SymbolicHamiltonian(nqubits=3)
 # Instantiate the oracle with 10 Trotter steps
-oracle = TFIM_EvolutionOracle(h=hamiltonian, evolution_oracle_type="trotter", steps=3, B_a=0.8, order=2)
+oracle = TFIM_EvolutionOracle(h=hamiltonian, evolution_oracle_type="trotter", steps=1, B_a=0.8, order=1)
 # Example: Run the circuit for qubit a=0, B_a=0.8, and t_duration=1.0
 circuit = oracle.circuit(t_duration=1.0)
 # Print the resulting circuit to visualize it
 print(circuit.summary())
 print(circuit.draw())
+oracle = TFIM_EvolutionOracle(h=hamiltonian, evolution_oracle_type="trotter", steps=1, B_a=0, order=2)
+# Example: Run the circuit for qubit a=0, B_a=0.8, and t_duration=1.0
+circuit = oracle.circuit(t_duration=1.0)
+# Print the resulting circuit to visualize it
+#print(circuit.summary())
+#print(circuit.draw())
+unitary = circuit.unitary()
+
+
+from qibo import hamiltonians
+from numpy.linalg import norm
+from qibo.backends import matrices
+
+def our_TFIM(nqubits, h: float = 0.0, dense: bool = True, backend=None):
+    def multikron(matrix_list):
+        """Calculates Kronecker product of a list of matrices."""
+        return reduce(np.kron, matrix_list)
+
+    # Example usage
+    from qibo.backends import matrices
+
+    matrix = (
+        multikron([matrices.X, matrices.X]) + h * multikron([matrices.Z, matrices.I])
+    )
+    terms = [hamiltonians.terms.HamiltonianTerm(matrix, i, i + 1) for i in range(nqubits - 1)]
+    terms.append(hamiltonians.terms.HamiltonianTerm(matrix, nqubits - 1, 0))
+    ham = SymbolicHamiltonian(backend=backend)
+    ham.terms = terms
+    return ham
+
+ham = our_TFIM(nqubits=3, dense=False)
+truth = ham.exp(1)
+for step in range(1, 10):
+    oracle = TFIM_EvolutionOracle(h=hamiltonian, evolution_oracle_type="trotter", steps=step, B_a=0, order=2)
+    circuit = oracle.circuit(t_duration=1.0)
+    # Print the resulting circuit to visualize it
+    # print(circuit.summary())
+    # print(circuit.draw())
+    unitary = circuit.unitary()
+    print(norm(truth-unitary))
