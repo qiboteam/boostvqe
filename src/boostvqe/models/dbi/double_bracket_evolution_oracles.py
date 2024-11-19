@@ -348,10 +348,10 @@ class TFIM_EvolutionOracle(EvolutionOracle):
         """Apply a single Trotter step of the time evolution operator exp(-i dt (X(a) + B_a Z(a)))."""
 
         # Time evolution for X(a)
-        tmp_circuit.add(gates.RX(a, theta=-2 * dt))  # Apply exp(-i dt X(a))
+        tmp_circuit.add(gates.RX(a, theta=2 * dt))  # Apply exp(-i dt X(a))
 
         # Time evolution for Z(a)
-        tmp_circuit.add(gates.RZ(a, theta=-2 * dt * self.B_a))  # Apply exp(-i dt B_a Z(a))
+        tmp_circuit.add(gates.RZ(a, theta=2 * dt * self.B_a))  # Apply exp(-i dt B_a Z(a))
 
         return tmp_circuit
 
