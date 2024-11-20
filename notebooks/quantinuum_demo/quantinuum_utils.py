@@ -188,7 +188,7 @@ def report_table(report):
         "Fidelity witness (VQE)",
         "Fidelity witness (GCI)"
     ])
-    styled_df = df.style.set_caption(f"Boostvqe emulation results from {report['runs']}runs of {report['total_shots']}shots")
+    styled_df = df.style.set_caption(f"Boostvqe emulation results from {report['runs']} runs of {report['total_shots']} shots")
     return styled_df
 
 def job_ref_from_path_list(path_list):
