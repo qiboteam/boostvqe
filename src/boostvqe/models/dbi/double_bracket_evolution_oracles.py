@@ -342,7 +342,7 @@ class TFIM_EvolutionOracle(EvolutionOracle):
                 routine(circuit_v, range(0, self.h.nqubits, 2), t_duration)
                 routine(circuit_v, range(1, self.h.nqubits, 2), t_duration / 2)
         else:
-            print("order must be either 0, 1, 2")
+            print("order must be either 1 or 2")
         return circuit_v
 
     def _time_evolution_step(self, tmp_circuit: Circuit, a: int, dt: float):
