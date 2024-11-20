@@ -318,6 +318,7 @@ class TFIM_EvolutionOracle(EvolutionOracle):
 
     def circuit(self, t_duration):
         circuit_v = Circuit(self.h.nqubits)  # Initialize the circuit with the number of qubits
+        t_duration /= self.steps
         def routine(tmp_circuit, enum_list, routine_t):
             for a in enum_list:
                 tmp_circuit.add(gates.CNOT(a, (a + 1) % self.h.nqubits))
@@ -348,59 +349,10 @@ class TFIM_EvolutionOracle(EvolutionOracle):
         """Apply a single Trotter step of the time evolution operator exp(-i dt (X(a) + B_a Z(a)))."""
 
         # Time evolution for X(a)
-        tmp_circuit.add(gates.RX(a, theta=2 * dt))  # Apply exp(-i dt X(a))
+        tmp_circuit.add(gates.RX(a, theta=-2*dt))  # Apply exp(-i dt X(a))
 
         # Time evolution for Z(a)
-        tmp_circuit.add(gates.RZ(a, theta=2 * dt * self.B_a))  # Apply exp(-i dt B_a Z(a))
+        tmp_circuit.add(gates.RZ(a, theta=-2*dt * self.B_a))  # Apply exp(-i dt B_a Z(a))
 
         return tmp_circuit
 
-
-hamiltonian = SymbolicHamiltonian(nqubits=3)
-# Instantiate the oracle with 10 Trotter steps
-oracle = TFIM_EvolutionOracle(h=hamiltonian, evolution_oracle_type="trotter", steps=1, B_a=0.8, order=1)
-# Example: Run the circuit for qubit a=0, B_a=0.8, and t_duration=1.0
-circuit = oracle.circuit(t_duration=1.0)
-# Print the resulting circuit to visualize it
-print(circuit.summary())
-print(circuit.draw())
-oracle = TFIM_EvolutionOracle(h=hamiltonian, evolution_oracle_type="trotter", steps=1, B_a=0, order=2)
-# Example: Run the circuit for qubit a=0, B_a=0.8, and t_duration=1.0
-circuit = oracle.circuit(t_duration=1.0)
-# Print the resulting circuit to visualize it
-#print(circuit.summary())
-#print(circuit.draw())
-unitary = circuit.unitary()
-
-
-from qibo import hamiltonians
-from numpy.linalg import norm
-from qibo.backends import matrices
-
-def our_TFIM(nqubits, h: float = 0.0, dense: bool = True, backend=None):
-    def multikron(matrix_list):
-        """Calculates Kronecker product of a list of matrices."""
-        return reduce(np.kron, matrix_list)
-
-    # Example usage
-    from qibo.backends import matrices
-
-    matrix = (
-        multikron([matrices.X, matrices.X]) + h * multikron([matrices.Z, matrices.I])
-    )
-    terms = [hamiltonians.terms.HamiltonianTerm(matrix, i, i + 1) for i in range(nqubits - 1)]
-    terms.append(hamiltonians.terms.HamiltonianTerm(matrix, nqubits - 1, 0))
-    ham = SymbolicHamiltonian(backend=backend)
-    ham.terms = terms
-    return ham
-
-ham = our_TFIM(nqubits=3, dense=False)
-truth = ham.exp(1)
-for step in range(1, 10):
-    oracle = TFIM_EvolutionOracle(h=hamiltonian, evolution_oracle_type="trotter", steps=step, B_a=0, order=2)
-    circuit = oracle.circuit(t_duration=1.0)
-    # Print the resulting circuit to visualize it
-    # print(circuit.summary())
-    # print(circuit.draw())
-    unitary = circuit.unitary()
-    print(norm(truth-unitary))
