@@ -64,7 +64,7 @@ def create_qubit_pauli_string(nqubits, specify_ls, coef):
 
     return {QubitPauliString(term):coef}
 
-def report(vqe_circ, gci_circ, hamiltonian, expval_vqe, expval_gci, expval_vqe_noise, expval_gci_noise):
+def report(vqe_circ, gci_circ, hamiltonian, total_shots, expval_vqe, expval_gci, expval_vqe_noise, expval_gci_noise):
     energies = hamiltonian.eigenvalues()
     ground_state_energy = float(energies[0])
     vqe_energy = float(hamiltonian.expectation(vqe_circ().state()))
@@ -77,6 +77,8 @@ def report(vqe_circ, gci_circ, hamiltonian, expval_vqe, expval_gci, expval_vqe_n
     return (
         dict(
             nqubits=hamiltonian.nqubits,
+            runs=len(expval_vqe),
+            total_shots=total_shots,
             gci_energy=float(gci_energy),
             vqe_energy=float(vqe_energy),
             vqe_energy_emulator=float(np.mean(expval_vqe)),
@@ -144,7 +146,6 @@ def report_table(report):
             return f"{mean:.2f}% ± {std:.2f}%"
         else:
             return f"{mean:.4f} ± {std:.4f}"
-
     # Creating a DataFrame for the table with mean ± std format
     df = pd.DataFrame({
         "Analytical": [
@@ -187,8 +188,8 @@ def report_table(report):
         "Fidelity witness (VQE)",
         "Fidelity witness (GCI)"
     ])
-    
-    return df
+    styled_df = df.style.set_caption(f"Boostvqe emulation results from {report['runs']}runs of {report['total_shots']}shots")
+    return styled_df
 
 def job_ref_from_path_list(path_list):
     # obtain a list of job references from a list of paths
