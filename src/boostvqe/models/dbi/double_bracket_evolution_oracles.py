@@ -4,8 +4,9 @@ from enum import Enum, auto
 from functools import cached_property, reduce
 from typing import Union
 
-import hyperopt
-import matplotlib.pyplot as plt
+
+#import hyperopt
+#import matplotlib.pyplot as plt
 import numpy as np
 from qibo import Circuit, gates, symbols
 from qibo.config import raise_error
@@ -309,3 +310,51 @@ class XXZ_EvolutionOracle(EvolutionOracle):
             steps=steps,
             order=order,
         )
+
+
+@dataclass
+class TFIM_EvolutionOracle(EvolutionOracle):
+    steps: int = None
+    B_a: float = None
+    order: int = None
+
+    def circuit(self, t_duration):
+        circuit_v = Circuit(self.h.nqubits)  # Initialize the circuit with the number of qubits
+        t_duration /= self.steps
+        def routine(tmp_circuit, enum_list, routine_t):
+            for a in enum_list:
+                tmp_circuit.add(gates.CNOT(a, (a + 1) % self.h.nqubits))
+                # Time evolution under the transverse field Ising model Hamiltonian
+                # exp(-i t (X(a) + B_a * Z(a)))
+                self._time_evolution_step(tmp_circuit, a, routine_t)
+
+                # Add second CNOT(a, a+1)
+                tmp_circuit.add(gates.CNOT(a, (a + 1) % self.h.nqubits))
+        if self.order is None:
+            for _ in range(self.steps):
+                routine(circuit_v, range(self.h.nqubits), t_duration)
+        elif self.order == 1:
+            for _ in range(self.steps):
+                routine(circuit_v, range(0, self.h.nqubits, 2), t_duration)
+                routine(circuit_v, range(1, self.h.nqubits, 2), t_duration)
+
+        elif self.order == 2:
+            for _ in range(self.steps):
+                routine(circuit_v, range(1, self.h.nqubits, 2), t_duration/2)
+                routine(circuit_v, range(0, self.h.nqubits, 2), t_duration)
+                routine(circuit_v, range(1, self.h.nqubits, 2), t_duration / 2)
+        else:
+            print("order must be either 1 or 2")
+        return circuit_v
+
+    def _time_evolution_step(self, tmp_circuit: Circuit, a: int, dt: float):
+        """Apply a single Trotter step of the time evolution operator exp(-i dt (X(a) + B_a Z(a)))."""
+
+        # Time evolution for X(a)
+        tmp_circuit.add(gates.RX(a, theta=-2*dt))  # Apply exp(-i dt X(a))
+
+        # Time evolution for Z(a)
+        tmp_circuit.add(gates.RZ(a, theta=-2*dt * self.B_a))  # Apply exp(-i dt B_a Z(a))
+
+        return tmp_circuit
+
