@@ -225,7 +225,7 @@ def dbqa_vqe(
                 dbi_hamiltonians,
                 dbi_energies,
                 dbi_fluctuations,
-                dbqa_steps,
+                list_dbqa_steps,
                 dbi_d_matrix,
                 dbi_operators,
             ) = apply_dbi_steps(dbi=dbi, nsteps=dbqa_steps, time_step=dbr_duration)
@@ -250,7 +250,7 @@ def dbqa_vqe(
             dbi_energies.insert(0, energy_h0)
             boost_fluctuations_dbi[b] = np.array(dbi_fluctuations)
             boost_energies[b] = np.array(dbi_energies)
-            boost_steps[b] = np.array(dbqa_steps)
+            boost_steps[b] = np.array(list_dbqa_steps)
             boost_d_matrix[b] = np.array(dbi_d_matrix)
             initial_parameters = np.zeros(len(initial_parameters))
             circ.set_parameters(initial_parameters)

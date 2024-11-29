@@ -156,7 +156,7 @@ def plot_gradients(
     grads = dict(np.load(path / f"{GRADS_FILE + '.npz'}"))
     config = json.loads((path / OPTIMIZATION_FILE).read_text())
     ave_grads = []
-    dbi_steps = config["dbi_steps"]
+    dbi_steps = config["dbqa_steps"]
     iterations = []
     for epoch in grads:
         len_iterations = len(iterations)
