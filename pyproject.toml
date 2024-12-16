@@ -20,6 +20,7 @@ matplotlib = "^3.9.2"
 seaborn = "^0.13.2"
 hyperopt = "^0.2.7"
 qibojit = "^0.1.6"
+qibo-dbqa = {git = "https://github.com/qiboteam/qibo-dbqa.git", rev = "boost"}
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^7.34"
