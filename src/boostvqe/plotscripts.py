@@ -65,7 +65,7 @@ def plot_loss(
     plt.figure(figsize=(10 * width, 10 * width * 6 / 8))
     plt.title(title)
 
-    for i in range(config["nboost"]):
+    for i in range(config["nboost"] + 1):
         start = (
             0
             if str(i - 1) not in loss_vqe
@@ -156,7 +156,7 @@ def plot_gradients(
     grads = dict(np.load(path / f"{GRADS_FILE + '.npz'}"))
     config = json.loads((path / OPTIMIZATION_FILE).read_text())
     ave_grads = []
-    dbi_steps = config["dbi_steps"]
+    dbi_steps = config["dbqa_steps"]
     iterations = []
     for epoch in grads:
         len_iterations = len(iterations)
@@ -505,4 +505,3 @@ def plot_lr_analysis(
     plt.legend(loc=3)
     if save:
         plt.savefig(f"lr_grads_{title}.pdf", bbox_inches="tight")
-
