@@ -18,6 +18,7 @@ from qibo.hamiltonians import Hamiltonian, SymbolicHamiltonian
 from qibo.hamiltonians.abstract import AbstractHamiltonian
 from qibo.hamiltonians.models import _build_spin_model
 from qibo.symbols import Z
+from qiboml.backends import TensorflowBackend
 
 DEFAULT_DELTA = 0.5
 """Default `delta` value of XXZ Hamiltonian"""
@@ -144,7 +145,7 @@ def vqe_loss(params, circuit, hamiltonian, nshots=None):
     """Evaluate the hamiltonian expectation values of the circuit final state."""
     circ = circuit.copy(deep=True)
     circ.set_parameters(params)
-    if get_backend() == "tensorflow" and nshots is not None:
+    if isinstance(hamiltonian.backend, TensorflowBackend) and nshots is not None:
         expectation_value = _exp_with_tf(
             circuit=circ, hamiltonian=hamiltonian, nshots=nshots
         )
