@@ -9,12 +9,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qibo import hamiltonians
 from qibo.models.dbi.utils_scheduling import hyperopt_step
+from qibo_dbqa import DoubleBracketRotationType
 from scipy import optimize
 
 from boostvqe import ansatze
-from boostvqe.compiling_XXZ import *
-from boostvqe.models.dbi.double_bracket_evolution_oracles import *
-from boostvqe.models.dbi.group_commutator_iteration_transpiler import *
 
 OPTIMIZATION_FILE = "optimization_results.json"
 PARAMS_FILE = "parameters_history.npy"
@@ -299,9 +297,6 @@ def select_recursion_step_circuit(
     minimizer_dbr_id = np.argmin(minimal_losses)
 
     return mode_dbr_list[minimizer_dbr_id], minimizer_s[minimizer_dbr_id], eo_d
-
-
-from boostvqe.models.dbi.utils_gci_optimization import *
 
 
 def select_recursion_step_gd_circuit(
