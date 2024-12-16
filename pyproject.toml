@@ -27,21 +27,6 @@ qibo_dbqa = {git = "https://github.com/qiboteam/qibo-dbqa.git", rev = "boost"}
 ipython = "^7.34"
 pdbpp = "^0.10.3"
 
-[tool.poetry.group.benchmark.dependencies]
-pytest = "^8.0.0"
-pytest-benchmark = { version = "^4.0.0", extras = ["histogram"] }
-
 [tool.poe.tasks]
-bench = "pytest benchmarks/"
-
-[tool.pytest.ini_options]
-testpaths = ['tests/', 'benchmarks/']
-python_files = ['test_*.py', 'bench_*.py']
-python_classes = ['Test*', 'Benchmark*']
-python_functions = ['test_*', 'bench_*']
-addopts = [
-  "--benchmark-warmup=on",
-  "--benchmark-warmup-iterations=100000",
-  "--benchmark-disable-gc",
-  "--benchmark-histogram=bench-hists/bench",
-]
+lint = "pylint src --errors-only"
+lint-warnings = "pylint src --exit-zero"
