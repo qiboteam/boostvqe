@@ -6,8 +6,6 @@ from functools import partial
 from typing import Optional
 
 import numpy as np
-
-# qibo's
 from qibo import Circuit, gates, hamiltonians, set_backend
 from qibo.models.dbi.double_bracket import (
     DoubleBracketGeneratorType,

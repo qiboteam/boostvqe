@@ -10,6 +10,12 @@ import numpy as np
 from qibo import hamiltonians
 from qibo.models.dbi.utils_scheduling import hyperopt_step
 from qibo_dbqa import DoubleBracketRotationType
+from qibo_dbqa.double_bracket_evolution_oracles import (
+    IsingNNEvolutionOracle,
+    MagneticFieldEvolutionOracle,
+    XXZ_EvolutionOracle,
+)
+from qibo_dbqa.utils_gci_optimization import choose_gd_params
 from scipy import optimize
 
 from boostvqe import ansatze
@@ -517,11 +523,6 @@ def loss_function_d_dbi(dbi_params, dbi, d_type):
     test_dbi(step=dbi_params[0], d=d)
     zero_state = test_dbi.backend.zero_state(test_dbi.nqubits)
     return test_dbi.h.expectation(zero_state)
-
-
-def loss_function_D(gci_params, gci, eo_d_type, mode):
-    """``params`` has shape [s0, b_list_0]."""
-    return gci.loss(gci_params[0], eo_d_type.load(gci_params[1:]), mode)
 
 
 def convert_numpy(obj):
