@@ -4,12 +4,11 @@ from enum import Enum, auto
 from functools import reduce
 from typing import Union
 
-import hyperopt
-import matplotlib.pyplot as plt
 import numpy as np
 from qibo import Circuit, gates, symbols
 from qibo.config import raise_error
-from qibo.hamiltonians import AbstractHamiltonian, SymbolicHamiltonian
+from qibo.hamiltonians import SymbolicHamiltonian
+from qibo.hamiltonians.abstract import AbstractHamiltonian
 
 # TODO: remove this global import
 from boostvqe.compiling_XXZ import nqubit_XXZ_decomposition
