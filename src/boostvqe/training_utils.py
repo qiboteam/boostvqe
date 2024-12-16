@@ -11,10 +11,11 @@ import tensorflow as tf
 
 tf.get_logger().setLevel("ERROR")
 
-from qibo import Circuit, gates, hamiltonians
+from qibo import Circuit, gates, get_backend, hamiltonians
 from qibo.backends import NumpyBackend, matrices
 from qibo.config import raise_error
-from qibo.hamiltonians import AbstractHamiltonian, Hamiltonian, SymbolicHamiltonian
+from qibo.hamiltonians import Hamiltonian, SymbolicHamiltonian
+from qibo.hamiltonians.abstract import AbstractHamiltonian
 from qibo.hamiltonians.models import _build_spin_model
 from qibo.symbols import Z
 from qiboml.backends import TensorflowBackend
