@@ -234,11 +234,8 @@ def _with_shots(circ, ham, nshots, exec_backend=None):
         mgates = ["X", "Y", "Z"]
         for i, mgate in enumerate(mgates):
             circ1 = circ.copy(deep=True)
-            if mgate != "Z":
-                circ1.add(gates.M(*range(circ1.nqubits), basis=getattr(gates, mgate)))
-            else:
-                circ1.add(gates.M(*range(circ1.nqubits)))
-
+            circ1.add(gates.M(*range(circ1.nqubits), basis=getattr(gates, mgate)))
+            circ1.draw()
             expval_contribution = exec_backend.execute_circuit(
                 circuit=circ1, nshots=nshots
             ).expectation_from_samples(hamiltonian)

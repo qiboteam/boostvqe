@@ -6,13 +6,8 @@ from functools import partial
 from typing import Optional
 
 import numpy as np
-
-# qibo's
 from qibo import Circuit, gates, hamiltonians, set_backend
-from qibo.models.dbi.double_bracket import (
-    DoubleBracketGeneratorType,
-    DoubleBracketIteration,
-)
+from qibo_dbqa.double_bracket import DoubleBracketGeneratorType, DoubleBracketIteration
 
 # boostvqe's
 from boostvqe.plotscripts import plot_gradients, plot_loss
@@ -146,6 +141,7 @@ def dbqa_vqe(
     )
     ham = getattr(Model, hamiltonian)(nqubits)  # TODO : use only Model and not str
     target_energy = np.real(np.min(np.asarray(ham.eigenvalues())))
+    # target_energy = 12
 
     # construct circuit from parsed ansatz name
     circ0 = circuit
@@ -235,7 +231,6 @@ def dbqa_vqe(
                 ham.backend.cast(np.matrix(ham.backend.to_numpy(operator)))
                 for operator in dbi_operators
             ]
-
             old_circ_matrix = circ.unitary()
             # Remove measurement gates
             # Add the DBI operators and the unitary circuit matrix to the circuit
