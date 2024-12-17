@@ -7,12 +7,12 @@ import cma
 import matplotlib.pyplot as plt
 import numpy as np
 from qibo import hamiltonians
-from qibo_dbqa import DoubleBracketRotationType
 from qibo_dbqa.double_bracket_evolution_oracles import (
     IsingNNEvolutionOracle,
     MagneticFieldEvolutionOracle,
     XXZ_EvolutionOracle,
 )
+from qibo_dbqa.group_commutator_iteration_transpiler import DoubleBracketRotationType
 from qibo_dbqa.utils_gci_optimization import choose_gd_params
 from scipy import optimize
 
