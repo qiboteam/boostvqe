@@ -20,7 +20,7 @@ seaborn = "^0.13.2"
 hyperopt = "^0.2.7"
 qibojit = "^0.1.6"
 qiboml = {git = "https://github.com/qiboteam/qiboml"}
-qibo_dbqa = {git = "https://github.com/qiboteam/qibo-dbqa.git", rev = "boost"}
+qibo_dbqa = {git = "https://github.com/qiboteam/qibo-dbqa.git", rev = "package2"}
 qibo = "^0.2.14"
 
 [tool.poetry.group.dev.dependencies]
