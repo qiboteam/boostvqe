@@ -1,14 +1,12 @@
 import copy
 import json
 import logging
-import time
 from pathlib import Path
 
 import cma
 import matplotlib.pyplot as plt
 import numpy as np
 from qibo import hamiltonians
-from qibo.models.dbi.utils_scheduling import hyperopt_step
 from qibo_dbqa import DoubleBracketRotationType
 from qibo_dbqa.double_bracket_evolution_oracles import (
     IsingNNEvolutionOracle,
@@ -210,9 +208,7 @@ def apply_dbi_steps(dbi, nsteps, d_type=None, method=None, time_step=0.01, **kwa
         else:
             step = p0[0]
             new_d = dbi.diagonal_h_matrix
-
         operator = dbi(step=step, d=new_d)
-
         operators.append(operator)
         steps.append(step)
         d_matrix.append(new_d)
