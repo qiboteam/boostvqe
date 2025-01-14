@@ -11,12 +11,14 @@ import tensorflow as tf
 
 tf.get_logger().setLevel("ERROR")
 
-from qibo import gates, hamiltonians
-from qibo.backends import GlobalBackend, NumpyBackend, TensorflowBackend, matrices
+from qibo import Circuit, gates, get_backend, hamiltonians
+from qibo.backends import NumpyBackend, matrices
 from qibo.config import raise_error
-from qibo.hamiltonians import AbstractHamiltonian, Hamiltonian, SymbolicHamiltonian
+from qibo.hamiltonians import Hamiltonian, SymbolicHamiltonian
+from qibo.hamiltonians.abstract import AbstractHamiltonian
 from qibo.hamiltonians.models import _build_spin_model
 from qibo.symbols import Z
+from qiboml.backends import TensorflowBackend
 
 DEFAULT_DELTA = 0.5
 """Default `delta` value of XXZ Hamiltonian"""
@@ -29,7 +31,7 @@ class Model(Enum):
     XXZ = lambda nqubits: hamiltonians.XXZ(
         nqubits=nqubits, delta=DEFAULT_DELTA, dense=False
     )
-    XYZ = lambda nqubits: XYZ(nqubits=nqubits, delta=[0.5, 0.5], dense=False)
+    XYZ = lambda nqubits: XYZ(nqubits=nqubits, deltas=[0.5, 0.5], dense=False)
     TFIM = lambda nqubits: hamiltonians.TFIM(nqubits=nqubits, h=nqubits, dense=False)
     TLFIM = lambda nqubits: TLFIM(nqubits=nqubits, h=TLFIM_h, dense=False)
     J1J2 = lambda nqubits: J1J2(nqubits=nqubits, h=J1J2_h, dense=False)
@@ -255,7 +257,7 @@ def _exp_with_tf(circuit, hamiltonian, nshots=None):
             for p in range(nparams):
                 gradients.append(
                     upstream
-                    * parameter_shift(
+                    * quantum_derivative_via_shifts(
                         circuit=circuit,
                         hamiltonian=hamiltonian,
                         parameter_index=p,
@@ -295,6 +297,7 @@ def parameter_shift(
         )
 
     gate = circuit.associate_gates_with_parameters()[parameter_index]
+
     generator_eigenval = gate.generator_eigenvalue()
 
     s = np.pi / (4 * generator_eigenval)
@@ -319,3 +322,38 @@ def parameter_shift(
 
     circuit.set_parameters(original)
     return float(generator_eigenval * (forward - backward))
+
+
+def quantum_derivative_via_shifts(
+    hamiltonian, circuit, parameter_index, exec_backend, nshots=None
+):
+    target_gate = circuit.associate_gates_with_parameters()[parameter_index]
+    target_qubits = target_gate.qubits
+    parameter_value = target_gate.parameters[0]
+
+    if target_gate.name in ["rx", "ry", "rz"]:
+        return parameter_shift(
+            hamiltonian, circuit, parameter_index, exec_backend, nshots
+        )
+    elif target_gate.name == "rbs":
+        unrolled_rbs_circuit = Circuit(circuit.nqubits)
+        for g in circuit.queue:
+            if g != target_gate:
+                unrolled_rbs_circuit.add(g)
+            else:
+                unrolled_rbs_circuit.add(gates.H(target_qubits[0]))
+                unrolled_rbs_circuit.add(gates.CNOT(target_qubits[0], target_qubits[1]))
+                unrolled_rbs_circuit.add(gates.H(target_qubits[1]))
+                unrolled_rbs_circuit.add(gates.RY(target_qubits[0], parameter_value))
+                unrolled_rbs_circuit.add(gates.RY(target_qubits[1], -parameter_value))
+                unrolled_rbs_circuit.add(gates.H(target_qubits[1]))
+                unrolled_rbs_circuit.add(gates.CNOT(target_qubits[0], target_qubits[1]))
+                unrolled_rbs_circuit.add(gates.H(target_qubits[0]))
+
+    derivative = parameter_shift(
+        hamiltonian, unrolled_rbs_circuit, parameter_index, exec_backend, nshots
+    ) - parameter_shift(
+        hamiltonian, unrolled_rbs_circuit, parameter_index + 1, exec_backend, nshots
+    )
+
+    return derivative

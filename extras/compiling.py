@@ -78,28 +78,25 @@ def main(args):
     )
     vqe.circuit.set_parameters(params)
 
-    # this is the Hamiltonian that we are studying
     base_oracle = XXZ_EvolutionOracle.from_nqubits(
         nqubits=nqubits, delta=0.5, steps=args.steps, order=args.order
     )
-
-    # We rotate H_XXZ with VQE using the FrameShiftedOracle e^{i H' t} = V e^{i H0 t} Vdag
     oracle = FrameShiftedEvolutionOracle.from_evolution_oracle(
-        # before_circuit=vqe.circuit.invert(),
-        circuit_frame=vqe.circuit,
+        before_circuit=vqe.circuit.invert(),
+        after_circuit=vqe.circuit,
         base_evolution_oracle=base_oracle,
     )
 
-    # Shifted oracle is passed to the group commutator
     gci = GroupCommutatorIterationWithEvolutionOracles(
         oracle,
         args.db_rotation,
     )
 
+    # TODO: remove hardcoded magnetic field
     eo_d_type = getattr(double_bracket_evolution_oracles, args.eo_d)
 
     print(
-        f"The gci mode is {gci.mode} rotation with {eo_d_type.__name__} as the oracle.\n"
+        f"The gci mode is {gci.double_bracket_rotation_type} rotation with {eo_d_type.__name__} as the oracle.\n"
     )
     metadata = {}
 
