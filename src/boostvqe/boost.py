@@ -9,10 +9,7 @@ import numpy as np
 
 # qibo's
 from qibo import Circuit, gates, hamiltonians, set_backend
-from qibo.models.dbi.double_bracket import (
-    DoubleBracketGeneratorType,
-    DoubleBracketIteration,
-)
+from qibo_dbqa.double_bracket import DoubleBracketGeneratorType, DoubleBracketIteration
 
 # boostvqe's
 from boostvqe.plotscripts import plot_gradients, plot_loss
@@ -36,27 +33,27 @@ from boostvqe.utils import (
     train_vqe,
 )
 
-NSHOTS = 1000
+NSHOTS = None
 
 
 def dbqa_vqe(
     circuit: Circuit,  # in place of ansatz
     output_folder: str,
-    backend: Optional[str] = "qibojit",
+    backend: Optional[str] = "numpy",
     platform: Optional[str] = None,
     optimizer: str = "Powell",
     optimizer_options: dict = {},
     tol: float = TOL,
     decay_rate_lr: float = 1.0,
     nboost: int = 1,
-    boost_frequency: int = 10,
+    boost_frequency: int = 3,
     dbqa_steps: int = 1,
     store_h: bool = False,
     hamiltonian: str = "XXZ",
     seed: int = SEED,
     nshots: int = NSHOTS,
-    nlayers: int = 0,
-    dbr_duration: float = 0.1,
+    nlayers: int = 1.0,
+    dbr_duration: float = 0.02,
     mode: DoubleBracketGeneratorType = DoubleBracketGeneratorType.single_commutator,
 ):
     """
