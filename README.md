@@ -28,15 +28,21 @@ The source code is located in `./src/boostvqe/.` and its composed of:
 It follows a python snippet explaining how to run the boosting
 
 ```py
-
 from boostvqe.boost import dbqa_vqe
 from boostvqe.ansatze import hdw_efficient
 
-from qibo.models.dbi.double_bracket import DoubleBracketGeneratorType
+from qibo_dbqa.double_bracket import DoubleBracketGeneratorType
 
-circuit = hdw_efficient(nqubits=2, nlayers=2)
+circuit = hdw_efficient(nqubits=2, nlayers=3)
 output_folder = "output"
-dbqa_vqe(circuit, output_folder, mode = DoubleBracketGeneratorType.group_commutator)
+dbqa_vqe(
+    circuit=circuit,
+    output_folder=output_folder,
+    mode = DoubleBracketGeneratorType.group_commutator,
+    optimizer="BFGS",
+    optimizer_options={"maxiter": 3},
+    dbr_duration=0.1,
+)
 ```
 
 All the info regarding `dbqa_vqe` can be generated with `help(dbqa_vqe)`.

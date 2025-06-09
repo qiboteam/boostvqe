@@ -6,6 +6,20 @@ from qibo.hamiltonians.models import HamiltonianTerm, _multikron
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
+
+class _NoDenseFormFilter(logging.Filter):
+    def filter(self, record):
+        # return False if the warning text is exactly the one we want to silence
+        return (
+            "Calculating the dense form of a symbolic Hamiltonian"
+            not in record.getMessage()
+        )
+
+
+# Grab the “qibo.config” logger and attach our filter
+logger = logging.getLogger("qibo.config")
+logger.addFilter(_NoDenseFormFilter())
+
 import numpy as np
 import tensorflow as tf
 
@@ -26,15 +40,23 @@ DEFAULT_DELTAS = [0.0, 2.0]
 TLFIM_h = [1.0, 2.0]
 J1J2_h = [1.0, 0.2]
 
+backend = get_backend()
+
 
 class Model(Enum):
     XXZ = lambda nqubits: hamiltonians.XXZ(
-        nqubits=nqubits, delta=DEFAULT_DELTA, dense=False
+        nqubits=nqubits, delta=DEFAULT_DELTA, dense=False, backend=backend
     )
-    XYZ = lambda nqubits: XYZ(nqubits=nqubits, deltas=[0.5, 0.5], dense=False)
-    TFIM = lambda nqubits: hamiltonians.TFIM(nqubits=nqubits, h=nqubits, dense=False)
-    TLFIM = lambda nqubits: TLFIM(nqubits=nqubits, h=TLFIM_h, dense=False)
-    J1J2 = lambda nqubits: J1J2(nqubits=nqubits, h=J1J2_h, dense=False)
+    XYZ = lambda nqubits: XYZ(
+        nqubits=nqubits, deltas=[0.5, 0.5], dense=True, backend=backend
+    )
+    TFIM = lambda nqubits: hamiltonians.TFIM(
+        nqubits=nqubits, h=nqubits, dense=True, backend=backend
+    )
+    TLFIM = lambda nqubits: TLFIM(
+        nqubits=nqubits, h=TLFIM_h, dense=True, backend=backend
+    )
+    J1J2 = lambda nqubits: J1J2(nqubits=nqubits, h=J1J2_h, dense=True, backend=backend)
 
 
 def TLFIM(nqubits, h=TLFIM_h, dense=True, backend=None):
@@ -54,18 +76,20 @@ def TLFIM(nqubits, h=TLFIM_h, dense=True, backend=None):
         raise_error(ValueError, "Number of qubits must be larger than one.")
     if dense:
         condition = lambda i, j: i in {j % nqubits, (j + 1) % nqubits}
-        ham = _build_spin_model(nqubits, matrices.Z, condition)
+        ham = _build_spin_model(nqubits, matrices.Z, condition, backend=backend)
         for m, matrix in enumerate([matrices.X, matrices.Z]):
             if h[m] != 0:
                 condition = lambda i, j: i == j % nqubits
-                ham += h[m] * _build_spin_model(nqubits, matrix, condition)
+                ham += h[m] * _build_spin_model(
+                    nqubits, matrix, condition, backend=backend
+                )
         ham *= -1
         return Hamiltonian(nqubits, ham, backend=backend)
 
     matrix = -(
-        _multikron([matrices.Z, matrices.Z])
-        + h[0] * _multikron([matrices.X, matrices.I])
-        + h[1] * _multikron([matrices.Z, matrices.I])
+        _multikron([matrices.Z, matrices.Z], backend=backend)
+        + h[0] * _multikron([matrices.X, matrices.I], backend=backend)
+        + h[1] * _multikron([matrices.Z, matrices.I], backend=backend)
     )
     terms = [HamiltonianTerm(matrix, i, i + 1) for i in range(nqubits - 1)]
     terms.append(HamiltonianTerm(matrix, nqubits - 1, 0))

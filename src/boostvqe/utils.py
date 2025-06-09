@@ -8,7 +8,7 @@ import cma
 import matplotlib.pyplot as plt
 import numpy as np
 from qibo import hamiltonians
-from qibo.models.dbi.utils_scheduling import hyperopt_step
+from qibo_dbqa.utils_scheduling import hyperopt_step
 from scipy import optimize
 
 from boostvqe import ansatze
@@ -115,6 +115,9 @@ def train_vqe(
         hamiltonian=ham,
     )
 
+    if "maxiter" in training_options:
+        niterations = training_options["maxiter"]
+
     def callbacks(
         params,
         vqe=vqe,
@@ -143,7 +146,7 @@ def train_vqe(
         iteration_count = len(loss_list) - 1
 
         if niterations is not None and iteration_count % nmessage == 0:
-            logging.info(f"Optimization iteration {iteration_count}/{niterations}")
+            logging.info(f"Optimization iteration {iteration_count+1}/{niterations}")
             logging.info(f"Loss {energy:.5}")
 
     callbacks(initial_parameters)
