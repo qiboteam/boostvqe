@@ -26,6 +26,7 @@ qiboml = {git = "https://github.com/qiboteam/qiboml"}
 [tool.poetry.group.dev.dependencies]
 ipython = "^7.34"
 pdbpp = "^0.10.3"
+ipykernel = "^6.29.5"
 
 [tool.poetry.group.benchmark.dependencies]
 pytest = "^8.0.0"
