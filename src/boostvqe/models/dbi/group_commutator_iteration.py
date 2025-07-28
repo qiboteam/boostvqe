@@ -32,9 +32,9 @@ class DoubleBracketRotationType(Enum):
 
 
 @dataclass
-class GroupCommutatorIterationWithEvolutionOracles(DoubleBracketIteration):
+class GroupCommutatorIteration(DoubleBracketIteration):
     """
-    Class which will be later merged into the @super somehow"""
+    Main class for simulating circuits of double-bracket quantum algorithms."""
 
     input_hamiltonian_evolution_oracle: EvolutionOracle
     double_bracket_rotation_type: DoubleBracketRotationType
