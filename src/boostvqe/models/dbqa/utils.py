@@ -7,7 +7,7 @@ import numpy as np
 from qibo import symbols
 from qibo.backends import _check_backend
 from qibo.hamiltonians import SymbolicHamiltonian
-from boostvqe.models.dbqa.double_bracket_evolution_oracles import *
+from boostvqe.models.dbqa.evolution_oracles_CZ_gates import *
 
 def generate_Z_operators(nqubits: int, backend=None):
     """Generate a dictionary containing 1) all possible products of Pauli Z operators for L = n_qubits and 2) their respective names.

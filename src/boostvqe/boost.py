@@ -9,7 +9,7 @@ import numpy as np
 
 # qibo's
 from qibo import Circuit, gates, hamiltonians, set_backend
-from qibo_dbqa.double_bracket import DoubleBracketGeneratorType, DoubleBracketIteration
+from qibo_dbqa.double_bracket import DoubleBracketRotationType, DoubleBracketIteration
 
 # boostvqe's
 from boostvqe.plotscripts import plot_gradients, plot_loss
@@ -54,7 +54,7 @@ def dbqa_vqe(
     nshots: int = NSHOTS,
     nlayers: int = 1.0,
     dbr_duration: float = 0.02,
-    mode: DoubleBracketGeneratorType = DoubleBracketGeneratorType.single_commutator,
+    mode: DoubleBracketRotationType = DoubleBracketRotationType.single_commutator,
 ):
     """
     Args:

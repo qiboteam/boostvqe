@@ -9,7 +9,7 @@ from qibo import Circuit, gates, symbols
 from qibo.config import raise_error
 from qibo.hamiltonians import SymbolicHamiltonian
 from qibo.hamiltonians.abstract import AbstractHamiltonian
-from qibo.hamiltonians import AbstractHamiltonian, SymbolicHamiltonian
+from qibo.hamiltonians import  SymbolicHamiltonian
 from qibo.transpiler.unitary_decompositions import two_qubit_decomposition
 
 # TODO: remove this global import
@@ -52,7 +52,7 @@ class EvolutionOracle:
             for gate in original_circuit.queue:
                 if len(gate.qubits) > 1:  # if gate is two qubit
                     gate_decomposition = two_qubit_decomposition(
-                        *gate.qubits, gate.matrix()
+                        *gate.qubits, gate.matrix(self.h.backend),backend=self.h.backend
                     )
                     for gate_elem in gate_decomposition:
                         decomposed_circuit.add(gate_elem)

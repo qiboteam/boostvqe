@@ -15,7 +15,7 @@ from boostvqe.models.dbqa.utils_scheduling import (
 )
 
 
-class DoubleBracketGeneratorType(Enum):
+class DoubleBracketRotationType(Enum):
     """Define DBF evolution."""
 
     canonical = auto()
@@ -63,12 +63,12 @@ class DoubleBracketIteration:
 
     Args:
         hamiltonian (Hamiltonian): Starting Hamiltonian;
-        mode (DoubleBracketGeneratorType): type of generator of the evolution.
+        mode (DoubleBracketRotationType): type of generator of the evolution.
 
     Example:
         .. testcode::
 
-            from qibo.models.dbi.double_bracket import DoubleBracketIteration, DoubleBracketGeneratorType
+            from qibo.models.dbi.double_bracket import DoubleBracketIteration, DoubleBracketRotationType
             from qibo.quantum_info import random_hermitian
             from qibo.hamiltonians import Hamiltonian
 
@@ -83,7 +83,7 @@ class DoubleBracketIteration:
     def __init__(
         self,
         hamiltonian: Hamiltonian,
-        mode: DoubleBracketGeneratorType = DoubleBracketGeneratorType.canonical,
+        mode: DoubleBracketRotationType = DoubleBracketRotationType.canonical,
         scheduling: DoubleBracketScheduling = DoubleBracketScheduling.grid_search,
         cost: DoubleBracketCostFunction = DoubleBracketCostFunction.off_diagonal_norm,
         ref_state: np.array = None,
@@ -97,14 +97,14 @@ class DoubleBracketIteration:
         """
         Args:
             hamiltonian (Hamiltonian): Starting Hamiltonian;
-            mode (DoubleBracketGeneratorType): type of generator of the evolution.
+            mode (DoubleBracketRotationType): type of generator of the evolution.
             scheduling (DoubleBracketScheduling): type of scheduling strategy.
             cost (DoubleBracketCost): type of cost function.
             ref_state (np.array): reference state for computing the energy fluctuation.
         """
 
     def __call__(
-        self, step: float, mode: DoubleBracketGeneratorType = None, d: np.array = None
+        self, step: float, mode: DoubleBracketRotationType = None, d: np.array = None
     ):
         r"""We use convention that $H' = U^\dagger H U$ where $U=e^{-sW}$ with $W=[D,H]$
         (or depending on `mode` an approximation, see `eval_dbr_unitary`).
@@ -120,7 +120,7 @@ class DoubleBracketIteration:
         self.h.matrix = operator_dagger @ self.h.matrix @ operator
 
     def eval_dbr_unitary(
-        self, step: float, mode: DoubleBracketGeneratorType = None, d: np.array = None
+        self, step: float, mode: DoubleBracketRotationType = None, d: np.array = None
     ):
        
         """In call we will are working in the convention that $H' = U^\\dagger H
@@ -140,19 +140,19 @@ class DoubleBracketIteration:
         if mode is None:
             mode = self.mode
 
-        if mode is DoubleBracketGeneratorType.canonical:
+        if mode is DoubleBracketRotationType.canonical:
             operator = self.backend.calculate_matrix_exp(
                 -1.0j * step,
                 self.commutator(self.diagonal_h_matrix, self.h.matrix),
             )
-        elif mode is DoubleBracketGeneratorType.single_commutator:
+        elif mode is DoubleBracketRotationType.single_commutator:
             if d is None:
                 d = self.diagonal_h_matrix
             operator = self.backend.calculate_matrix_exp(
                 -1.0j * step,
                 self.commutator(self.backend.cast(d), self.h.matrix),
             )
-        elif mode is DoubleBracketGeneratorType.group_commutator:
+        elif mode is DoubleBracketRotationType.group_commutator:
             if d is None:
                 d = self.diagonal_h_matrix
             sqrt_step = np.sqrt(step)
@@ -162,7 +162,7 @@ class DoubleBracketIteration:
                 @ self.h.exp(-sqrt_step)
                 @ self.backend.calculate_matrix_exp(sqrt_step, d)
             )
-        elif mode is DoubleBracketGeneratorType.group_commutator_3:
+        elif mode is DoubleBracketRotationType.group_commutator_3:
             if d is None:
                 d = self.diagonal_h_matrix
             sqrt_step = np.sqrt(step)
@@ -174,7 +174,7 @@ class DoubleBracketIteration:
                 @ self.h.exp(-step * (3 - np.sqrt(5)) / 2)
                 @ self.backend.calculate_matrix_exp(-step, d)
             )
-        elif mode is DoubleBracketGeneratorType.group_commutator_3_reduced:
+        elif mode is DoubleBracketRotationType.group_commutator_3_reduced:
             if d is None:
                 d = self.diagonal_h_matrix
             sqrt_step = np.sqrt(step)

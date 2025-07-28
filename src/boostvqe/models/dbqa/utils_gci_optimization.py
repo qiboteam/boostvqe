@@ -1,8 +1,8 @@
 import hyperopt
 from qibo.backends import _check_backend
 
-from boostvqe.models.dbi.double_bracket import *
-from boostvqe.models.dbi.utils import *
+from boostvqe.models.dbqa.double_bracket import *
+from boostvqe.models.dbqa.utils import *
 
 
 def gradient_numerical(
@@ -27,7 +27,7 @@ def gradient_numerical(
     return grad
 
 
-from boostvqe.models.dbi.utils_scheduling import adaptive_binary_search
+from boostvqe.models.dbqa.utils_scheduling import adaptive_binary_search
 
 
 def choose_gd_params(

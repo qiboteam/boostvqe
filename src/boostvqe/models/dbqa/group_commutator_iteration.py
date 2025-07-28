@@ -13,7 +13,7 @@ from boostvqe.models.dbqa.double_bracket_iteration import *
 from boostvqe.models.dbqa.evolution_oracles_CZ_gates import *
 
 
-class DoubleBracketRotationApproximationType(DoubleBracketRotationType):
+class DoubleBracketRotationApproximationType(Enum):
     # The dbr types below need a diagonal input matrix $\hat D_k$   :
 
     group_commutator = auto()
@@ -37,7 +37,7 @@ class GroupCommutatorIteration(DoubleBracketIteration):
     Main class for simulating circuits of double-bracket quantum algorithms."""
 
     input_hamiltonian_evolution_oracle: EvolutionOracle
-    double_bracket_rotation_type: DoubleBracketRotationType
+    double_bracket_rotation_type: DoubleBracketRotationApproximationType
 
     def __post_init__(self):
         self.iterated_hamiltonian_evolution_oracle = deepcopy(
@@ -56,7 +56,7 @@ class GroupCommutatorIteration(DoubleBracketIteration):
         self,
         step_duration: float,
         diagonal_association: EvolutionOracle = None,
-        mode_dbr: DoubleBracketRotationType = None,
+        mode_dbr: DoubleBracketRotationApproximationType = None,
     ):
         # This will run the appropriate group commutator step
         rs_circ = self.recursion_step_circuit(
@@ -85,7 +85,7 @@ class GroupCommutatorIteration(DoubleBracketIteration):
         step_duration: float,
         eo_1: EvolutionOracle,
         eo_2: EvolutionOracle = None,
-        mode_dbr: DoubleBracketRotationType = None,
+        mode_dbr: DoubleBracketRotationApproximationType = None,
     ):
         s_step = np.sqrt(step_duration)
         if eo_2 is None:
@@ -96,7 +96,7 @@ class GroupCommutatorIteration(DoubleBracketIteration):
         else:
             gc_type = mode_dbr
 
-        if gc_type is DoubleBracketRotationType.group_commutator:
+        if gc_type is DoubleBracketRotationApproximationType.group_commutator:
             query_list_forward = [
                 deepcopy(eo_2).circuit(s_step),
                 deepcopy(eo_1).circuit(s_step),
@@ -109,7 +109,7 @@ class GroupCommutatorIteration(DoubleBracketIteration):
                 deepcopy(eo_1).circuit(-s_step),
                 deepcopy(eo_2).circuit(-s_step),
             ]
-        elif gc_type is DoubleBracketRotationType.group_commutator_reordered:
+        elif gc_type is DoubleBracketRotationApproximationType.group_commutator_reordered:
             query_list_forward = [
                 deepcopy(eo_1).circuit(s_step),
                 deepcopy(eo_2).circuit(-s_step),
@@ -122,7 +122,7 @@ class GroupCommutatorIteration(DoubleBracketIteration):
                 deepcopy(eo_2).circuit(s_step),
                 deepcopy(eo_1).circuit(-s_step),
             ]
-        elif gc_type is DoubleBracketRotationType.group_commutator_reduced:
+        elif gc_type is DoubleBracketRotationApproximationType.group_commutator_reduced:
             query_list_forward = [
                 deepcopy(eo_1).circuit(s_step),
                 deepcopy(eo_2).circuit(-s_step),
@@ -133,7 +133,7 @@ class GroupCommutatorIteration(DoubleBracketIteration):
                 deepcopy(eo_2).circuit(s_step),
                 deepcopy(eo_1).circuit(-s_step),
             ]
-        elif gc_type is DoubleBracketRotationType.group_commutator_third_order:
+        elif gc_type is DoubleBracketRotationApproximationType.group_commutator_third_order:
             query_list_forward = [
                 deepcopy(eo_2).circuit(-s_step * (np.sqrt(5) - 1) / 2),
                 deepcopy(eo_1).circuit(-s_step * (np.sqrt(5) - 1) / 2),
@@ -143,7 +143,7 @@ class GroupCommutatorIteration(DoubleBracketIteration):
                 deepcopy(eo_1).circuit(-s_step),
             ]
             query_list_backward = [Circuit.invert(c) for c in query_list_forward[::-1]]
-        elif gc_type is DoubleBracketRotationType.group_commutator_third_order_reduced:
+        elif gc_type is DoubleBracketRotationApproximationType.group_commutator_third_order_reduced:
             query_list_forward = [
                 deepcopy(eo_1).circuit(-s_step * (np.sqrt(5) - 1) / 2),
                 deepcopy(eo_2).circuit(s_step),
@@ -152,37 +152,37 @@ class GroupCommutatorIteration(DoubleBracketIteration):
                 deepcopy(eo_1).circuit(-s_step),
             ]
             query_list_backward = [Circuit.invert(c) for c in query_list_forward[::-1]]
-        elif gc_type is DoubleBracketRotationType.group_commutator_mix_twice:
+        elif gc_type is DoubleBracketRotationApproximationType.group_commutator_mix_twice:
             s_step = step_duration / 2
             c1 = self.group_commutator(
-                s_step, eo_1, eo_2, mode_dbr=DoubleBracketRotationType.group_commutator
+                s_step, eo_1, eo_2, mode_dbr=DoubleBracketRotationApproximationType.group_commutator
             )["forwards"]
             c2 = self.group_commutator(
                 s_step,
                 eo_1,
                 eo_2,
-                mode_dbr=DoubleBracketRotationType.group_commutator_reduced,
+                mode_dbr=DoubleBracketRotationApproximationType.group_commutator_reduced,
             )["forwards"]
             return {"forwards": c2 + c1, "backwards": (c2 + c1).invert()}
-        elif gc_type is DoubleBracketRotationType.group_commutator_reduced_twice:
+        elif gc_type is DoubleBracketRotationApproximationType.group_commutator_reduced_twice:
             s_step = step_duration / 2
             c1 = self.group_commutator(
                 s_step,
                 eo_1,
                 eo_2,
-                mode_dbr=DoubleBracketRotationType.group_commutator_reduced,
+                mode_dbr=DoubleBracketRotationApproximationType.group_commutator_reduced,
             )["forwards"]
             return {"forwards": c1 + c1, "backwards": (c1 + c1).invert()}
         elif (
             gc_type
-            is DoubleBracketRotationType.group_commutator_third_order_reduced_twice
+            is DoubleBracketRotationApproximationType.group_commutator_third_order_reduced_twice
         ):
             s_step = step_duration / 2
             c1 = self.group_commutator(
                 s_step,
                 eo_1,
                 eo_2,
-                mode_dbr=DoubleBracketRotationType.group_commutator_third_order_reduced,
+                mode_dbr=DoubleBracketRotationApproximationType.group_commutator_third_order_reduced,
             )["forwards"]
             return {"forwards": c1 + c1, "backwards": (c1 + c1).invert()}
         else:

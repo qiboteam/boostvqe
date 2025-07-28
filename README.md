@@ -31,14 +31,14 @@ It follows a python snippet explaining how to run the boosting
 from boostvqe.boost import dbqa_vqe
 from boostvqe.ansatze import hdw_efficient
 
-from qibo_dbqa.double_bracket import DoubleBracketGeneratorType
+from qibo_dbqa.double_bracket import DoubleBracketRotationType
 
 circuit = hdw_efficient(nqubits=2, nlayers=3)
 output_folder = "output"
 dbqa_vqe(
     circuit=circuit,
     output_folder=output_folder,
-    mode = DoubleBracketGeneratorType.group_commutator,
+    mode = DoubleBracketRotationType.group_commutator,
     optimizer="BFGS",
     optimizer_options={"maxiter": 3},
     dbr_duration=0.1,

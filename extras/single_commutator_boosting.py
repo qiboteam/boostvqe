@@ -10,13 +10,13 @@ import qibo
 from qibo import hamiltonians, set_backend
 from qibo.backends import construct_backend
 from qibo.models.dbi.double_bracket import (
-    DoubleBracketGeneratorType,
+    DoubleBracketRotationType,
     DoubleBracketIteration,
 )
 from scipy.optimize import minimize
 
 from boostvqe import ansatze
-from boostvqe.models.dbi import double_bracket_evolution_oracles
+from boostvqe.models.dbqa import double_bracket_evolution_oracles
 from boostvqe.training_utils import Model
 from boostvqe.utils import (  # build_circuit_RBS,
     OPTIMIZATION_FILE,
@@ -81,7 +81,7 @@ def main(args):
 
     dbi = DoubleBracketIteration(
         hamiltonian=new_hamiltonian,
-        mode=DoubleBracketGeneratorType.single_commutator,
+        mode=DoubleBracketRotationType.single_commutator,
     )
 
     dbi_results = apply_dbi_steps(

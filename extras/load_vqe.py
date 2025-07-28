@@ -6,7 +6,7 @@ import numpy as np
 import qibo
 from qibo import hamiltonians, set_backend
 from qibo.models.dbi.double_bracket import (
-    DoubleBracketGeneratorType,
+    DoubleBracketRotationType,
     DoubleBracketIteration,
 )
 
@@ -53,7 +53,7 @@ new_hamiltonian = hamiltonians.Hamiltonian(
 print(time.time() - t0)
 dbi = DoubleBracketIteration(
     hamiltonian=new_hamiltonian,
-    mode=DoubleBracketGeneratorType.single_commutator,
+    mode=DoubleBracketRotationType.single_commutator,
 )
 
 zero_state_t = np.transpose([zero_state])
@@ -83,7 +83,7 @@ import numpy as np
 import qibo
 from qibo import hamiltonians, set_backend
 from qibo.models.dbi.double_bracket import (
-    DoubleBracketGeneratorType,
+    DoubleBracketRotationType,
     DoubleBracketIteration,
 )
 
@@ -131,7 +131,7 @@ new_hamiltonian = hamiltonians.Hamiltonian(
 print(time.time() - t0)
 dbi = DoubleBracketIteration(
     hamiltonian=new_hamiltonian,
-    mode=DoubleBracketGeneratorType.single_commutator,
+    mode=DoubleBracketRotationType.single_commutator,
 )
 
 zero_state_t = np.transpose([zero_state])

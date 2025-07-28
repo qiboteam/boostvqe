@@ -12,14 +12,14 @@ from qibo.backends import construct_backend
 from qibo.quantum_info.metrics import fidelity
 
 from boostvqe import ansatze
-from boostvqe.models.dbi import double_bracket_evolution_oracles
-from boostvqe.models.dbi.double_bracket_evolution_oracles import (
+from boostvqe.models.dbqa import double_bracket_evolution_oracles
+from boostvqe.models.dbqa.double_bracket_evolution_oracles import (
     FrameShiftedEvolutionOracle,
     IsingNNEvolutionOracle,
     MagneticFieldEvolutionOracle,
     XXZ_EvolutionOracle,
 )
-from boostvqe.models.dbi.group_commutator_iteration_transpiler import (
+from boostvqe.models.dbqa.group_commutator_iteration_transpiler import (
     DoubleBracketRotationType,
     GroupCommutatorIterationWithEvolutionOracles,
 )

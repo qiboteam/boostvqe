@@ -13,8 +13,8 @@ from scipy import optimize
 
 from boostvqe import ansatze
 from boostvqe.compiling_XXZ import *
-from boostvqe.models.dbi.double_bracket_evolution_oracles import *
-from boostvqe.models.dbi.group_commutator_iteration_transpiler import *
+from boostvqe.models.dbqa.double_bracket_evolution_oracles import *
+from boostvqe.models.dbqa.group_commutator_iteration_transpiler import *
 
 OPTIMIZATION_FILE = "optimization_results.json"
 PARAMS_FILE = "parameters_history.npy"
@@ -304,7 +304,7 @@ def select_recursion_step_circuit(
     return mode_dbr_list[minimizer_dbr_id], minimizer_s[minimizer_dbr_id], eo_d
 
 
-from boostvqe.models.dbi.utils_gci_optimization import *
+from boostvqe.models.dbqa.utils_gci_optimization import *
 
 
 def select_recursion_step_gd_circuit(

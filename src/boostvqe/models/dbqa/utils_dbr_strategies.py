@@ -1,8 +1,8 @@
 import hyperopt
 
 from qibo.backends import _check_backend
-from boostvqe.models.dbi.double_bracket import *
-from boostvqe.models.dbi.utils import *
+from boostvqe.models.dbqa.double_bracket import *
+from boostvqe.models.dbqa.utils import *
 
 
 def select_best_dbr_generator(
@@ -37,7 +37,7 @@ def select_best_dbr_generator(
         h0 = random_hermitian(2**nqubits)
         dbi = DoubleBracketIteration(
             Hamiltonian(nqubits, h0),
-            mode=DoubleBracketGeneratorType.single_commutator,
+            mode=DoubleBracketRotationType.single_commutator,
         )
         initial_off_diagonal_norm = dbi.off_diagonal_norm
         generate_local_Z = generate_Z_operators(nqubits)
@@ -79,7 +79,7 @@ def select_best_dbr_generator(
     # canonical
     if compare_canonical is True:
         dbi_eval = deepcopy(dbi_object)
-        dbi_eval.mode = DoubleBracketGeneratorType.canonical
+        dbi_eval.mode = DoubleBracketRotationType.canonical
         if step is None:
             step_best = dbi_eval.choose_step(scheduling=scheduling, **kwargs)
         else:
@@ -94,7 +94,7 @@ def select_best_dbr_generator(
     dbi_eval = deepcopy(dbi_object)
     if idx_max_loss == len(d_list) and compare_canonical is True:
         # canonical
-        dbi_eval(step=step_optimal, mode=DoubleBracketGeneratorType.canonical)
+        dbi_eval(step=step_optimal, mode=DoubleBracketRotationType.canonical)
 
     else:
         d_optimal = flip * d_list[idx_max_loss]
@@ -257,7 +257,7 @@ def gradient_descent(
         h0 = random_hermitian(2**nqubits)
         dbi = DoubleBracketIteration(
             Hamiltonian(nqubits, h0),
-            mode=DoubleBracketGeneratorType.single_commutator,
+            mode=DoubleBracketRotationType.single_commutator,
             scheduling=DoubleBracketScheduling.hyperopt,
             cost=DoubleBracketCostFunction.off_diagonal_norm,
         )
