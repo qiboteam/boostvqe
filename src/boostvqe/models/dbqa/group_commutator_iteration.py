@@ -8,9 +8,9 @@ from qibo import gates, symbols
 from qibo.config import raise_error
 from qibo.hamiltonians import Hamiltonian, SymbolicHamiltonian
 
-from boostvqe.models.dbi import *
-from boostvqe.models.dbi.double_bracket import *
-from boostvqe.models.dbi.double_bracket_evolution_oracles import *
+from boostvqe.models.dbqa import *
+from boostvqe.models.dbqa.double_bracket_iteration import *
+from boostvqe.models.dbqa.evolution_oracles_CZ_gates import *
 
 
 class DoubleBracketRotationApproximationType(DoubleBracketRotationType):

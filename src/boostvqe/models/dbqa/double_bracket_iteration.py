@@ -6,8 +6,8 @@ import hyperopt
 import numpy as np
 
 from qibo.hamiltonians import Hamiltonian
-from boostvqe.models.dbi.utils import *
-from boostvqe.models.dbi.utils_scheduling import (
+from boostvqe.models.dbqa.utils import *
+from boostvqe.models.dbqa.utils_scheduling import (
     grid_search_step,
     hyperopt_step,
     polynomial_step,

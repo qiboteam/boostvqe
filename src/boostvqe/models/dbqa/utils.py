@@ -7,7 +7,7 @@ import numpy as np
 from qibo import symbols
 from qibo.backends import _check_backend
 from qibo.hamiltonians import SymbolicHamiltonian
-from boostvqe.models.dbi.double_bracket_evolution_oracles import *
+from boostvqe.models.dbqa.double_bracket_evolution_oracles import *
 
 def generate_Z_operators(nqubits: int, backend=None):
     """Generate a dictionary containing 1) all possible products of Pauli Z operators for L = n_qubits and 2) their respective names.
@@ -16,8 +16,8 @@ def generate_Z_operators(nqubits: int, backend=None):
      Example:
         .. testcode::
 
-            from qibo.models.dbi.utils import generate_Z_operators
-            from qibo.models.dbi.double_bracket import DoubleBracketIteration
+            from qibo.models.dbqa.utils import generate_Z_operators
+            from qibo.models.dbqa.double_bracket import DoubleBracketIteration
             from qibo.quantum_info import random_hermitian
             from qibo.hamiltonians import Hamiltonian
             import numpy as np
@@ -55,7 +55,7 @@ def str_to_symbolic(name: str):
     Example:
         .. testcode::
 
-            from qibo.models.dbi.utils import str_to_symbolic
+            from qibo.models.dbqa.utils import str_to_symbolic
             op_name = "ZYXZI"
             # returns 5-qubit symbolic hamiltonian
             ZIXZI_op = str_to_symbolic(op_name)
