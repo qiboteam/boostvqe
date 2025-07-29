@@ -205,16 +205,19 @@ class GroupCommutatorIteration(DoubleBracketIteration):
         else:
             raise_error(ValueError, "Your EvolutionOracleType is not recognized")
 
-    def loss(self, step_duration: float, eo_d, mode_dbr):
+    def loss(self, step_duration: float = None, eo_d=None, mode_dbr=None):
         """
         Compute loss function distance between `look_ahead` steps.
 
         Args:
-            step_duration (float): iteration step.
-            d (np.array): diagonal operator, use canonical by default.
-            look_ahead (int): number of iteration steps to compute the loss function;
+            step_duration (float, optional): iteration step. If None, no extra step is added.
+            eo_d (EvolutionOracle, optional): diagonal operator. Defaults to self.input_hamiltonian_evolution_oracle if not provided.
+            mode_dbr (DoubleBracketRotationApproximationType, optional): DBR mode. Defaults to self.double_bracket_rotation_type if not provided.
         """
-
+        if eo_d is None:
+            eo_d = self.input_hamiltonian_evolution_oracle
+        if mode_dbr is None:
+            mode_dbr = self.double_bracket_rotation_type
         circ = self.get_composed_circuit()
         if step_duration is not None:
             circ = self.recursion_step_circuit(step_duration, eo_d, mode_dbr) + circ

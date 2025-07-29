@@ -31,6 +31,10 @@ class EvolutionOracle:
 
     def __post_init__(self):
         self.steps = 1
+        
+    @property
+    def nqubits(self):
+        return self.h.nqubits
 
     def __call__(self, t_duration: float):
         """Returns either the name or the circuit"""
