@@ -202,7 +202,7 @@ class GroupCommutatorIteration:
             step_grid = np.linspace(0.0001, 0.1, 10)
         losses = [ self.loss(s, d, mode_dbr) for s in step_grid]
         return step_grid[np.argmin(losses)], np.min(losses), losses
-
+    
     @staticmethod
     def count_gates(circuit, gate_type):
         t = 0
