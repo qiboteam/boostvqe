@@ -124,7 +124,7 @@ class GroupCommutatorIteration:
     h: SymbolicHamiltonian
     """Input Hamiltonian, principally expecting SymbolicHamiltonian."""
     preparation_circuit: Circuit = None
-    double_bracket_rotation_approximation_type: DoubleBracketRotationApproximationType
+    double_bracket_rotation_approximation_type: DoubleBracketRotationApproximationType = None
 
     def __post_init__(self):
         # If the input is an integer, we assume it is the number of qubits
