@@ -30,110 +30,38 @@ class DoubleBracketRotationApproximationType(Enum):
     group_commutator_reduced_twice = auto()
     group_commutator_third_order_reduced_twice = auto()
 
-
-@dataclass
-class GroupCommutatorIteration(DoubleBracketIteration):
-    """
-    Main class for simulating circuits of double-bracket quantum algorithms."""
-
-    input_hamiltonian_evolution_oracle: EvolutionOracle
-    double_bracket_rotation_type: DoubleBracketRotationApproximationType
-
-    def __post_init__(self):
-        self.iterated_hamiltonian_evolution_oracle = deepcopy(
-            self.input_hamiltonian_evolution_oracle
-        )
-
-    @property
-    def nqubits(self):
-        return self.h.nqubits
-
-    @property
-    def h(self):
-        return self.input_hamiltonian_evolution_oracle.h
-
-    def __call__(
-        self,
+def group_commutator(
         step_duration: float,
-        diagonal_association: EvolutionOracle = None,
+        eo_1: SymbolicHamiltonian,
+        eo_2: SymbolicHamiltonian,
         mode_dbr: DoubleBracketRotationApproximationType = None,
-    ):
-        # This will run the appropriate group commutator step
-        rs_circ = self.recursion_step_circuit(
-            step_duration,
-            diagonal_association,
-            mode_dbr,
-        )
-        if (
-            self.input_hamiltonian_evolution_oracle.evolution_oracle_type
-            is EvolutionOracleType.numerical
         ):
-            rs_circ_inv = np.linalg.inv(rs_circ)
-        else:
-            rs_circ_inv = rs_circ.invert()
-
-        self.iterated_hamiltonian_evolution_oracle = (
-            FrameShiftedEvolutionOracle.from_evolution_oracle(
-                deepcopy(self.iterated_hamiltonian_evolution_oracle),
-                rs_circ_inv,
-                rs_circ,
-            )
-        )
-
-    def group_commutator(
-        self,
-        step_duration: float,
-        eo_1: EvolutionOracle,
-        eo_2: EvolutionOracle = None,
-        mode_dbr: DoubleBracketRotationApproximationType = None,
-    ):
+        """This will return the group commutator circuit for the given step duration"""
+        
         s_step = np.sqrt(step_duration)
-        if eo_2 is None:
-            eo_2 = self.iterated_hamiltonian_evolution_oracle
 
-        if mode_dbr is None:
-            gc_type = self.double_bracket_rotation_type
-        else:
-            gc_type = mode_dbr
-
-        if gc_type is DoubleBracketRotationApproximationType.group_commutator:
+        if mode_dbr is DoubleBracketRotationApproximationType.group_commutator:
             query_list_forward = [
                 deepcopy(eo_2).circuit(s_step),
                 deepcopy(eo_1).circuit(s_step),
                 deepcopy(eo_2).circuit(-s_step),
                 deepcopy(eo_1).circuit(-s_step),
             ]
-            query_list_backward = [
-                deepcopy(eo_1).circuit(s_step),
-                deepcopy(eo_2).circuit(s_step),
-                deepcopy(eo_1).circuit(-s_step),
-                deepcopy(eo_2).circuit(-s_step),
-            ]
-        elif gc_type is DoubleBracketRotationApproximationType.group_commutator_reordered:
+            
+        elif mode_dbr is DoubleBracketRotationApproximationType.group_commutator_reordered:
             query_list_forward = [
                 deepcopy(eo_1).circuit(s_step),
                 deepcopy(eo_2).circuit(-s_step),
                 deepcopy(eo_1).circuit(-s_step),
                 deepcopy(eo_2).circuit(s_step),
             ]
-            query_list_backward = [
-                deepcopy(eo_2).circuit(-s_step),
-                deepcopy(eo_1).circuit(s_step),
-                deepcopy(eo_2).circuit(s_step),
-                deepcopy(eo_1).circuit(-s_step),
-            ]
-        elif gc_type is DoubleBracketRotationApproximationType.group_commutator_reduced:
+        elif mode_dbr is DoubleBracketRotationApproximationType.group_commutator_reduced:
             query_list_forward = [
                 deepcopy(eo_1).circuit(s_step),
                 deepcopy(eo_2).circuit(-s_step),
                 deepcopy(eo_1).circuit(-s_step),
             ]
-            query_list_backward = [
-                deepcopy(eo_1).circuit(s_step),
-                deepcopy(eo_2).circuit(s_step),
-                deepcopy(eo_1).circuit(-s_step),
-            ]
-        elif gc_type is DoubleBracketRotationApproximationType.group_commutator_third_order:
+        elif mode_dbr is DoubleBracketRotationApproximationType.group_commutator_third_order:
             query_list_forward = [
                 deepcopy(eo_2).circuit(-s_step * (np.sqrt(5) - 1) / 2),
                 deepcopy(eo_1).circuit(-s_step * (np.sqrt(5) - 1) / 2),
@@ -142,8 +70,7 @@ class GroupCommutatorIteration(DoubleBracketIteration):
                 deepcopy(eo_2).circuit(-s_step * (3 - np.sqrt(5)) / 2),
                 deepcopy(eo_1).circuit(-s_step),
             ]
-            query_list_backward = [Circuit.invert(c) for c in query_list_forward[::-1]]
-        elif gc_type is DoubleBracketRotationApproximationType.group_commutator_third_order_reduced:
+        elif mode_dbr is DoubleBracketRotationApproximationType.group_commutator_third_order_reduced:
             query_list_forward = [
                 deepcopy(eo_1).circuit(-s_step * (np.sqrt(5) - 1) / 2),
                 deepcopy(eo_2).circuit(s_step),
@@ -151,60 +78,100 @@ class GroupCommutatorIteration(DoubleBracketIteration):
                 deepcopy(eo_2).circuit(-s_step * (3 - np.sqrt(5)) / 2),
                 deepcopy(eo_1).circuit(-s_step),
             ]
-            query_list_backward = [Circuit.invert(c) for c in query_list_forward[::-1]]
-        elif gc_type is DoubleBracketRotationApproximationType.group_commutator_mix_twice:
+        elif mode_dbr is DoubleBracketRotationApproximationType.group_commutator_mix_twice:
             s_step = step_duration / 2
             c1 = self.group_commutator(
                 s_step, eo_1, eo_2, mode_dbr=DoubleBracketRotationApproximationType.group_commutator
-            )["forwards"]
+            )
             c2 = self.group_commutator(
                 s_step,
                 eo_1,
                 eo_2,
                 mode_dbr=DoubleBracketRotationApproximationType.group_commutator_reduced,
-            )["forwards"]
-            return {"forwards": c2 + c1, "backwards": (c2 + c1).invert()}
-        elif gc_type is DoubleBracketRotationApproximationType.group_commutator_reduced_twice:
-            s_step = step_duration / 2
-            c1 = self.group_commutator(
-                s_step,
-                eo_1,
-                eo_2,
-                mode_dbr=DoubleBracketRotationApproximationType.group_commutator_reduced,
-            )["forwards"]
-            return {"forwards": c1 + c1, "backwards": (c1 + c1).invert()}
+            )
+            return c2 + c1
         elif (
-            gc_type
-            is DoubleBracketRotationApproximationType.group_commutator_third_order_reduced_twice
+            mode_dbr is 
+            DoubleBracketRotationApproximationType.group_commutator_reduced_twice
+            or           
+            mode_dbr is 
+            DoubleBracketRotationApproximationType.group_commutator_third_order_reduced_twice
         ):
             s_step = step_duration / 2
             c1 = self.group_commutator(
                 s_step,
                 eo_1,
-                eo_2,
-                mode_dbr=DoubleBracketRotationApproximationType.group_commutator_third_order_reduced,
-            )["forwards"]
-            return {"forwards": c1 + c1, "backwards": (c1 + c1).invert()}
+                eo_2,mode_dbr
+  ) 
+            return  c1 + c1 
         else:
             raise_error(
                 ValueError,
-                "You are in the group commutator query list but your dbr mode is not recognized",
-            )
+                "You are using a DoubleBracketRotationApproximationType which is not yet supported.",)
 
-        eo_mode = eo_1.evolution_oracle_type
-        if eo_mode is EvolutionOracleType.hamiltonian_simulation:
-            return {
-                "forwards": reduce(Circuit.__add__, query_list_forward[::-1]),
-                "backwards": reduce(Circuit.__add__, query_list_backward[::-1]),
-            }
-        elif eo_mode is EvolutionOracleType.numerical:
-            return {
-                "forwards": reduce(np.ndarray.__matmul__, query_list_forward),
-                "backwards": reduce(np.ndarray.__matmul__, query_list_backward),
-            }
+        if isinstance(eo_1, SymbolicHamiltonian):
+            return reduce(Circuit.__add__, query_list_forward[::-1])
+        elif isinstance(eo_1, Hamiltonian):
+            return reduce(np.ndarray.__matmul__, query_list_forward)
         else:
             raise_error(ValueError, "Your EvolutionOracleType is not recognized")
 
+@dataclass
+class GroupCommutatorIteration:
+    """
+    Simulates circuits of double-bracket quantum algorithms."""
+
+    h: SymbolicHamiltonian
+    """Input Hamiltonian, principally expecting SymbolicHamiltonian."""
+    preparation_circuit: Circuit = None
+    double_bracket_rotation_approximation_type: DoubleBracketRotationApproximationType
+
+    def __post_init__(self):
+        # If the input is an integer, we assume it is the number of qubits
+        if self.h is None:
+            L = 3       
+        if isinstance(self.h, int):            
+            L=self.h
+            self.h = SymbolicHamiltonian(
+                sum([X(i)*X(i+1)+ Y(i)*Y(i+1) + 0.5* Z(i)*Z(i+1) 
+                     for i in range(L-1)]))
+            
+        # If there is no preparation circuit, we create an empty one
+        if self.preparation_circuit is None:
+            self.preparation_circuit = Circuit(self.h.nqubits)
+
+        # We set the circuit function to be conjugated by the preparation circuit 
+        # and the original circuit function is stored as original_circuit
+        self.h.original_circuit = self.h.circuit
+        self.h.circuit = lambda t_duration: (
+            self.preparation_circuit.invert() 
+            + self.h.original_circuit(t_duration)
+            + self.preparation_circuit)
+        
+        # If the approximation type is not set, we default to the reduced group commutator
+        if self.double_bracket_rotation_approximation_type is None:
+            double_bracket_rotation_type = DoubleBracketRotationApproximationType.group_commutator_reduced
+
+    @property
+    def nqubits(self):
+        return self.h.nqubits
+
+    def __call__(
+        self,
+        step_duration: float,
+        d: SymbolicHamiltonian = None,
+        mode_dbr: DoubleBracketRotationApproximationType = None,
+    ):
+        if d is None:
+            d = SymbolicHamiltonian(sum([Z(i) for i in range(self.nqubits)]))
+        """This will run the appropriate group commutator step"""
+
+        self.preparation_circuit = (
+            self.preparation_circuit
+            + group_commutator(step_duration, d, self.h, mode_dbr)
+        )
+
+    
     def loss(self, step_duration: float = None, eo_d=None, mode_dbr=None):
         """
         Compute loss function distance between `look_ahead` steps.
@@ -214,13 +181,13 @@ class GroupCommutatorIteration(DoubleBracketIteration):
             eo_d (EvolutionOracle, optional): diagonal operator. Defaults to self.input_hamiltonian_evolution_oracle if not provided.
             mode_dbr (DoubleBracketRotationApproximationType, optional): DBR mode. Defaults to self.double_bracket_rotation_type if not provided.
         """
-        if eo_d is None:
-            eo_d = self.input_hamiltonian_evolution_oracle
-        if mode_dbr is None:
-            mode_dbr = self.double_bracket_rotation_type
-        circ = self.get_composed_circuit()
-        if step_duration is not None:
-            circ = self.recursion_step_circuit(step_duration, eo_d, mode_dbr) + circ
+        if step_duration is not None: 
+            circ = (
+             group_commutator(step_duration, d, self.h, mode_dbr) 
+             + self.preparation_circuit
+            )   
+        else:
+            circ = self.preparation_circuit 
         return self.h.expectation(circ().state())
 
     def choose_step(
@@ -229,29 +196,12 @@ class GroupCommutatorIteration(DoubleBracketIteration):
         step_grid=None,
         mode_dbr=None,
     ):
-        losses = []
-        for s in step_grid:
-            losses.append(self.loss(s, d, mode_dbr))
+        if isinstance(step_grid, int):
+            step_grid = np.linspace(0.01, 1.0, step_grid)
+        elif step_grid is None:
+            step_grid = np.linspace(0.0001, 0.1, 10)
+        losses = [ self.loss(s, d, mode_dbr) for s in step_grid]
         return step_grid[np.argmin(losses)], np.min(losses), losses
-
-    def get_composed_circuit(self, step_duration=None, eo_d=None):
-        """Get the ordered composition of all previous circuits regardless of previous mode_dbr
-        settings."""
-        if step_duration is None or eo_d is None:
-            return self.iterated_hamiltonian_evolution_oracle.get_composed_circuit()
-        else:
-            return (
-                self.recursion_step_circuit(step_duration, eo_d)
-                + self.iterated_hamiltonian_evolution_oracle.get_composed_circuit()
-            )
-
-    def recursion_step_circuit(self, step_duration, eo_d, mode_dbr=None):
-        # Set rotation type
-        if mode_dbr is None:
-            mode_dbr = self.double_bracket_rotation_type
-        return self.group_commutator(
-            step_duration=step_duration, eo_1=eo_d, mode_dbr=mode_dbr
-        )["forwards"]
 
     @staticmethod
     def count_gates(circuit, gate_type):
