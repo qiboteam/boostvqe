@@ -142,9 +142,9 @@ class GroupCommutatorIteration:
 
         # We set the circuit function to be conjugated by the preparation circuit 
         # and the original circuit function is stored as original_circuit
-        self.h.original_circuit = self.h.circuit
+        self.h.original_circuit = deepcopy(self.h.circuit)
         self.h.circuit = lambda t_duration: (
-            self.preparation_circuit.invert() 
+            deepcopy(self.preparation_circuit).invert()
             + self.h.original_circuit(t_duration)
             + self.preparation_circuit)
         
@@ -166,7 +166,7 @@ class GroupCommutatorIteration:
             d = SymbolicHamiltonian(sum([Z(i) for i in range(self.nqubits)]))
         """This will run the appropriate group commutator step"""
 
-        self.preparation_circuit = (
+        self.preparation_circuit = deepcopy(
             self.preparation_circuit
             + group_commutator(step_duration, d, self.h, mode_dbr)
         )
@@ -181,10 +181,11 @@ class GroupCommutatorIteration:
             eo_d (EvolutionOracle, optional): diagonal operator. Defaults to self.input_hamiltonian_evolution_oracle if not provided.
             mode_dbr (DoubleBracketRotationApproximationType, optional): DBR mode. Defaults to self.double_bracket_rotation_type if not provided.
         """
+        if mode_dbr is None:
+            mode_dbr = self.double_bracket_rotation_approximation_type
         if step_duration is not None: 
             circ = (
-             group_commutator(step_duration, d, self.h, mode_dbr) 
-             + self.preparation_circuit
+             self.preparation_circuit +group_commutator(step_duration, eo_d, self.h, mode_dbr) 
             )   
         else:
             circ = self.preparation_circuit 
