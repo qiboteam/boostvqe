@@ -205,7 +205,7 @@ class GroupCommutatorIteration:
         elif step_grid is None:
             step_grid = np.linspace(0.0001, 0.1, 10)
         losses = [ self.loss(s, d, mode_dbr) for s in step_grid]
-        return step_grid[np.argmin(losses)], np.min(losses), losses
+        return step_grid[np.argmin(losses)], np.min(losses), losses, step_grid
     
     @staticmethod
     def count_gates(circuit, gate_type):
@@ -217,17 +217,17 @@ class GroupCommutatorIteration:
 
     def count_CNOTs(self, circuit=None):
         if circuit is None:
-            circuit = self.get_composed_circuit()
+            circuit = self.preparation_circuit
         return self.count_gates(circuit, gates.gates.CNOT)
 
     def count_CZs(self, circuit=None):
         if circuit is None:
-            circuit = self.get_composed_circuit()
+            circuit = self.preparation_circuit
         return self.count_gates(circuit, gates.gates.CZ)
 
     def count_RBS(self, circuit=None):
         if circuit is None:
-            circuit = self.get_composed_circuit()
+            circuit = self.preparation_circuit
         return self.count_gates(circuit, gates.gates.RBS)
 
     def get_gate_count_dict(self):
