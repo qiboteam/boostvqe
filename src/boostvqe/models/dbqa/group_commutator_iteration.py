@@ -171,7 +171,7 @@ class GroupCommutatorIteration:
         """This will run the appropriate group commutator step"""
 
         self.preparation_circuit = deepcopy(
-            group_commutator(step_duration**2, d, self.h, mode_dbr)+self.preparation_circuit
+            group_commutator(step_duration, d, self.h, mode_dbr)+self.preparation_circuit
         )
 
     
@@ -188,7 +188,7 @@ class GroupCommutatorIteration:
             mode_dbr = self.double_bracket_rotation_approximation_type
         if step_duration is not None: 
             circ = (
-             group_commutator(step_duration**2, eo_d, self.h, mode_dbr) 
+             group_commutator(step_duration, eo_d, self.h, mode_dbr) 
             + self.preparation_circuit)   
         else:
             circ = self.preparation_circuit 
