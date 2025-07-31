@@ -6,6 +6,7 @@ import numpy as np
 from qibo import *
 from qibo import gates, symbols
 from qibo.config import raise_error
+from qibo.symbols import X, Y, Z
 from qibo.hamiltonians import Hamiltonian, SymbolicHamiltonian
 
 from boostvqe.models.dbqa import *
@@ -80,10 +81,10 @@ def group_commutator(
             ]
         elif mode_dbr is DoubleBracketRotationApproximationType.group_commutator_mix_twice:
             s_step = step_duration / 2
-            c1 = self.group_commutator(
+            c1 = group_commutator(
                 s_step, eo_1, eo_2, mode_dbr=DoubleBracketRotationApproximationType.group_commutator
             )
-            c2 = self.group_commutator(
+            c2 = group_commutator(
                 s_step,
                 eo_1,
                 eo_2,
@@ -98,7 +99,7 @@ def group_commutator(
             DoubleBracketRotationApproximationType.group_commutator_third_order_reduced_twice
         ):
             s_step = step_duration / 2
-            c1 = self.group_commutator(
+            c1 = group_commutator(
                 s_step,
                 eo_1,
                 eo_2,mode_dbr
