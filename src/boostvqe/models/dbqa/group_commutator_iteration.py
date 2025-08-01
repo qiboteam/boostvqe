@@ -171,7 +171,8 @@ class GroupCommutatorIteration:
         """This will run the appropriate group commutator step"""
 
         self.preparation_circuit = deepcopy(
-            group_commutator(step_duration, d, self.h, mode_dbr)+self.preparation_circuit
+            group_commutator(step_duration, d, self.h, mode_dbr)
+            + self.preparation_circuit
         )
 
     
