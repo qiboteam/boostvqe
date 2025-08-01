@@ -27,18 +27,20 @@ class XXZ_compilation_line(hamiltonians.SymbolicHamiltonian):
         self.odd_pairs = odd_pairs
         self.pairs = pairs
         self.delta = delta
+
+        self.ts_order = 2
     
-    def circuit(self,dt, ts_order = 1):
+    def circuit(self,dt):
         c_even = Circuit(self.nqubits)
         c_odd = Circuit(self.nqubits)
         
-        if ts_order == 1:
+        if self.ts_order == 1:
             for (i, j) in self.even_pairs:
                 self.add_XXZ_term_dt(c_even, i, j, dt)            
             for (i, j) in self.odd_pairs:
                 self.add_XXZ_term_dt(c_odd, i, j, dt)
             return c_even + c_odd
-        elif ts_order == 2:
+        elif self.ts_order == 2:
             for (i, j) in self.even_pairs:
                 self.add_XXZ_term_dt(c_even, i, j, dt)            
             for (i, j) in self.odd_pairs:
@@ -73,7 +75,7 @@ class XXZ_compilation_line(hamiltonians.SymbolicHamiltonian):
 
             qc.add(gates.SDG(i)), qc.add(gates.SDG(j))
             qc.add(gates.H(i)), qc.add(gates.H(j))
-            qc.add(gates.RZZ(i, j, dt*delta))
+            qc.add(gates.RZZ(i, j, dt*self.delta))
             qc.add(gates.H(i)), qc.add(gates.H(j))  
             qc.add(gates.S(i)), qc.add(gates.S(j))
         
@@ -132,4 +134,32 @@ class XXZ_compilation_line(hamiltonians.SymbolicHamiltonian):
         for n in range(nlayers):    
             qc = self.XXZ_HVA_circuit(parameters[2*n], parameters[2*n+1], qc=qc)
         return qc, result.fun, result.x
-        
+    
+    def eigenergies_ED(self):
+        """ Calculate the eigenenergies of the XXZ Hamiltonian using exact diagonalization.
+        @TODO migrate from qrisp implementation to reduce import load"""""
+        from qrisp.operators import X, Y, Z
+        from scipy.sparse.linalg import eigsh
+        import networkx as nx
+        # Define Hamiltonian
+        def create_heisenberg_hamiltonian(G):
+            H = sum(X(i)*X(j)+Y(i)*Y(j)+delta*Z(i)*Z(j) for (i,j) in G.edges())
+            return H
+
+        L = self.nqubits
+        delta = self.delta
+
+        G = nx.Graph()
+        G.add_edges_from([(k,(k+1)%L) for k in range(L-1)]) 
+
+        H = create_heisenberg_hamiltonian(G)
+
+        M = H.to_sparse_matrix()
+        eigenvalues, eigenvectors = eigsh(M, k=2, which='SA')
+
+
+        E0_val = eigenvalues[0]
+        E1_val = eigenvalues[1]
+        E0_vec = eigenvectors[:, 0]
+        E1_vec = eigenvectors[:, 1]
+        return E0_val, E1_val

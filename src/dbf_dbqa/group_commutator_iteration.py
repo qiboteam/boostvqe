@@ -9,10 +9,8 @@ from qibo.config import raise_error
 from qibo.symbols import X, Y, Z
 from qibo.hamiltonians import Hamiltonian, SymbolicHamiltonian
 
-from boostvqe.models.dbqa import *
-from boostvqe.models.dbqa.double_bracket_iteration import *
-from boostvqe.models.dbqa.evolution_oracles_CZ_gates import *
-
+from copy import deepcopy
+from functools import reduce
 
 class DoubleBracketRotationApproximationType(Enum):
     # The dbr types below need a diagonal input matrix $\hat D_k$   :
