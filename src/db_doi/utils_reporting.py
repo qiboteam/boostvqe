@@ -49,3 +49,21 @@ def take_verbose_step(self, magnetic_hamiltonian):
     self(s_opt, magnetic_hamiltonian)
     print("Circuit analysis after:")
     print_gate_count_report(self.preparation_circuit)    
+
+
+import pickle
+
+def simulation_data_path():
+    return "../simulation_results/"
+
+def save_data(data, filename):  
+    # Open a file for writing
+    with open(filename+'.pickle', 'wb') as file:
+        # Write the object to the file
+        pickle.dump(data, file)
+
+def load_data(filename):
+    with open(filename+'.pickle', 'rb') as file:
+        # Load the object from the file
+        data = pickle.load(file)
+    return data

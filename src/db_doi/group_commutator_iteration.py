@@ -56,9 +56,9 @@ def group_commutator(
             ]
         elif mode_dbr is DoubleBracketRotationApproximationType.group_commutator_reduced:
             query_list_forward = [
+                deepcopy(d).circuit(s_step),
                 deepcopy(h).circuit(s_step),
                 deepcopy(d).circuit(-s_step),
-                deepcopy(h).circuit(-s_step),
             ]
         elif mode_dbr is DoubleBracketRotationApproximationType.group_commutator_third_order:
             query_list_forward = [

@@ -104,9 +104,9 @@ class XXZ_compilation_line(hamiltonians.SymbolicHamiltonian):
                          
         return qc
     
-    def find_XXZ_HVA_circuit(self, max_evals = 1000, nlayers = 1, initial_params=None, warm_start_qc = None):
+    def find_XXZ_HVA_circuit(self, max_evals = 1000, nlayers = 1, initial_params=None, warm_start_qc = None, please_use_basinhopping=False):
         def HVA_cost_function(parameters):
-            qc = warm_start_qc
+            qc = deepcopy(warm_start_qc)
             for n in range(nlayers):    
                 qc = self.XXZ_HVA_circuit(parameters[2*n], parameters[2*n+1], qc=qc)
             return self.expectation(
@@ -117,14 +117,25 @@ class XXZ_compilation_line(hamiltonians.SymbolicHamiltonian):
 
         print('Initial loss:', HVA_cost_function(initial_params))
         from scipy.optimize import minimize
-
-        result = minimize(
+        if please_use_basinhopping:
+            from scipy.optimize import basinhopping
+            result = basinhopping(
+                HVA_cost_function,
+                initial_params,
+                niter=100,
+                T=1.0,  # Temperature parameter for the algorithm
+                method="COBYLA",
+                    options={"disp": True, "maxiter": max_evals},
+                tol=1e-4,
+            )
+        else:
+            result = minimize(
             HVA_cost_function,
             initial_params,
             method="COBYLA",
             options={"disp": True, "maxiter": max_evals},
-            tol=1e-2,
-        )
+            tol=1e-4,
+            )
 
         print(result.fun)
         print(result.x)
