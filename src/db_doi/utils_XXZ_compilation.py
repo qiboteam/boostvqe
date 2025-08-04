@@ -119,15 +119,24 @@ class XXZ_compilation_line(hamiltonians.SymbolicHamiltonian):
         from scipy.optimize import minimize
         if please_use_basinhopping:
             from scipy.optimize import basinhopping
+            custom_options = {
+                'maxiter': 500, # Set a high maximum number of iterations
+                'disp': True,    # Display convergence messages
+                'tol': 1e-4     # Optional: decrease the tolerance for a more precise solution
+            }
+            minimizer_kwargs = {
+            'method': 'COBYLA',
+            'options': custom_options # We can even pass our custom COBYLA options here
+            }
+
             result = basinhopping(
                 HVA_cost_function,
                 initial_params,
-                niter=100,
-                T=1.0,  # Temperature parameter for the algorithm
-                method="COBYLA",
-                    options={"disp": True, "maxiter": max_evals},
-                tol=1e-4,
+                minimizer_kwargs=minimizer_kwargs,
+                niter=10,  # Number of global iterations
+                disp=True # Display convergence messages for basinhopping
             )
+            
         else:
             result = minimize(
             HVA_cost_function,

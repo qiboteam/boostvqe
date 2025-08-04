@@ -50,11 +50,27 @@ def take_verbose_step(self, magnetic_hamiltonian):
     print("Circuit analysis after:")
     print_gate_count_report(self.preparation_circuit)    
 
+def run_param_rc(fontsize = 30):
+        import matplotlib.pyplot as plt
+        plt.rcParams['axes.labelsize'] = fontsize
+        plt.rcParams['axes.titlesize'] = fontsize
+        plt.rcParams['font.size'] = fontsize
+        #set_matplotlib_formats('pdf', 'png')
+        plt.rcParams['savefig.dpi'] = 75
+        plt.rcParams['lines.linewidth'] = 2.0
+        plt.rcParams['lines.markersize'] = 8
+        plt.rcParams['legend.fontsize'] = 12
+        plt.rcParams['legend.labelspacing'] = .3
+        plt.rcParams['legend.columnspacing']= .3
+        plt.rcParams['legend.handletextpad']= .1
+        plt.rcParams['text.usetex'] = True
+        plt.rcParams['font.family'] = "serif"
+        plt.rcParams['font.serif'] = "cm"
 
 import pickle
 
 def simulation_data_path():
-    return "../simulation_results/"
+    return "../simulation_results/Qibo_HVA/"
 
 def save_data(data, filename):  
     # Open a file for writing
