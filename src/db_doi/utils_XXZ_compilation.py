@@ -104,7 +104,7 @@ class XXZ_compilation_line(hamiltonians.SymbolicHamiltonian):
                          
         return qc
     
-    def find_XXZ_HVA_circuit(self, max_evals = 1000, nlayers = 1, initial_params=None, warm_start_qc = None, please_use_basinhopping=False):
+    def find_XXZ_HVA_circuit(self, max_evals = 1000, nlayers = 1, initial_params=None, warm_start_qc = None, please_use_basinhopping=0):
         def HVA_cost_function(parameters):
             qc = deepcopy(warm_start_qc)
             for n in range(nlayers):    
@@ -120,7 +120,7 @@ class XXZ_compilation_line(hamiltonians.SymbolicHamiltonian):
         if please_use_basinhopping:
             from scipy.optimize import basinhopping
             custom_options = {
-                'maxiter': 500, # Set a high maximum number of iterations
+                'maxiter': 700, # Set a high maximum number of iterations
                 'disp': True,    # Display convergence messages
                 'tol': 1e-4     # Optional: decrease the tolerance for a more precise solution
             }
@@ -133,7 +133,7 @@ class XXZ_compilation_line(hamiltonians.SymbolicHamiltonian):
                 HVA_cost_function,
                 initial_params,
                 minimizer_kwargs=minimizer_kwargs,
-                niter=10,  # Number of global iterations
+                niter= please_use_basinhopping if isinstance(please_use_basinhopping,int) else 10,  # Number of global iterations
                 disp=True # Display convergence messages for basinhopping
             )
             
@@ -145,8 +145,9 @@ class XXZ_compilation_line(hamiltonians.SymbolicHamiltonian):
             options={"disp": True, "maxiter": max_evals},
             tol=1e-4,
             )
-
+        print("Final cost function:")
         print(result.fun)
+        print("Parameters yielding final value:")
         print(result.x)
         
         parameters = result.x
