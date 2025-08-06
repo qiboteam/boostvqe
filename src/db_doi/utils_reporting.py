@@ -69,10 +69,12 @@ def run_param_rc(fontsize = 30):
 
 import pickle
 
-__HVA__training_version = 1.0
-
+__HVA__training_version = 1.1
+__HVA__trained_version = 1.0
 def simulation_data_path():
     return f"../simulation_results/Qibo_HVA/training_run_{__HVA__training_version}/"
+def loading_simulation_data_path():
+    return f"../simulation_results/Qibo_HVA/training_run_{__HVA__trained_version}/"
 
 def save_data(data, filename):  
     # Open a file for writing
