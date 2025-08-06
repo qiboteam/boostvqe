@@ -50,6 +50,10 @@ def take_verbose_step(self, magnetic_hamiltonian):
     print("Circuit analysis after:")
     print_gate_count_report(self.preparation_circuit)    
 
+def fidelity_witness(E,E0,E1):
+        return 1 - (E-E0)/(E1-E0)
+
+
 def run_param_rc(fontsize = 30):
         import matplotlib.pyplot as plt
         plt.rcParams['axes.labelsize'] = fontsize

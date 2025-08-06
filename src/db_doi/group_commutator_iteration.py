@@ -134,7 +134,11 @@ class GroupCommutatorIteration:
             self.h = SymbolicHamiltonian(
                 sum([X(i)*X(i+1)+ Y(i)*Y(i+1) + 0.5* Z(i)*Z(i+1) 
                      for i in range(L-1)]))
-            
+
+        # If the approximation type is not set, we default to the reduced group commutator
+        if self.double_bracket_rotation_approximation_type is None:
+            double_bracket_rotation_type = DoubleBracketRotationApproximationType.group_commutator_reduced
+                
         # If there is no preparation circuit, we create an empty one
         if self.preparation_circuit is None:
             self.preparation_circuit = Circuit(self.h.nqubits)
@@ -148,9 +152,7 @@ class GroupCommutatorIteration:
             + self.preparation_circuit.invert()
             )
         
-        # If the approximation type is not set, we default to the reduced group commutator
-        if self.double_bracket_rotation_approximation_type is None:
-            double_bracket_rotation_type = DoubleBracketRotationApproximationType.group_commutator_reduced
+        
 
     @property
     def nqubits(self):
