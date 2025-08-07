@@ -1,4 +1,8 @@
 from qibo import gates
+
+def two_qubit_counter(circ):
+    return sum(1 for gate in circ.queue if len(gate.qubits) == 2)
+
 def print_gate_count_report(circ):
     """
     Prints a report of the gate counts in the circuit.

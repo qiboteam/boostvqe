@@ -8,7 +8,7 @@ version = "0.0.1"
 description = "Boosting VQE training with DBI algorithm"
 authors = ["Qibo&DBI team"]
 readme = "README.md"
-packages = [{ include = "boostvqe", from = "src" }]
+packages = [{ include = "db_doi", from = "src" }]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
