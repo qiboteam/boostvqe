@@ -8,7 +8,7 @@ from qibo.hamiltonians import SymbolicHamiltonian
 from qibo.symbols import X, Y, Z
 
 class XXZ_compilation_line(hamiltonians.SymbolicHamiltonian):
-    def __init__(self, L, delta=1.0, boundary="OBC", gateset="CNOT"):
+    def __init__(self, L, delta=1, boundary="OBC", gateset="CNOT"):
 
         even_pairs = [(i, (i+1)%(L)) for i in range(0, L-1, 2)]
         odd_pairs = [(i, i+1) for i in range(1, L-1, 2)]
@@ -184,3 +184,5 @@ class XXZ_compilation_line(hamiltonians.SymbolicHamiltonian):
         E0_vec = eigenvectors[:, 0]
         E1_vec = eigenvectors[:, 1]
         return E0_val, E1_val
+    
+
