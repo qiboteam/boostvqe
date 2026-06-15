@@ -28,7 +28,7 @@ ipython = "^8.10"
 pdbpp = "^0.10.3"
 
 [tool.poetry.group.benchmark.dependencies]
-pytest = "^8.0.0"
+pytest = ">=8,<10"
 pytest-benchmark = { version = "^4.0.0", extras = ["histogram"] }
 
 [tool.poe.tasks]
