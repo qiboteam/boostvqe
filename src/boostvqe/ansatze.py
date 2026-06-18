@@ -2,6 +2,7 @@ import qibo
 from qibo import gates, get_backend
 from qibo.backends import construct_backend
 from qibo.models import Circuit
+from qibo.config import raise_error
 
 from boostvqe.training_utils import vqe_loss
 
