@@ -11,16 +11,16 @@ readme = "README.md"
 packages = [{ include = "boostvqe", from = "src" }]
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.13"
+python = ">=3.12,<3.15"
 numpy = "^2.0.0"
-numba = "^0.61.0"
-qibo = "^0.2.12"
+numba = "^0.68.0"
+qibo = "^0.3.7"
 tensorflow = "^2.17.0"
 matplotlib = "^3.9.2"
 seaborn = "^0.13.2"
 hyperopt = "^0.2.7"
-qibojit = "^0.1.6"
-qibo-dbqa = {git = "https://github.com/qiboteam/qibo-dbqa"}
+qibojit = "^0.1.18"
+qibo-dbqa = { git = "https://github.com/qiboteam/qibo-dbqa" , branch = "python" }
 qiboml = {git = "https://github.com/qiboteam/qiboml"}
 
 [tool.poetry.group.dev.dependencies]
